@@ -1,0 +1,53 @@
+name: Setup toolchain
+description: Setup pinned Node.js and pnpm versions with local caches
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      with:
+        node-version: 22.22.1
+        package-manager-cache: false
+
+    - name: Setup pnpm
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare pnpm@10.15.0 --activate
+
+    - name: Verify package manager metadata
+      shell: bash
+      run: |
+        expected="pnpm@$(pnpm --version)"
+        actual="$(node --print "require('./package.json').packageManager")"
+        if [[ "$actual" != "$expected" ]]; then
+          echo "package.json packageManager must be $expected, found $actual" >&2
+          exit 1
+        fi
+
+    - name: Cache Turborepo
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      with:
+        path: .turbo
+        key: ${{ runner.os }}-turbo-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-turbo-${{ github.ref_name }}-
+          ${{ runner.os }}-turbo-
+
+    - name: Resolve pnpm store
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache pnpm store
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('package.json', 'pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

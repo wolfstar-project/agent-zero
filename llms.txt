@@ -1,0 +1,28 @@
+# Agent Zero
+
+> Open-source autonomous engineer for validating, fixing, and verifying pull-request feedback.
+
+## Start here
+
+- README.md: product overview and quick start
+- AGENTS.md: mandatory repository rules and package boundaries
+- CONTRIBUTING.md: human and agent contribution workflow
+- SECURITY.md: private reporting and security boundaries
+- docs/architecture.md: dependency direction and execution model
+- .agents/skills/: task-specific Agent Skills
+
+## Commands
+
+- pnpm check:repo
+- pnpm lint:ci
+- pnpm typecheck
+- pnpm test
+- pnpm build
+
+## Non-negotiable constraints
+
+- Keep the core runtime independent from HTTP, GitHub, terminal UI, and model providers.
+- Execute target-repository commands and mutations only through the runner boundary.
+- Keep observe mode read-only.
+- Use deterministic tests without live network access.
+- Use pnpm, Turborepo, tsdown, Oxlint, and Oxfmt.

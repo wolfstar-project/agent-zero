@@ -1,0 +1,38 @@
+name: Release readiness
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate release artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Build release artifacts
+        run: pnpm build
+
+      - name: Verify injected version
+        run: node --input-type=module --eval "import('./packages/shared/dist/index.mjs').then(({ version }) => { if (version !== '0.1.0') process.exit(1) })"
+
+      # Publishing remains intentionally absent until the @agent-zero package
+      # scope and npm trusted publishing policy are configured.

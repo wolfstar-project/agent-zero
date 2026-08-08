@@ -1,0 +1,43 @@
+{
+  "name": "agent-zero",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "TMPDIR=/tmp turbo run build",
+    "check:repo": "node scripts/check-repository.mjs",
+    "clean": "turbo run clean && tsc -b --clean",
+    "dev": "TMPDIR=/tmp turbo run dev",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint": "TMPDIR=/tmp turbo run lint",
+    "lint:ci": "pnpm format:check && pnpm lint",
+    "skills:install": "skilld install --agent codex",
+    "skills:list": "skilld list",
+    "test": "TMPDIR=/tmp turbo run test --concurrency=1",
+    "test:watch": "TMPDIR=/tmp vitest",
+    "typecheck": "TMPDIR=/tmp turbo run typecheck",
+    "zero": "TMPDIR=/tmp node --import tsx packages/cli/src/index.ts"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@redstardev/unplugin-version-injector": "0.0.2",
+    "@types/node": "^24.3.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.44.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "publint": "^0.3.23",
+    "skilld": "^2.1.0",
+    "tsdown": "^0.22.14",
+    "tsx": "^4.20.5",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "packageManager": "pnpm@10.15.0"
+}

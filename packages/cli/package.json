@@ -1,0 +1,24 @@
+{
+  "name": "@agent-zero/cli",
+  "version": "0.1.0",
+  "bin": {
+    "zero": "./dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "clean": "tsc -b --clean",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src",
+    "test": "vitest run src --passWithNoTests",
+    "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "@agent-zero/agent": "workspace:*",
+    "@agent-zero/config": "workspace:*",
+    "@agent-zero/models": "workspace:*",
+    "@agent-zero/runner": "workspace:*",
+    "@agent-zero/shared": "workspace:*",
+    "@bomb.sh/args": "^0.3.1",
+    "@clack/prompts": "^1.7.0"
+  }
+}

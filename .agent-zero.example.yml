@@ -1,0 +1,17 @@
+version: 1
+mode: observe
+checks:
+  - pnpm lint
+  - pnpm typecheck
+  - pnpm test
+autofix:
+  enabled: false
+  minConfidence: 0.85
+agent:
+  maxAttempts: 3
+  timeoutMs: 1800000
+permissions:
+  network: restricted
+model:
+  provider: openai-compatible
+  name: gpt-5

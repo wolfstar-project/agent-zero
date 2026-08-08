@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a focused capability or improvement
+title: 'feat: '
+labels: ['enhancement']
+body:
+  - type: checkboxes
+    id: existing
+    attributes:
+      label: Existing proposals
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user or contributor problem without prescribing an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What observable result would solve the problem?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Likely area
+      options:
+        - Agent runtime
+        - Runner
+        - CLI
+        - oRPC server
+        - GitHub adapter
+        - Model provider
+        - Developer experience
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety and compatibility
+      description: Could this affect permissions, observe mode, command execution, stored data, or public APIs?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds or designs you considered.

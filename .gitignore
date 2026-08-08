@@ -1,0 +1,11 @@
+node_modules/
+.turbo/
+dist/
+*.tsbuildinfo
+coverage/
+.env
+.env.*
+!.env.example
+.agent-zero/
+*.log
+.DS_Store
