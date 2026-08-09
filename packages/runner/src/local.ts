@@ -1,7 +1,7 @@
 import type { CheckResult, RunnerDescription } from '@agent-zero/shared';
 
 import { RepositoryBoundary, type BoundaryOptions } from './boundary.js';
-import { assertSimpleCommand } from './process.js';
+import { commandArgv } from './process.js';
 
 /**
  * Runs repository commands directly in the host process tree.
@@ -25,8 +25,7 @@ export class LocalRunner extends RepositoryBoundary {
   }
 
   async check(command: string, timeoutMs: number): Promise<CheckResult> {
-    await assertSimpleCommand(command);
-    const [program, args] = this.toArgv(command);
+    const [program, args] = await commandArgv(command);
     const started = Date.now();
     const outcome = await this.process(program, args, {
       cwd: this.root,
