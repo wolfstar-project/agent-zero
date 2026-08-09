@@ -23,12 +23,9 @@ import {
   type NetworkPolicy,
   type RunnerDescription,
 } from '@agent-zero/shared';
-import { charIn, createRegExp } from 'magic-regexp';
 
 import {
-  CommandRejectedError,
   execFileProcessRunner,
-  splitCommand,
   type ProcessOutcome,
   type ProcessRunner,
 } from './process.js';
@@ -81,7 +78,6 @@ const DEFAULT_MAX_OUTPUT_BYTES = 200_000;
 const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
-const SHELL_OPERATORS = createRegExp(charIn(';&|<>`$(){}\n\r'));
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -193,15 +189,6 @@ export abstract class RepositoryBoundary implements Runner {
       stderr: this.clean(outcome.stderr),
       durationMs,
     };
-  }
-
-  /** Parse a configured command into an argv array, refusing anything a shell would be needed for. */
-  protected toArgv(command: string): [string, string[]] {
-    if (SHELL_OPERATORS.test(command))
-      throw new CommandRejectedError(command, 'commands run without a shell');
-    const [program, ...args] = splitCommand(command);
-    if (!program) throw new CommandRejectedError(command, 'no program to execute');
-    return [program, args];
   }
 
   protected clean(text: string): string {
