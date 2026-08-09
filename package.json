@@ -14,6 +14,7 @@
     "format:check": "oxfmt --check .",
     "lint": "TMPDIR=/tmp turbo run lint",
     "lint:ci": "pnpm format:check && pnpm lint",
+    "prepare": "husky",
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
     "test": "TMPDIR=/tmp turbo run test --concurrency=1",
@@ -23,8 +24,12 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "@redstardev/unplugin-version-injector": "0.0.2",
     "@types/node": "^24.3.0",
+    "husky": "^9.1.7",
+    "nano-staged": "^1.0.2",
     "oxfmt": "^0.62.0",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
@@ -35,6 +40,9 @@
     "turbo": "^2.5.6",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
+  },
+  "nano-staged": {
+    "*.{js,mjs,cjs,ts,tsx,json,jsonc,yaml,yml,md}": "oxfmt --write"
   },
   "engines": {
     "node": ">=20.11"
