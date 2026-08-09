@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,10 +9,32 @@ import {
   createRunner,
   LocalRunner,
   splitCommand,
+  type BoundaryOptions,
   type ProcessOptions,
   type ProcessOutcome,
   type ProcessRunner,
 } from './index.js';
+
+/**
+ * Reproduces the validate-then-swap race deterministically: validation passes against a real
+ * directory, then the directory is replaced with a symlink before the filesystem operation runs.
+ */
+class SwappingRunner extends LocalRunner {
+  constructor(
+    root: string,
+    private readonly outside: string,
+    options: Partial<BoundaryOptions> = {},
+  ) {
+    super(root, options);
+  }
+
+  protected override async resolveInside(path: string): Promise<string> {
+    const target = await super.resolveInside(path);
+    await rm(join(this.root, 'staging'), { recursive: true, force: true });
+    await symlink(this.outside, join(this.root, 'staging'));
+    return target;
+  }
+}
 
 interface Invocation {
   program: string;
@@ -82,6 +104,26 @@ describe('path boundary', () => {
       'Path escapes repository',
     );
     await expect(runner.read('linked/target.txt')).rejects.toThrow('Path escapes repository');
+  });
+
+  it('refuses a read when a validated directory is swapped for a symlink before the open', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
+    await writeFile(join(outside, 'secret.txt'), 'outside-secret', 'utf8');
+    await mkdir(join(root, 'staging'));
+    await writeFile(join(root, 'staging', 'secret.txt'), 'inside', 'utf8');
+    const runner = new SwappingRunner(root, outside);
+    await expect(runner.read('staging/secret.txt')).rejects.toThrow('Path escapes repository');
+  });
+
+  it('refuses a write when a validated directory is swapped for a symlink before the write lands', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
+    await mkdir(join(root, 'staging'));
+    const runner = new SwappingRunner(root, outside, { writable: true });
+    await expect(runner.write('staging/escape.txt', 'payload')).rejects.toThrow(
+      'Path escapes repository',
+    );
+    // Nothing may land at the outside target, not even an empty file.
+    await expect(access(join(outside, 'escape.txt'))).rejects.toThrow('ENOENT');
   });
 
   it('allows a symlink that stays inside the checkout', async () => {

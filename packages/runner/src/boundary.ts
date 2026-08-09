@@ -1,5 +1,15 @@
-import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, relative, resolve } from 'node:path';
+import { constants } from 'node:fs';
+import {
+  access,
+  lstat,
+  mkdir,
+  open,
+  readlink,
+  realpath,
+  stat,
+  type FileHandle,
+} from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
 import {
   isRepositoryRelativePath,
@@ -75,13 +85,16 @@ const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
 const SHELL_OPERATORS = /[;&|<>`$(){}\n\r]/;
+// Not defined on every platform; opening still works there, the descriptor re-check remains.
+const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 
 /**
  * Shared filesystem and git behavior for every runner.
  *
- * File access is validated with path arithmetic and then re-validated against resolved symlinks, so
- * a link planted inside the checkout cannot be used to read or write outside it. Subclasses decide
- * only how repository commands are executed.
+ * File access is validated with path arithmetic, re-validated against resolved symlinks, and then
+ * proven again on the open descriptor itself, so a link planted inside the checkout, even one
+ * swapped in concurrently after validation, cannot be used to read or write outside it. Subclasses
+ * decide only how repository commands are executed.
  */
 export abstract class RepositoryBoundary implements Runner {
   protected readonly maxOutputBytes: number;
@@ -102,7 +115,12 @@ export abstract class RepositoryBoundary implements Runner {
   abstract check(command: string, timeoutMs: number): Promise<CheckResult>;
 
   async read(path: string): Promise<string> {
-    return readFile(await this.resolveInside(path), 'utf8');
+    const handle = await this.openInside(path, constants.O_RDONLY);
+    try {
+      return await handle.readFile('utf8');
+    } finally {
+      await handle.close();
+    }
   }
 
   async exists(path: string): Promise<boolean> {
@@ -118,8 +136,14 @@ export abstract class RepositoryBoundary implements Runner {
     if (!this.options.writable)
       throw new RunnerWriteDeniedError(path, 'this runner was created read-only');
     const target = await this.resolveInside(path);
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, content, 'utf8');
+    await this.createDirectories(target, path);
+    const handle = await this.openInside(path, constants.O_WRONLY | constants.O_CREAT);
+    try {
+      await handle.truncate(0);
+      await handle.writeFile(content, 'utf8');
+    } finally {
+      await handle.close();
+    }
   }
 
   async context(): Promise<string> {
@@ -195,11 +219,60 @@ export abstract class RepositoryBoundary implements Runner {
   }
 
   /**
+   * Open a validated path and prove that the open descriptor itself is inside the checkout.
+   *
+   * Validation alone races the operation: a concurrent task can swap a validated component for a
+   * symlink between the check and the open. The parent directory is therefore re-resolved
+   * immediately before opening, the final component is opened with `O_NOFOLLOW`, and containment
+   * is re-checked on the descriptor before any content moves through it.
+   */
+  private async openInside(path: string, flags: number): Promise<FileHandle> {
+    const target = await this.resolveInside(path);
+    const root = await this.rootRealPath();
+    const parent = await realpath(dirname(target));
+    assertInside(root, parent, path);
+    const opened = join(parent, basename(target));
+    const handle = await open(opened, flags | O_NOFOLLOW);
+    try {
+      assertInside(root, await descriptorPath(handle, opened, path), path);
+      return handle;
+    } catch (error) {
+      await handle.close();
+      throw error;
+    }
+  }
+
+  /**
+   * Create the missing directories above a write target, one validated component at a time.
+   *
+   * A recursive `mkdir` follows a symlink swapped into any component and builds the tree outside
+   * the checkout, so each level is created individually and re-checked once it exists.
+   */
+  private async createDirectories(target: string, original: string): Promise<void> {
+    const root = await this.rootRealPath();
+    let current = root;
+    for (const segment of relative(root, dirname(target)).split(/[/\\]/)) {
+      if (segment.length === 0) continue;
+      current = join(current, segment);
+      try {
+        await mkdir(current);
+      } catch (error) {
+        if (errorCode(error) !== 'EEXIST') throw error;
+      }
+      if ((await lstat(current)).isSymbolicLink()) {
+        const real = await realpath(current);
+        assertInside(root, real, original);
+        current = real;
+      }
+    }
+  }
+
+  /**
    * Resolve a repository-relative path, refusing anything that leaves the checkout.
    *
    * Three independent gates apply: the shared path predicate, path arithmetic against the resolved
    * root, and a realpath check on the closest existing ancestor so that symlinks cannot be used to
-   * step outside.
+   * step outside. This is a pre-check; {@link openInside} couples containment to the operation.
    */
   protected async resolveInside(path: string): Promise<string> {
     if (!isRepositoryRelativePath(path))
@@ -221,6 +294,32 @@ function assertInside(root: string, candidate: string, original: string): void {
   const rel = relative(root, candidate);
   if (rel.length > 0 && (isAbsolute(rel) || rel.split(/[/\\]/).includes('..')))
     throw new PathEscapeError(original, 'resolves outside the checkout');
+}
+
+function errorCode(error: unknown): unknown {
+  return typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
+}
+
+/**
+ * The filesystem location an open descriptor actually refers to.
+ *
+ * On Linux the kernel reports it directly through `/proc`, which no concurrent rename can falsify.
+ * Elsewhere the path is re-resolved and must still name the very file that was opened.
+ */
+async function descriptorPath(
+  handle: FileHandle,
+  opened: string,
+  original: string,
+): Promise<string> {
+  try {
+    return await readlink(`/proc/self/fd/${handle.fd}`);
+  } catch {
+    const real = await realpath(opened);
+    const [expected, current] = await Promise.all([handle.stat(), stat(real)]);
+    if (expected.dev !== current.dev || expected.ino !== current.ino)
+      throw new PathEscapeError(original, 'replaced while it was being opened');
+    return real;
+  }
 }
 
 /**
