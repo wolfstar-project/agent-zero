@@ -80,4 +80,4 @@ Agent Zero should not become an unrestricted shell-running chatbot. The project 
 
 ## Tracking
 
-Roadmap work should be represented by focused GitHub issues and pull requests. The roadmap tracking issue is the place to discuss milestone-level changes; implementation details should live in their own issues.
+Roadmap work should be represented by focused GitHub issues and pull requests. The roadmap tracking issue, [#5](https://github.com/wolfstar-project/agent-zero/issues/5), is the place to discuss milestone-level changes; implementation details should live in their own issues.

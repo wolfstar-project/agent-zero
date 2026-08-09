@@ -108,6 +108,6 @@ Agent Zero is being developed incrementally around the **find, fix, and verify**
 - **v0.3:** control plane, task history, cost tracking, dashboard, and runner pools
 - **v0.4:** bounded issue-to-PR autonomous workflows
 
-See the [full project roadmap](./ROADMAP.md) for milestone goals, planned capabilities, longer-term directions, and explicit non-goals. Roadmap-level progress and changes are tracked in the linked GitHub roadmap issue.
+See the [full project roadmap](./ROADMAP.md) for milestone goals, planned capabilities, longer-term directions, and explicit non-goals. Roadmap-level progress and changes are tracked in the roadmap tracking issue, [#5](https://github.com/wolfstar-project/agent-zero/issues/5).
 
 Apache-2.0 © WolfStar Project.
