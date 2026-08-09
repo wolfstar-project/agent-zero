@@ -20,6 +20,7 @@ export {
 } from './container.js';
 export { LocalRunner } from './local.js';
 export {
+  assertSimpleCommand,
   execFileProcessRunner,
   splitCommand,
   type ProcessOptions,
@@ -41,10 +42,6 @@ export interface CreateRunnerOptions extends Omit<BoundaryOptions, 'network'> {
   };
 }
 
-/**
- * The policy fields a boundary needs, declared here so the runner does not depend on the
- * configuration package. `AgentZeroConfig` satisfies this structurally.
- */
 export interface RunnerPolicyInput {
   permissions: { network: NetworkPolicy };
   runner: {
@@ -59,13 +56,6 @@ export interface RunnerPolicyInput {
   };
 }
 
-/**
- * Translate repository policy into boundary options.
- *
- * Both the CLI and the server go through here, so there is a single answer to "what is this run
- * allowed to do". Write access is passed in explicitly rather than inferred, because it is the
- * caller that knows whether the run mode and the repository both authorized it.
- */
 export function runnerOptionsFromPolicy(
   policy: RunnerPolicyInput,
   writable: boolean,
@@ -94,9 +84,9 @@ export function runnerOptionsFromPolicy(
 /**
  * Build the execution boundary for a run.
  *
- * Composition roots call this so that the mapping from policy to a concrete boundary lives in one
- * place. Isolation is never approximated: asking for a container without an image fails rather than
- * silently downgrading to host execution.
+ * Local execution is for trusted development. The container adapter remains a self-hosted
+ * compatibility path; ViteHub Shell is the shared command-analysis layer for both, while hosted
+ * isolation can move behind ViteHub Sandbox/Workspace without changing the Agent `Runner` contract.
  */
 export function createRunner(root: string, options: CreateRunnerOptions): Runner {
   const { isolation, container, ...boundary } = options;
