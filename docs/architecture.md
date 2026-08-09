@@ -31,6 +31,16 @@ Git inspection runs in the trusting process because its argv is fixed by the run
 
 `createRunner` and `runnerOptionsFromPolicy` are the only mapping from policy to a concrete boundary. `runnerOptionsFromPolicy` declares the policy fields it needs structurally, so the runner does not depend on the configuration package. Composition roots call both; nothing else constructs a runner.
 
+Hosted sandboxes follow the same rule. `RunnerPool` lives in `packages/runner`, accepts credential-free `SandboxRequest` values, enforces global/repository quotas and lease ceilings before provisioning, and returns only a `Runner`. Provider credentials are constructor state of a vendor adapter and never enter a request, lease snapshot, agent state, or log. The control plane may schedule and release a lease, but it cannot execute a command itself.
+
+Model transports follow the same adapter rule. `packages/models` owns the AI SDK integrations for OpenAI, Anthropic, Google, AI Gateway, and OpenAI-compatible endpoints behind one `ModelProvider` contract. Composition roots pass the validated provider policy; credentials come only from fixed provider-specific environment variables, and a custom endpoint can only come from the operator-owned `AGENT_ZERO_MODEL_BASE_URL` environment variable. The agent runtime sees neither SDK objects nor credentials, and all adapters share one structured-output, usage-accounting, timeout, and error-redaction path.
+
+## Control plane persistence
+
+`apps/server` is the Nitro composition root. Its oRPC procedures receive a `TaskStore` through request context; the production adapter writes to Nitro storage while tests use the same contract in memory. Durable records contain a repository label, structured lifecycle events, terminal evidence, aggregate usage, and approval decisions. They deliberately omit review input, checkout paths, credentials, and raw provider responses. A recursive string redaction pass runs before every write.
+
+The bounded `TaskScheduler` separates admission from execution. It limits active tasks, queued tasks, and concurrency per repository, while the runner pool separately owns sandbox capacity and expiration. Persistence, HTTP handlers, and the dashboard have no shell or target-filesystem capability.
+
 ## State transitions
 
 The lifecycle is:

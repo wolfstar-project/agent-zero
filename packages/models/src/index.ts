@@ -3,10 +3,22 @@ import {
   secretValuesFromEnvironment,
   truncateHead,
   type AgentDecision,
+  type ModelProviderKind,
   type ReviewInput,
 } from '@agent-zero/shared';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { APICallError, generateText, JSONParseError, NoObjectGeneratedError, Output } from 'ai';
+import {
+  APICallError,
+  createGateway,
+  generateText,
+  JSONParseError,
+  NoObjectGeneratedError,
+  Output,
+  type LanguageModel,
+} from 'ai';
 import { z } from 'zod';
 
 export interface ModelContext {
@@ -63,29 +75,43 @@ export interface OpenAICompatibleOptions {
   baseUrl?: string;
   timeoutMs?: number;
   fetch?: typeof globalThis.fetch;
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
 }
 
-/**
- * Provider-agnostic model adapter built on the AI SDK OpenAI-compatible provider.
- *
- * AI SDK owns transport and structured-output decoding; Agent Zero still owns the runtime
- * validation that decides whether a model finding is actually supported by repository evidence.
- */
-export class OpenAICompatibleProvider implements ModelProvider {
-  constructor(private readonly options: OpenAICompatibleOptions) {}
+export interface ModelSelection {
+  provider: ModelProviderKind;
+  name: string;
+  timeoutMs?: number;
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
+}
+
+interface AISdkModelOptions {
+  provider: ModelProviderKind;
+  model: string;
+  languageModel: LanguageModel;
+  credentialSecrets: readonly string[];
+  timeoutMs?: number;
+  inputCostPerMillionTokens?: number;
+  outputCostPerMillionTokens?: number;
+}
+
+/** Shared AI SDK execution path used by every native and gateway adapter. */
+export class AISdkModelProvider implements ModelProvider {
+  readonly provider: ModelProviderKind;
+  readonly model: string;
+
+  constructor(private readonly options: AISdkModelOptions) {
+    this.provider = options.provider;
+    this.model = options.model;
+  }
 
   async decide(context: ModelContext): Promise<AgentDecision> {
-    const provider = createOpenAICompatible({
-      name: 'agent-zero',
-      apiKey: this.options.apiKey,
-      baseURL: this.options.baseUrl ?? 'https://api.openai.com/v1',
-      supportsStructuredOutputs: true,
-      ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
-    });
-
+    const startedAt = performance.now();
     try {
       const result = await generateText({
-        model: provider(this.options.model),
+        model: this.options.languageModel,
         system: SYSTEM_PROMPT,
         prompt: renderPrompt(context),
         output: Output.object({
@@ -96,7 +122,25 @@ export class OpenAICompatibleProvider implements ModelProvider {
         }),
         abortSignal: AbortSignal.timeout(this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
-      return result.output;
+      const inputTokens = result.usage.inputTokens ?? 0;
+      const outputTokens = result.usage.outputTokens ?? 0;
+      const totalTokens = result.usage.totalTokens ?? inputTokens + outputTokens;
+      const costUsd =
+        (inputTokens * (this.options.inputCostPerMillionTokens ?? 0) +
+          outputTokens * (this.options.outputCostPerMillionTokens ?? 0)) /
+        1_000_000;
+      return {
+        ...result.output,
+        usage: {
+          provider: this.options.provider,
+          model: this.options.model,
+          inputTokens,
+          outputTokens,
+          totalTokens,
+          latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+          costUsd,
+        },
+      };
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error))
         throw new Error(
@@ -105,18 +149,49 @@ export class OpenAICompatibleProvider implements ModelProvider {
             : 'Model returned an invalid decision',
           { cause: error },
         );
-      // API failures may echo the request or a credential back; redact before the message can
+      // Provider failures may echo the request or a credential back; redact before the message can
       // reach a log, a check annotation, or published evidence.
       const detail = APICallError.isInstance(error) ? (error.responseBody ?? '') : '';
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
         redactSecrets(detail.length > 0 ? `${message}\n${detail}` : message, [
-          this.options.apiKey,
+          ...this.options.credentialSecrets,
           ...secretValuesFromEnvironment(),
         ]),
         { cause: error },
       );
     }
+  }
+}
+
+/**
+ * Provider-agnostic model adapter built on the AI SDK OpenAI-compatible provider.
+ *
+ * AI SDK owns transport and structured-output decoding; Agent Zero still owns the runtime
+ * validation that decides whether a model finding is actually supported by repository evidence.
+ */
+export class OpenAICompatibleProvider extends AISdkModelProvider {
+  constructor(options: OpenAICompatibleOptions) {
+    const provider = createOpenAICompatible({
+      name: 'agent-zero',
+      apiKey: options.apiKey,
+      baseURL: options.baseUrl ?? 'https://api.openai.com/v1',
+      supportsStructuredOutputs: true,
+      ...(options.fetch ? { fetch: options.fetch } : {}),
+    });
+    super({
+      provider: 'openai-compatible',
+      model: options.model,
+      languageModel: provider(options.model),
+      credentialSecrets: [options.apiKey],
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      ...(options.inputCostPerMillionTokens === undefined
+        ? {}
+        : { inputCostPerMillionTokens: options.inputCostPerMillionTokens }),
+      ...(options.outputCostPerMillionTokens === undefined
+        ? {}
+        : { outputCostPerMillionTokens: options.outputCostPerMillionTokens }),
+    });
   }
 }
 
@@ -142,11 +217,118 @@ export class UnconfiguredModelProvider implements ModelProvider {
   }
 }
 
-export function modelFromEnvironment(model: string, baseUrl?: string): ModelProvider {
-  const apiKey = process.env.OPENAI_API_KEY;
-  return apiKey
-    ? new OpenAICompatibleProvider({ apiKey, model, ...(baseUrl ? { baseUrl } : {}) })
-    : new UnconfiguredModelProvider();
+export function modelFromEnvironment(
+  selection: ModelSelection,
+  environment: NodeJS.ProcessEnv = process.env,
+): ModelProvider {
+  const apiKey = providerApiKey(selection.provider, environment);
+  const baseUrl = environment.AGENT_ZERO_MODEL_BASE_URL;
+  if (!apiKey && !(selection.provider === 'ai-gateway' && environment.VERCEL_OIDC_TOKEN))
+    return new UnconfiguredModelProvider();
+
+  const common = {
+    provider: selection.provider,
+    model: selection.name,
+    credentialSecrets: apiKey ? [apiKey] : [],
+    ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
+    ...(selection.inputCostPerMillionTokens === undefined
+      ? {}
+      : { inputCostPerMillionTokens: selection.inputCostPerMillionTokens }),
+    ...(selection.outputCostPerMillionTokens === undefined
+      ? {}
+      : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
+  } satisfies Omit<AISdkModelOptions, 'languageModel'>;
+
+  switch (selection.provider) {
+    case 'openai-compatible':
+      return new OpenAICompatibleProvider({
+        apiKey: apiKey ?? '',
+        model: selection.name,
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
+        ...(selection.inputCostPerMillionTokens === undefined
+          ? {}
+          : { inputCostPerMillionTokens: selection.inputCostPerMillionTokens }),
+        ...(selection.outputCostPerMillionTokens === undefined
+          ? {}
+          : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
+      });
+    case 'openai': {
+      const provider = createOpenAI({
+        apiKey: apiKey ?? '',
+        ...(baseUrl ? { baseURL: baseUrl } : {}),
+      });
+      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+    }
+    case 'anthropic': {
+      const provider = createAnthropic({
+        apiKey: apiKey ?? '',
+        ...(baseUrl ? { baseURL: baseUrl } : {}),
+      });
+      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+    }
+    case 'google': {
+      const provider = createGoogleGenerativeAI({
+        apiKey: apiKey ?? '',
+        ...(baseUrl ? { baseURL: baseUrl } : {}),
+      });
+      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+    }
+    case 'ai-gateway': {
+      const provider = createGateway({
+        ...(apiKey ? { apiKey } : {}),
+        ...(baseUrl ? { baseURL: baseUrl } : {}),
+      });
+      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+    }
+    default:
+      return unsupportedModelProvider(selection.provider);
+  }
+}
+
+export function isModelConfigured(
+  provider: ModelProviderKind,
+  environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return (
+    providerApiKey(provider, environment) !== undefined ||
+    (provider === 'ai-gateway' && Boolean(environment.VERCEL_OIDC_TOKEN))
+  );
+}
+
+export function modelCredentialEnvironmentVariables(
+  provider: ModelProviderKind,
+): readonly string[] {
+  switch (provider) {
+    case 'ai-gateway':
+      return ['AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN'];
+    case 'anthropic':
+      return ['ANTHROPIC_API_KEY'];
+    case 'google':
+      return ['GOOGLE_GENERATIVE_AI_API_KEY'];
+    case 'openai':
+      return ['OPENAI_API_KEY'];
+    case 'openai-compatible':
+      return ['OPENAI_COMPATIBLE_API_KEY', 'OPENAI_API_KEY'];
+    default:
+      return unsupportedModelProvider(provider);
+  }
+}
+
+function unsupportedModelProvider(_provider: never): never {
+  throw new Error('Unsupported model provider');
+}
+
+function providerApiKey(
+  provider: ModelProviderKind,
+  environment: NodeJS.ProcessEnv,
+): string | undefined {
+  for (const name of modelCredentialEnvironmentVariables(provider)) {
+    if (name === 'VERCEL_OIDC_TOKEN') continue;
+    const value = environment[name];
+    if (value) return value;
+  }
+  return undefined;
 }
 
 export function renderPrompt(context: ModelContext): string {

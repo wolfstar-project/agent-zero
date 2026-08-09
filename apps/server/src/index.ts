@@ -1,7 +1,9 @@
 export {
   createTask,
+  decideApproval,
   getTask,
   getTaskEvidence,
+  getStoredTask,
   githubTokenFromEnvironment,
   health,
   ingestWebhook,
@@ -11,8 +13,22 @@ export {
   taskInput,
   tasks,
   type PublishOptions,
-  type StoredTask,
   type WebhookOptions,
   type WebhookOutcome,
   type WebhookRequest,
 } from './router.js';
+export {
+  MemoryTaskStore,
+  PersistentTaskStore,
+  TaskQueueQuotaError,
+  TaskScheduler,
+  type ApprovalDecision,
+  type ControlPlaneTaskStatus,
+  type KeyValueStorage,
+  type SchedulerOptions,
+  type SchedulerSnapshot,
+  type StoredTask,
+  type TaskApproval,
+  type TaskStore,
+} from './control-plane.js';
+export { rpcRouter, type RpcContext, type RpcRouter } from './rpc.js';

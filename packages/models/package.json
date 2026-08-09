@@ -1,6 +1,6 @@
 {
   "name": "@agent-zero/models",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -27,6 +27,9 @@
   },
   "dependencies": {
     "@agent-zero/shared": "workspace:*",
+    "@ai-sdk/anthropic": "^4.0.36",
+    "@ai-sdk/google": "^4.0.39",
+    "@ai-sdk/openai": "^4.0.36",
     "@ai-sdk/openai-compatible": "^3.0.16",
     "ai": "^7.0.40",
     "zod": "^4.4.3"

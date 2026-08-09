@@ -22,6 +22,14 @@ export type Verdict = 'accepted' | 'rejected' | 'inconclusive';
 /** Egress policy applied to runtime command execution. */
 export type NetworkPolicy = 'none' | 'restricted' | 'full';
 
+/** Model transports supported by the composition roots. */
+export type ModelProviderKind =
+  | 'ai-gateway'
+  | 'anthropic'
+  | 'google'
+  | 'openai'
+  | 'openai-compatible';
+
 /** Every state of the discover to review lifecycle, including terminal states. */
 export type TaskState =
   | 'queued'
@@ -125,6 +133,29 @@ export interface TaskEvent {
   attempt?: number;
 }
 
+/** Provider-neutral accounting for one model call. Credentials and provider payloads never enter it. */
+export interface ModelCallUsage {
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  latencyMs: number;
+  /** Cost is recorded only when explicit repository pricing is configured. */
+  costUsd: number;
+}
+
+/** Aggregated model usage persisted with a task result. */
+export interface TaskUsage {
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  latencyMs: number;
+  costUsd: number;
+  models: Record<string, number>;
+}
+
 /** What the execution boundary of a run was actually allowed to do. */
 export interface RunnerDescription {
   kind: 'local' | 'container';
@@ -150,6 +181,7 @@ export interface TaskResult {
   changedFiles: string[];
   attempts: number;
   events: TaskEvent[];
+  usage: TaskUsage;
   runner: RunnerDescription;
   summary: string;
 }
@@ -161,6 +193,20 @@ export interface AgentDecision {
   changeRisk: ChangeRisk;
   plan: string[];
   changes: ProposedChange[];
+  /** Adapter-authored accounting metadata; never accepted from the model's structured output. */
+  usage?: ModelCallUsage;
+}
+
+export function emptyTaskUsage(): TaskUsage {
+  return {
+    modelCalls: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    latencyMs: 0,
+    costUsd: 0,
+    models: {},
+  };
 }
 
 /** True when at least one check ran and all of them succeeded. */

@@ -22,6 +22,9 @@ Safety properties are behavior, not documentation. Back every change with determ
 - A failed verification cannot be represented as success. `verified` is derived once, where the terminal result is built.
 - A run that cannot verify does not write. No checks means no change.
 - Isolation is never approximated. Requesting a sandbox that cannot be provided must fail.
+- Remote sandbox credentials stay private to the provider adapter. Requests, leases, snapshots, task state, and logs remain credential-free.
+- Runner pools enforce active, per-repository, and lease-duration ceilings before provisioning and stop expired leases.
+- Persistent task records omit review input and checkout paths, and recursively redact every string before storage.
 - A reviewer's claim is not evidence. Reject what the repository does not support, and keep the reasons.
 
 ## Review workflow

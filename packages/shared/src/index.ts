@@ -19,6 +19,7 @@ export {
 } from './redact.js';
 export {
   allChecksPassed,
+  emptyTaskUsage,
   isRepositoryRelativePath,
   type AgentDecision,
   type ChangeRisk,
@@ -27,6 +28,8 @@ export {
   type FeedbackKind,
   type Finding,
   type ModelFinding,
+  type ModelCallUsage,
+  type ModelProviderKind,
   type NetworkPolicy,
   type ProposedChange,
   type PullRequestRef,
@@ -38,6 +41,7 @@ export {
   type TaskEvent,
   type TaskResult,
   type TaskState,
+  type TaskUsage,
   type TerminalState,
   type Verdict,
 } from './types.js';

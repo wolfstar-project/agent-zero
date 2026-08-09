@@ -1,15 +1,15 @@
 {
   "name": "@agent-zero/server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
-    "build": "nitro build",
-    "clean": "tsc -b --clean",
-    "dev": "nitro dev",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server nitro.config.ts",
+    "build": "nuxt build",
+    "clean": "nuxt cleanup && tsc -b --clean",
+    "dev": "nuxt dev",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server app shared",
     "start": "node .output/server/index.mjs",
     "test": "vitest run src --passWithNoTests",
-    "typecheck": "nitro prepare && tsc --project tsconfig.json --pretty false --noEmit"
+    "typecheck": "nuxt prepare && vue-tsc -b --noEmit && tsc --project tsconfig.json --pretty false --noEmit"
   },
   "dependencies": {
     "@agent-zero/agent": "workspace:*",
@@ -18,13 +18,20 @@
     "@agent-zero/models": "workspace:*",
     "@agent-zero/runner": "workspace:*",
     "@agent-zero/shared": "workspace:*",
-    "nitro": "3.0.260522-beta",
+    "@orpc/server": "2.0.0-beta.26",
+    "h3": "^1.15.11",
+    "nitropack": "^2.13.4",
+    "nuxt": "^4.5.2",
     "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@unocss/nuxt": "^66.7.5",
+    "@unocss/preset-wind4": "^66.7.5",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "unocss": "^66.7.5",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^3.1.2"
   }
 }

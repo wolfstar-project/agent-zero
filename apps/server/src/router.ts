@@ -7,24 +7,39 @@ import {
   verifyWebhook,
 } from '@agent-zero/github';
 import { modelFromEnvironment } from '@agent-zero/models';
-import { createRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
+import { createRunner, runnerOptionsFromPolicy, type RunnerPool } from '@agent-zero/runner';
 import {
   evidenceFromResult,
+  now,
+  redactSecrets,
   renderEvidenceMarkdown,
-  type EvidenceBundle,
+  secretValuesFromEnvironment,
+  taskId,
   type PullRequestRef,
   type ReviewInput,
   type TaskResult,
 } from '@agent-zero/shared';
 import { z } from 'zod';
 
-/** A finished run together with the evidence bundle derived from it. */
-export interface StoredTask {
-  result: TaskResult;
-  evidence: EvidenceBundle;
-}
+import {
+  MemoryTaskStore,
+  TaskScheduler,
+  type ApprovalDecision,
+  type StoredTask,
+  type TaskStore,
+} from './control-plane.js';
 
-export const tasks = new Map<string, StoredTask>();
+const TRAILING_SLASH = /\/$/u;
+
+const defaultStore = new MemoryTaskStore();
+const defaultScheduler = new TaskScheduler({
+  maxConcurrent: 4,
+  maxQueued: 100,
+  maxConcurrentPerRepository: 1,
+});
+
+/** Backwards-compatible inspection hook for embedded callers and tests. */
+export const tasks = defaultStore.records;
 
 export const taskInput = z
   .object({
@@ -40,58 +55,173 @@ export const taskInput = z
       context.addIssue({ code: 'custom', path: ['feedback'], message: 'Feedback is required' });
   });
 
+export const approvalInput = z.object({
+  taskId: z.string().min(1),
+  decision: z.enum(['approved', 'rejected']),
+  actor: z.string().min(1).max(100),
+  comment: z.string().max(2_000).optional(),
+});
+
 export function health() {
-  return { status: 'ok' as const, service: 'agent-zero', version: '0.2.0' };
+  return { status: 'ok' as const, service: 'agent-zero', version: '0.3.0' };
 }
 
-export function listTasks() {
-  return { tasks: Array.from(tasks.values(), (task) => task.result) };
+export async function listTasks(store: TaskStore = defaultStore) {
+  return { tasks: await store.list() };
 }
 
-export function getTask(id: string): TaskResult | undefined {
-  return tasks.get(id)?.result;
+export async function getStoredTask(
+  id: string,
+  store: TaskStore = defaultStore,
+): Promise<StoredTask | undefined> {
+  return store.get(id);
+}
+
+export async function getTask(
+  id: string,
+  store: TaskStore = defaultStore,
+): Promise<TaskResult | undefined> {
+  return (await store.get(id))?.result;
 }
 
 /** The rendered evidence report for a finished run. */
-export function getTaskEvidence(id: string): string | undefined {
-  const task = tasks.get(id);
-  return task ? renderEvidenceMarkdown(task.evidence) : undefined;
+export async function getTaskEvidence(
+  id: string,
+  store: TaskStore = defaultStore,
+): Promise<string | undefined> {
+  const task = await store.get(id);
+  return task?.evidence ? renderEvidenceMarkdown(task.evidence) : undefined;
 }
 
-export async function createTask(input: z.infer<typeof taskInput>): Promise<TaskResult> {
-  return runTask({
-    repository: input.repository,
-    mode: input.mode,
-    trigger: input.trigger,
-    ...(input.feedback ? { feedback: input.feedback } : {}),
-    ...(input.source ? { source: input.source } : {}),
-    ...(input.files ? { files: input.files } : {}),
-  });
+export async function createTask(
+  input: z.infer<typeof taskInput>,
+  store: TaskStore = defaultStore,
+  scheduler: TaskScheduler = defaultScheduler,
+): Promise<TaskResult> {
+  return runTask(
+    {
+      repository: input.repository,
+      mode: input.mode,
+      trigger: input.trigger,
+      ...(input.feedback ? { feedback: input.feedback } : {}),
+      ...(input.source ? { source: input.source } : {}),
+      ...(input.files ? { files: input.files } : {}),
+    },
+    { store, scheduler },
+  );
+}
+
+export interface RunTaskOptions {
+  store?: TaskStore;
+  scheduler?: TaskScheduler;
+  /** Optional hosted execution pool; its leases still expose only the Runner boundary. */
+  runnerPool?: RunnerPool;
 }
 
 /**
- * Run one unit of work and store its evidence.
+ * Queue and run one unit of work, persisting its structured lifecycle and evidence.
  *
- * This is the composition root: it resolves policy, builds an execution boundary that is read-only
- * unless the mode and the repository both authorize writing, and never lets the transport layer
- * choose those things for itself.
+ * This composition root resolves policy and constructs the only execution boundary. Neither the
+ * transport, persistence adapter, scheduler, nor dashboard can execute repository commands.
  */
-export async function runTask(input: ReviewInput): Promise<TaskResult> {
-  const config = await loadConfig(input.repository);
-  const agent = new AgentZero({
-    model: modelFromEnvironment(config.model.name, config.model.baseUrl),
-    runner: createRunner(
-      input.repository,
-      runnerOptionsFromPolicy(config, mayModifyRepository(config, input.mode)),
-    ),
-    config,
-  });
-  const result = await agent.run(input);
-  tasks.set(result.id, {
-    result,
-    evidence: evidenceFromResult(result, input),
-  });
-  return result;
+export async function runTask(
+  input: ReviewInput,
+  options: RunTaskOptions = {},
+): Promise<TaskResult> {
+  const store = options.store ?? defaultStore;
+  const scheduler = options.scheduler ?? defaultScheduler;
+  const identifier = taskId();
+  const timestamp = now();
+  const record: StoredTask = {
+    id: identifier,
+    repository: repositoryLabel(input),
+    status: 'queued',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    events: [],
+  };
+  await store.save(record);
+
+  try {
+    return await scheduler.schedule(input.repository, async () => {
+      record.status = 'running';
+      record.updatedAt = now();
+      await store.save(record);
+
+      const config = await loadConfig(input.repository);
+      let eventWrites = Promise.resolve();
+      const writable = mayModifyRepository(config, input.mode);
+      const lease = options.runnerPool
+        ? await options.runnerPool.acquire({
+            taskId: identifier,
+            repository: input.repository,
+            mode: input.mode,
+            writable,
+            network: config.permissions.network,
+            leaseMs: config.agent.timeoutMs,
+          })
+        : undefined;
+      const runner =
+        lease?.runner ?? createRunner(input.repository, runnerOptionsFromPolicy(config, writable));
+      const agent = new AgentZero({
+        model: modelFromEnvironment(config.model),
+        runner,
+        config,
+        taskIdentifier: identifier,
+        onEvent: (event) => {
+          record.events.push(event);
+          record.updatedAt = event.timestamp;
+          eventWrites = eventWrites.then(() => store.save(record));
+        },
+      });
+      let result: TaskResult;
+      try {
+        result = await agent.run(input);
+      } finally {
+        if (lease) await options.runnerPool?.release(lease.id);
+      }
+      await eventWrites;
+      record.status = result.state;
+      record.updatedAt = now();
+      record.result = result;
+      record.evidence = evidenceFromResult(result, input);
+      await store.save(record);
+      return result;
+    });
+  } catch (error) {
+    record.status = 'failed';
+    record.updatedAt = now();
+    record.events.push({
+      state: 'failed',
+      message: redactSecrets(error instanceof Error ? error.message : String(error)),
+      timestamp: record.updatedAt,
+    });
+    await store.save(record);
+    throw error;
+  }
+}
+
+export async function decideApproval(
+  taskIdentifier: string,
+  decision: ApprovalDecision,
+  actor: string,
+  comment: string | undefined,
+  store: TaskStore = defaultStore,
+): Promise<StoredTask> {
+  const record = await store.get(taskIdentifier);
+  if (!record) throw new Error(`Unknown task: ${taskIdentifier}`);
+  if (record.status !== 'needs-human')
+    throw new Error('Only tasks awaiting human review can receive an approval decision');
+  const timestamp = now();
+  record.approval = {
+    decision,
+    actor: redactSecrets(actor, secretValuesFromEnvironment()),
+    comment: comment ? redactSecrets(comment, secretValuesFromEnvironment()) : null,
+    decidedAt: timestamp,
+  };
+  record.updatedAt = timestamp;
+  await store.save(record);
+  return record;
 }
 
 export interface WebhookRequest {
@@ -102,10 +232,10 @@ export interface WebhookRequest {
 
 export interface WebhookOptions {
   secret: string;
-  /** Where the pull request is already checked out. */
   checkoutPath: string;
-  /** Logins to ignore, so the agent never reacts to its own comments. */
   ignoreAuthors?: readonly string[];
+  store?: TaskStore;
+  scheduler?: TaskScheduler;
 }
 
 export type WebhookOutcome =
@@ -113,13 +243,6 @@ export type WebhookOutcome =
   | { status: 'ignored'; reason: string }
   | { status: 'accepted'; result: TaskResult; pullRequest: PullRequestRef };
 
-/**
- * Handle an inbound GitHub webhook.
- *
- * The signature is verified before the payload is parsed. Feedback-triggered runs remain
- * read-only; proactive pull-request runs use repository mode only after proactive review is
- * explicitly enabled in that checkout. Writes still require the independent autofix policy gate.
- */
 export async function ingestWebhook(
   request: WebhookRequest,
   options: WebhookOptions,
@@ -149,40 +272,44 @@ export async function ingestWebhook(
     mode = config.mode;
   }
 
+  const runOptions: RunTaskOptions = {
+    ...(options.store ? { store: options.store } : {}),
+    ...(options.scheduler ? { scheduler: options.scheduler } : {}),
+  };
   const result = await runTask(
     reviewInputFromEvent(event, { checkoutPath: options.checkoutPath, mode }),
+    runOptions,
   );
   return { status: 'accepted', result, pullRequest: event.pullRequest };
 }
 
 export interface PublishOptions {
-  /** Supplied by the caller rather than read here, so no code path reaches GitHub implicitly. */
   token: string | undefined;
   fetch?: typeof globalThis.fetch;
+  store?: TaskStore;
 }
 
-/** The credential a deployment configures for check reporting. */
 export function githubTokenFromEnvironment(): string | undefined {
   return process.env.GITHUB_TOKEN;
 }
 
-/**
- * Publish a finished run to GitHub Checks.
- *
- * Reporting is skipped rather than faked when no token is configured, so a missing credential never
- * turns into a green check.
- */
 export async function publishEvidence(
   target: PullRequestRef,
   taskIdentifier: string,
   options: PublishOptions,
 ): Promise<{ published: boolean; reason?: string }> {
   if (!options.token) return { published: false, reason: 'GITHUB_TOKEN is not configured' };
-  const task = tasks.get(taskIdentifier);
-  if (!task) return { published: false, reason: `Unknown task: ${taskIdentifier}` };
+  const task = await (options.store ?? defaultStore).get(taskIdentifier);
+  if (!task?.evidence) return { published: false, reason: `Unknown task: ${taskIdentifier}` };
   await new GitHubChecks({
     token: options.token,
     ...(options.fetch ? { fetch: options.fetch } : {}),
   }).publish(target, task.evidence);
   return { published: true };
+}
+
+function repositoryLabel(input: ReviewInput): string {
+  if (input.pullRequest) return `${input.pullRequest.owner}/${input.pullRequest.repo}`;
+  const normalized = input.repository.replaceAll('\\', '/').replace(TRAILING_SLASH, '');
+  return redactSecrets(normalized.split('/').at(-1) || 'repository');
 }

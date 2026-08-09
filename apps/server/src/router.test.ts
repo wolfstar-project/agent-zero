@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  decideApproval,
+  getStoredTask,
   getTask,
   getTaskEvidence,
   health,
@@ -56,8 +58,8 @@ describe('server task API', () => {
     expect(health()).toMatchObject({ status: 'ok', service: 'agent-zero' });
   });
 
-  it('starts with an empty task collection', () => {
-    expect(listTasks()).toEqual({ tasks: [] });
+  it('starts with an empty task collection', async () => {
+    await expect(listTasks()).resolves.toEqual({ tasks: [] });
   });
 
   it('keeps task input validation independent from HTTP transport', () => {
@@ -71,6 +73,32 @@ describe('server task API', () => {
       MODE_ERROR,
     );
   });
+
+  it('records a human approval only for a task awaiting review', async () => {
+    const timestamp = new Date(0).toISOString();
+    tasks.set('az_approval', {
+      id: 'az_approval',
+      repository: 'acme/app',
+      status: 'needs-human',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      events: [],
+    });
+
+    await expect(
+      decideApproval('az_approval', 'approved', 'release-manager', 'Reviewed evidence'),
+    ).resolves.toMatchObject({
+      status: 'needs-human',
+      approval: {
+        decision: 'approved',
+        actor: 'release-manager',
+        comment: 'Reviewed evidence',
+      },
+    });
+    await expect(getStoredTask('az_approval')).resolves.toMatchObject({
+      approval: { decision: 'approved' },
+    });
+  });
 });
 
 describe('runTask', () => {
@@ -80,9 +108,9 @@ describe('runTask', () => {
       feedback: 'load() is wrong',
       mode: 'observe',
     });
-    expect(getTask(result.id)).toBe(result);
-    expect(getTaskEvidence(result.id)).toContain('## Agent Zero');
-    expect(listTasks().tasks).toHaveLength(1);
+    await expect(getTask(result.id)).resolves.toEqual(result);
+    await expect(getTaskEvidence(result.id)).resolves.toContain('## Agent Zero');
+    await expect(listTasks()).resolves.toMatchObject({ tasks: [expect.any(Object)] });
   });
 
   it('produces a read-only boundary for an observe run', async () => {
@@ -217,7 +245,7 @@ describe('ingestWebhook', () => {
     expect(outcome.status).toBe('accepted');
     if (outcome.status !== 'accepted') return;
     expect(outcome.result.runner.writable).toBe(false);
-    expect(getTaskEvidence(outcome.result.id)).toContain('proactive finding');
+    await expect(getTaskEvidence(outcome.result.id)).resolves.toContain('proactive finding');
   });
 });
 

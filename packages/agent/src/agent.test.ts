@@ -186,6 +186,34 @@ describe('read-only modes', () => {
     expect(writes).toEqual([]);
   });
 
+  it('aggregates adapter-authored model usage into the task result', async () => {
+    const { agent } = harness({
+      decisions: [
+        decision({
+          usage: {
+            provider: 'openai-compatible',
+            model: 'gpt-5',
+            inputTokens: 100,
+            outputTokens: 25,
+            totalTokens: 125,
+            latencyMs: 400,
+            costUsd: 0.001,
+          },
+        }),
+      ],
+    });
+    const result = await run(agent, 'observe');
+    expect(result.usage).toEqual({
+      modelCalls: 1,
+      inputTokens: 100,
+      outputTokens: 25,
+      totalTokens: 125,
+      latencyMs: 400,
+      costUsd: 0.001,
+      models: { 'gpt-5': 1 },
+    });
+  });
+
   it('reports only when repository policy disables autofix', async () => {
     const { agent, writes } = harness({
       overrides: { autofix: { ...defaultConfig.autofix, enabled: false, minConfidence: 0.8 } },

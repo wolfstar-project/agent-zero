@@ -10,6 +10,7 @@ import type { ModelProvider } from '@agent-zero/models';
 import type { Runner } from '@agent-zero/runner';
 import {
   allChecksPassed,
+  emptyTaskUsage,
   isRepositoryRelativePath,
   now,
   taskId,
@@ -18,11 +19,13 @@ import {
   type ChangeRisk,
   type Finding,
   type ModelFinding,
+  type ModelCallUsage,
   type ProposedChange,
   type ReviewInput,
   type TaskEvent,
   type TaskResult,
   type TaskState,
+  type TaskUsage,
   type TerminalState,
 } from '@agent-zero/shared';
 
@@ -34,6 +37,8 @@ export interface AgentDependencies {
   runner: Runner;
   config: AgentZeroConfig;
   onEvent?: (event: TaskEvent) => void;
+  /** Control-plane supplied identifier used to correlate queued and running records. */
+  taskIdentifier?: string;
 }
 
 /** How much failing output is fed back into the next repair attempt. */
@@ -88,6 +93,7 @@ export class AgentZero {
       `Interpreting ${describeFeedback(effectiveInput)} against the checkout`,
     );
     let decision = await model.decide({ input: effectiveInput, repositoryContext });
+    run.recordUsage(decision.usage);
 
     run.emit('validating', 'Testing the claim against repository evidence');
     const outcome = await validateFinding(
@@ -128,6 +134,7 @@ export class AgentZero {
           repositoryContext,
           ...(previousFailure === undefined ? {} : { previousFailure }),
         });
+        run.recordUsage(decision.usage);
         changeRisk = classifyChangeRisk(decision.changeRisk, decision.changes);
         run.recordChangeRisk(changeRisk);
         run.plan = [...decision.plan];
@@ -249,7 +256,7 @@ export class AgentZero {
 
 /** Mutable bookkeeping for one run, kept separate from the decisions the agent makes. */
 class Run {
-  readonly id = taskId();
+  readonly id: string;
   readonly events: TaskEvent[] = [];
   private readonly machine = new LifecycleMachine();
   plan: string[] = [];
@@ -257,11 +264,14 @@ class Run {
   changedFiles: string[] = [];
   attempts = 0;
   private finding: Finding | null = null;
+  private readonly usage: TaskUsage = emptyTaskUsage();
 
   constructor(
     private readonly dependencies: AgentDependencies,
     private readonly input: ReviewInput,
-  ) {}
+  ) {
+    this.id = dependencies.taskIdentifier ?? taskId();
+  }
 
   emit(state: TaskState, message: string, attempt?: number): void {
     this.machine.to(state);
@@ -299,6 +309,17 @@ class Run {
     if (this.finding) this.finding.changeRisk = changeRisk;
   }
 
+  recordUsage(usage: ModelCallUsage | undefined): void {
+    if (!usage) return;
+    this.usage.modelCalls += 1;
+    this.usage.inputTokens += usage.inputTokens;
+    this.usage.outputTokens += usage.outputTokens;
+    this.usage.totalTokens += usage.totalTokens;
+    this.usage.latencyMs += usage.latencyMs;
+    this.usage.costUsd += usage.costUsd;
+    this.usage.models[usage.model] = (this.usage.models[usage.model] ?? 0) + 1;
+  }
+
   /**
    * Produce the terminal result.
    *
@@ -321,6 +342,7 @@ class Run {
       changedFiles: [...this.changedFiles],
       attempts: this.attempts,
       events: [...this.events],
+      usage: { ...this.usage, models: { ...this.usage.models } },
       runner: this.dependencies.runner.describe(),
       summary: this.input.source ? `${summary} (${this.input.source})` : summary,
     };

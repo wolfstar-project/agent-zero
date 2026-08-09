@@ -36,7 +36,7 @@ Feedback is never treated as truth merely because it came from a human or an AI 
 GitHub webhook / CLI
         │
         ▼
-     Server API ─── task events
+ Nitro + oRPC control plane ─── durable task events / approvals
         │
         ▼
    Agent state machine
@@ -99,20 +99,54 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 
 ## Control plane
 
-The type-safe oRPC API starts on `http://localhost:4040` and exposes `health`, `tasks.list`, `tasks.get`, and `tasks.create`. Call it from a dashboard or another service with `@orpc/client`:
+`aube run dev` starts the Nuxt control plane, backed by Nitro, on `http://localhost:3000`. The operational dashboard is served at `/`; the type-safe oRPC endpoint at `/rpc` exposes `health`, `tasks.list`, `tasks.get`, `tasks.create`, and `approvals.decide`.
+
+Task history, structured lifecycle events, evidence, model/token/latency/cost usage, and approval decisions are stored through Nitro storage. The development mount uses `.data/agent-zero`; production deployments can replace it with Redis or provider KV without changing task logic. Checkout paths, review input, provider credentials, and raw provider responses are not persisted, and all persisted strings are redacted before storage.
+
+Call the API from another service with `@orpc/client`:
 
 ```ts
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { RouterClient } from '@orpc/server';
-import type { AppRouter } from '@agent-zero/server/router';
+import type { RpcRouter } from '@agent-zero/server';
 
-const zero: RouterClient<AppRouter> = createORPCClient(
-  new RPCLink({ url: 'http://localhost:4040' }),
+const zero: RouterClient<RpcRouter> = createORPCClient(
+  new RPCLink({ url: 'http://localhost:3000/rpc' }),
 );
 
 await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mode: 'observe' });
 await zero.tasks.create({ repository: '.', trigger: 'proactive', mode: 'observe' });
+```
+
+The scheduler admits at most four tasks globally, one active task per repository, and 100 queued tasks by default. Hosted execution is injected as a provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
+
+Agent Zero supports native OpenAI, Anthropic, and Google Generative AI adapters, Vercel AI
+Gateway, and arbitrary OpenAI-compatible endpoints. Select the transport in repository policy and
+provide its credential through the environment:
+
+| `model.provider`    | Credential environment variable                          | Model example                 |
+| ------------------- | -------------------------------------------------------- | ----------------------------- |
+| `ai-gateway`        | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
+| `anthropic`         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
+| `google`            | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
+| `openai`            | `OPENAI_API_KEY`                                         | `gpt-5`                       |
+| `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+
+`AGENT_ZERO_MODEL_BASE_URL` is an optional operator environment variable for custom gateways and
+self-hosted endpoints. Endpoint URLs and credentials cannot be named or embedded in
+`.agent-zero.yml`, so untrusted repository policy cannot redirect a provider secret. The AI Gateway
+accepts `provider/model` identifiers and exposes the broader AI SDK provider catalog without adding
+provider-specific logic to the Agent Zero runtime.
+
+To record cost, configure explicit rates; Agent Zero never guesses provider pricing:
+
+```yaml
+model:
+  provider: openai-compatible
+  name: gpt-5
+  inputCostPerMillionTokens: 1.25
+  outputCostPerMillionTokens: 10
 ```
 
 `observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive/autonomous work) an isolated runner. High-impact changes always require human approval.

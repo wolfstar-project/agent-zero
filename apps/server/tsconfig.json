@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist" },
-  "include": ["src/**/*.ts"],
+  "compilerOptions": { "rootDir": ".", "outDir": "dist" },
+  "include": ["src/**/*.ts", "shared/**/*.ts"],
   "references": [
     { "path": "../../packages/agent" },
     { "path": "../../packages/config" },
