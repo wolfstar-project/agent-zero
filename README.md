@@ -122,6 +122,7 @@ await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mod
 - **[Turborepo](https://turborepo.dev)** &ndash; schedules workspace tasks in dependency order and caches tsdown build outputs.
 - **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). Apps stay ESM-only.
 - **[Oxlint](https://oxc.rs) + [Oxfmt](https://oxc.rs)** &ndash; type-aware linting and repository-wide formatting, extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.
+- **[Knip](https://knip.dev)** &ndash; detects unused files, exports, and dependencies across the workspace as part of `lint:ci`.
 - **[`@arethetypeswrong/cli`](https://github.com/arethetypeswrong/arethetypeswrong.github.io) + [Publint](https://publint.dev)** &ndash; validate every package build.
 - **[`@redstardev/unplugin-version-injector`](https://www.npmjs.com/package/@redstardev/unplugin-version-injector)** &ndash; replaces the version marker in `@agent-zero/shared`; the CLI displays that injected version in its header.
 

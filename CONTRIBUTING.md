@@ -63,6 +63,7 @@ aube run zero doctor     # inspect the local environment
 aube test                # deterministic Vitest suites
 aube run typecheck       # TypeScript checks across the graph
 aube run lint:ci         # Oxfmt check plus type-aware Oxlint
+aube run knip            # find unused files, exports, and dependencies
 aube run build           # build and package validation
 aube run check:repo      # community files and Agent Skills
 aube run skills:list     # show Skilld-managed project skills
