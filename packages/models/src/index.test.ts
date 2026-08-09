@@ -40,6 +40,10 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+function chatResponse(content: string): Response {
+  return jsonResponse({ choices: [{ message: { content }, finish_reason: 'stop' }] });
+}
+
 describe('renderPrompt', () => {
   it('fences untrusted feedback instead of concatenating it into instructions', () => {
     const prompt = renderPrompt(context());
@@ -92,8 +96,7 @@ describe('OpenAICompatibleProvider', () => {
     const provider = new OpenAICompatibleProvider({
       apiKey: 'test-key-value',
       model: 'gpt-5',
-      fetch: async () =>
-        jsonResponse({ choices: [{ message: { content: JSON.stringify(decision) } }] }),
+      fetch: async () => chatResponse(JSON.stringify(decision)),
     });
     await expect(provider.decide(context())).resolves.toEqual(decision);
   });
@@ -106,7 +109,7 @@ describe('OpenAICompatibleProvider', () => {
       baseUrl: 'https://example.invalid/v1',
       fetch: async (_url, init) => {
         seen = init;
-        return jsonResponse({ choices: [{ message: { content: JSON.stringify(decision) } }] });
+        return chatResponse(JSON.stringify(decision));
       },
     });
     await provider.decide(context());
@@ -118,8 +121,7 @@ describe('OpenAICompatibleProvider', () => {
     const provider = new OpenAICompatibleProvider({
       apiKey: 'test-key-value',
       model: 'gpt-5',
-      fetch: async () =>
-        jsonResponse({ choices: [{ message: { content: '{"finding":{"title":"x"}}' } }] }),
+      fetch: async () => chatResponse('{"finding":{"title":"x"}}'),
     });
     await expect(provider.decide(context())).rejects.toThrow('invalid decision');
   });
@@ -128,7 +130,7 @@ describe('OpenAICompatibleProvider', () => {
     const provider = new OpenAICompatibleProvider({
       apiKey: 'test-key-value',
       model: 'gpt-5',
-      fetch: async () => jsonResponse({ choices: [{ message: { content: 'sure thing!' } }] }),
+      fetch: async () => chatResponse('sure thing!'),
     });
     await expect(provider.decide(context())).rejects.toThrow('not valid JSON');
   });

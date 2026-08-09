@@ -1,4 +1,3 @@
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import {
   redactSecrets,
   secretValuesFromEnvironment,
@@ -6,7 +5,8 @@ import {
   type AgentDecision,
   type ReviewInput,
 } from '@agent-zero/shared';
-import { generateText, NoObjectGeneratedError, Output } from 'ai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { APICallError, generateText, JSONParseError, NoObjectGeneratedError, Output } from 'ai';
 import { z } from 'zod';
 
 export interface ModelContext {
@@ -76,6 +76,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       name: 'agent-zero',
       apiKey: this.options.apiKey,
       baseURL: this.options.baseUrl ?? 'https://api.openai.com/v1',
+      supportsStructuredOutputs: true,
       ...(this.options.fetch ? { fetch: this.options.fetch } : {}),
     });
 
@@ -94,10 +95,21 @@ export class OpenAICompatibleProvider implements ModelProvider {
       return result.output;
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error))
-        throw new Error('Model returned an invalid decision', { cause: error });
+        throw new Error(
+          JSONParseError.isInstance(error.cause)
+            ? 'Model output was not valid JSON'
+            : 'Model returned an invalid decision',
+          { cause: error },
+        );
+      // API failures may echo the request or a credential back; redact before the message can
+      // reach a log, a check annotation, or published evidence.
+      const detail = APICallError.isInstance(error) ? (error.responseBody ?? '') : '';
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(
-        redactSecrets(message, [this.options.apiKey, ...secretValuesFromEnvironment()]),
+        redactSecrets(detail.length > 0 ? `${message}\n${detail}` : message, [
+          this.options.apiKey,
+          ...secretValuesFromEnvironment(),
+        ]),
         { cause: error },
       );
     }
