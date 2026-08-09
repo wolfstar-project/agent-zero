@@ -1,7 +1,7 @@
 import type { CheckResult, RunnerDescription } from '@agent-zero/shared';
 
 import { RepositoryBoundary, type BoundaryOptions } from './boundary.js';
-import { assertSimpleCommand } from './process.js';
+import { commandArgv } from './process.js';
 
 /** Container engines the isolated runner knows how to drive. */
 export type ContainerEngine = 'docker' | 'podman';
@@ -21,9 +21,9 @@ export const DEFAULT_RESTRICTED_NETWORK = 'agent-zero';
 /**
  * Compatibility isolation adapter for self-hosted Docker/Podman deployments.
  *
- * ViteHub Shell owns command analysis before this adapter receives argv. Hosted production should
- * prefer ViteHub Sandbox/Workspace providers; this adapter remains for installations that already
- * operate their own container engine.
+ * ViteHub owns the shared command preflight before this adapter receives argv. Hosted production
+ * can move to ViteHub Sandbox/Workspace behind the same Runner contract without duplicating command
+ * parsing or policy in each execution adapter.
  */
 export class ContainerRunner extends RepositoryBoundary {
   private readonly container: ContainerOptions;
@@ -43,8 +43,7 @@ export class ContainerRunner extends RepositoryBoundary {
   }
 
   async check(command: string, timeoutMs: number): Promise<CheckResult> {
-    await assertSimpleCommand(command);
-    const [program, args] = this.toArgv(command);
+    const [program, args] = await commandArgv(command);
     const started = Date.now();
     const outcome = await this.process(
       this.container.engine,
