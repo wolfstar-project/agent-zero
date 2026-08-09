@@ -42,6 +42,8 @@ export interface RunnerPoolOptions {
   maxActive: number;
   maxActivePerRepository: number;
   maxLeaseMs: number;
+  /** Delay before retrying an automatic expiry stop that failed. Defaults to 30 seconds. */
+  expiryRetryMs?: number;
   now?: () => number;
 }
 
@@ -69,9 +71,12 @@ export class RunnerPoolQuotaError extends Error {
 export class RunnerPool {
   private readonly leases = new Map<string, SandboxLease>();
   private readonly stopping = new Map<string, Promise<void>>();
+  private readonly expiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private pendingTotal = 0;
   private readonly pendingByRepository = new Map<string, number>();
   private readonly now: () => number;
+  private readonly expiryRetryMs: number;
+  private disposed = false;
 
   constructor(
     private readonly provider: SandboxProvider,
@@ -80,10 +85,14 @@ export class RunnerPool {
     assertPositiveInteger(options.maxActive, 'maxActive');
     assertPositiveInteger(options.maxActivePerRepository, 'maxActivePerRepository');
     assertPositiveInteger(options.maxLeaseMs, 'maxLeaseMs');
+    if (options.expiryRetryMs !== undefined)
+      assertPositiveInteger(options.expiryRetryMs, 'expiryRetryMs');
+    this.expiryRetryMs = options.expiryRetryMs ?? 30_000;
     this.now = options.now ?? Date.now;
   }
 
   async acquire(request: SandboxRequest): Promise<SandboxLease> {
+    if (this.disposed) throw new RunnerPoolQuotaError('Runner pool has been disposed');
     if (!Number.isFinite(request.leaseMs) || request.leaseMs <= 0)
       throw new RunnerPoolQuotaError('Requested lease duration must be a positive number');
     if (request.leaseMs > this.options.maxLeaseMs)
@@ -118,6 +127,9 @@ export class RunnerPool {
         runner: provisioned.runner,
       };
       this.leases.set(lease.id, lease);
+      // The pool owns expiry enforcement: a runner must stop at its lease deadline even when no
+      // external caller ever sweeps.
+      this.scheduleExpiry(lease.id, request.leaseMs);
       return lease;
     } finally {
       this.pendingTotal -= 1;
@@ -143,9 +155,18 @@ export class RunnerPool {
       this.stopping.delete(id);
     }
     this.leases.delete(id);
+    this.clearExpiry(id);
     return true;
   }
 
+  /** Clears every expiry timer and stops all remaining leases. The pool cannot be reused. */
+  async dispose(): Promise<void> {
+    this.disposed = true;
+    for (const id of this.expiryTimers.keys()) this.clearExpiry(id);
+    await Promise.allSettled(Array.from(this.leases.keys(), (id) => this.release(id)));
+  }
+
+  /** Manual backstop for the pool-owned expiry timers, e.g. after a process restart. */
   async sweepExpired(): Promise<number> {
     const expired = [...this.leases.values()].filter(
       (lease) => Date.parse(lease.expiresAt) <= this.now(),
@@ -172,6 +193,27 @@ export class RunnerPool {
         expiresAt: lease.expiresAt,
       })),
     };
+  }
+
+  private scheduleExpiry(id: string, delayMs: number): void {
+    this.clearExpiry(id);
+    const timer = setTimeout(() => {
+      this.expiryTimers.delete(id);
+      this.release(id).catch(() => {
+        // The provider stop failed; the lease stays tracked, so retry on a bounded interval.
+        if (!this.disposed && this.leases.has(id)) this.scheduleExpiry(id, this.expiryRetryMs);
+      });
+    }, delayMs);
+    // Never keep the host process alive solely to enforce an expiry.
+    timer.unref();
+    this.expiryTimers.set(id, timer);
+  }
+
+  private clearExpiry(id: string): void {
+    const timer = this.expiryTimers.get(id);
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    this.expiryTimers.delete(id);
   }
 }
 

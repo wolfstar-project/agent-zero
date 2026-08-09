@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Runner } from './boundary.js';
 import { RunnerPool, RunnerPoolQuotaError, type SandboxProvider } from './sandbox.js';
@@ -183,6 +183,83 @@ describe('RunnerPool', () => {
     await expect(pool.release(lease.id)).resolves.toBe(true);
     expect(adapter.stopped).toEqual(['remote-task-1']);
     expect(pool.snapshot().active).toBe(0);
+  });
+
+  describe('automatic expiry enforcement', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('stops a runner at its lease deadline without an external sweep', async () => {
+      vi.useFakeTimers();
+      const adapter = provider();
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+      });
+      await pool.acquire(request);
+      expect(pool.snapshot().active).toBe(1);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+    });
+
+    it('retries an automatic expiry stop that failed', async () => {
+      vi.useFakeTimers();
+      let failStops = true;
+      const adapter = provider();
+      adapter.stop = async (id) => {
+        if (failStops) throw new Error('stop failed');
+        adapter.stopped.push(id);
+      };
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+        expiryRetryMs: 500,
+      });
+      await pool.acquire(request);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(pool.snapshot().active).toBe(1);
+      failStops = false;
+      await vi.advanceTimersByTimeAsync(500);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+    });
+
+    it('does not fire an expiry timer for a lease released early', async () => {
+      vi.useFakeTimers();
+      const adapter = provider();
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+      });
+      const lease = await pool.acquire(request);
+      await expect(pool.release(lease.id)).resolves.toBe(true);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('dispose clears timers, stops remaining leases, and rejects new acquires', async () => {
+      vi.useFakeTimers();
+      const adapter = provider();
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+      });
+      await pool.acquire(request);
+      await pool.dispose();
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(pool.acquire({ ...request, taskId: 'task-2' })).rejects.toBeInstanceOf(
+        RunnerPoolQuotaError,
+      );
+    });
   });
 
   it('stops expired sandboxes deterministically', async () => {
