@@ -14,10 +14,12 @@ Requirements:
 - [aube](https://aube.jdx.dev), the pinned package manager
 - Git
 
+`mise.toml` pins both Node.js and aube, so [mise](https://mise.jdx.dev) installs the whole toolchain in one step:
+
 ```bash
 git clone https://github.com/wolfstar-project/agent-zero.git
 cd agent-zero
-mise use -g aube        # or: npm install -g --ignore-scripts=false @endevco/aube
+mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
 aube ci
 cp .env.example .env
 aube run check:repo
