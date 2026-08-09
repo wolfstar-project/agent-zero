@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { anyOf, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
+
 const execFileAsync = promisify(execFile);
 
 /** Raw result of one child process, before any policy is applied. */
@@ -68,6 +70,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const commandPart = anyOf(
+  oneOrMore(charNotIn(" \t\n\r\f\v\"'")),
+  exactly('"').and(charNotIn('"').times.any()).and('"'),
+  exactly("'").and(charNotIn("'").times.any()).and("'"),
+);
+const COMMAND_PARTS = createRegExp(commandPart, [global]);
+
 /**
  * Split a configured command into an argv array.
  *
@@ -75,6 +84,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * result is handed to `execFile`, never to a shell.
  */
 export function splitCommand(command: string): string[] {
-  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
-  return parts.map((part) => part.replace(/^(['"])(.*)\1$/, '$2'));
+  const parts = command.match(COMMAND_PARTS) ?? [];
+  return parts.map(unquote);
+}
+
+function unquote(part: string): string {
+  const quote = part[0];
+  return (quote === '"' || quote === "'") && part.at(-1) === quote ? part.slice(1, -1) : part;
 }
