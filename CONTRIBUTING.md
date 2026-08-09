@@ -2,7 +2,9 @@
 
 Thanks for helping build Agent Zero. Bug reports, design discussions, documentation improvements, tests, and focused code changes are all welcome.
 
-For questions and early design discussion, use the WolfStar community at [join.wolfstar.rocks](https://join.wolfstar.rocks). Use GitHub issues for reproducible bugs and concrete proposals. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+For questions and early design discussion, use the WolfStar community at [join.wolfstar.rocks](https://join.wolfstar.rocks). Read [SUPPORT.md](SUPPORT.md) to choose the right channel. Use GitHub issues for reproducible bugs and concrete proposals. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
+
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), and project decision-making is described in [GOVERNANCE.md](GOVERNANCE.md).
 
 ## Development setup
 
@@ -35,7 +37,7 @@ The lockfile pins pnpm. Do not use npm, Yarn, Bun, or another package manager in
 | Configuration and policy         | `packages/config` |
 | Shared contracts                 | `packages/shared` |
 | CLI parsing and presentation     | `packages/cli`    |
-| HTTP/oRPC composition            | `apps/server`     |
+| HTTP control-plane composition   | `apps/server`     |
 
 Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before making architectural or safety-sensitive changes.
 
@@ -57,7 +59,7 @@ pnpm zero doctor     # inspect the local environment
 pnpm test            # deterministic Vitest suites
 pnpm typecheck       # TypeScript checks across the graph
 pnpm lint:ci         # Oxfmt check plus type-aware Oxlint
-pnpm build           # tsdown, declarations, publint and attw
+pnpm build           # build and package validation
 pnpm check:repo      # community files and Agent Skills
 pnpm skills:list     # show Skilld-managed project skills
 pnpm skills:install  # restore Skilld links for Codex
