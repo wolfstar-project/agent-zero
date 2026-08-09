@@ -25,6 +25,7 @@ import {
 } from '@agent-zero/shared';
 
 import {
+  CommandRejectedError,
   execFileProcessRunner,
   splitCommand,
   type ProcessOutcome,
@@ -44,14 +45,6 @@ export class RunnerWriteDeniedError extends Error {
   constructor(path: string, reason: string) {
     super(`Write denied for ${path}: ${reason}`);
     this.name = 'RunnerWriteDeniedError';
-  }
-}
-
-/** Raised when a command could not be executed faithfully as an argv array. */
-export class CommandRejectedError extends Error {
-  constructor(command: string, reason: string) {
-    super(`Command rejected (${reason}): ${command}`);
-    this.name = 'CommandRejectedError';
   }
 }
 

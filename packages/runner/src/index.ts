@@ -5,7 +5,6 @@ import { ContainerRunner, type ContainerEngine, type ContainerOptions } from './
 import { LocalRunner } from './local.js';
 
 export {
-  CommandRejectedError,
   PathEscapeError,
   RepositoryBoundary,
   RunnerWriteDeniedError,
@@ -21,6 +20,7 @@ export {
 export { LocalRunner } from './local.js';
 export {
   assertSimpleCommand,
+  CommandRejectedError,
   execFileProcessRunner,
   splitCommand,
   type ProcessOptions,

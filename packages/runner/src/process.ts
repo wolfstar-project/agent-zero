@@ -6,6 +6,14 @@ import { anyOf, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magi
 
 const execFileAsync = promisify(execFile);
 
+/** Raised when a command could not be executed faithfully as an argv array. */
+export class CommandRejectedError extends Error {
+  constructor(command: string, reason: string) {
+    super(`Command rejected (${reason}): ${command}`);
+    this.name = 'CommandRejectedError';
+  }
+}
+
 /** Raw result of one child process, before any policy is applied. */
 export interface ProcessOutcome {
   exitCode: number;
@@ -86,7 +94,8 @@ const COMMAND_PARTS = createRegExp(commandPart, [global]);
  */
 export async function assertSimpleCommand(command: string): Promise<void> {
   const analysis = await analyzeShellCommand(command, { maxInputBytes: 16_384, timeoutMs: 1_000 });
-  if (!analysis.ok) throw new Error('Command could not be safely analyzed by ViteHub Shell');
+  if (!analysis.ok)
+    throw new CommandRejectedError(command, 'ViteHub Shell could not analyze the command');
 }
 
 /**
