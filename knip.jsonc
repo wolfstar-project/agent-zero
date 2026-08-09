@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  // aube is provided by the packageManager field rather than a dependency.
+  "ignoreBinaries": ["aube"],
+  "ignoreDependencies": [
+    // tsdown invokes attw through its built-in package validation.
+    "@arethetypeswrong/cli",
+    // These binaries are invoked from shell files in .husky/.
+    "@commitlint/cli",
+    "nano-staged",
+  ],
+}
