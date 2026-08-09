@@ -129,11 +129,21 @@ export class RunnerPool {
       this.leases.set(lease.id, lease);
       if (this.disposed) {
         // The pool was disposed while provisioning; the runner must stop instead of escaping
-        // shutdown. A failed stop keeps the lease tracked so a retried dispose() can stop it.
+        // shutdown. A failed stop keeps the lease tracked, arms the internal stop retry, and
+        // surfaces the failure so the caller knows a live sandbox remains.
+        let stopFailure: { error: unknown } | undefined;
         try {
           await this.release(lease.id);
-        } catch {
-          // Intentionally swallowed: the disposal error below is the actionable signal.
+        } catch (error) {
+          stopFailure = { error };
+        }
+        if (stopFailure) {
+          this.scheduleStopRetry(lease.id);
+          throw new AggregateError(
+            [stopFailure.error],
+            'Runner pool was disposed during provisioning and stopping the runner failed; the pool retries the stop and dispose() can also retry',
+            { cause: stopFailure.error },
+          );
         }
         throw new RunnerPoolQuotaError('Runner pool was disposed during provisioning');
       }
@@ -171,17 +181,24 @@ export class RunnerPool {
 
   /**
    * Clears every expiry timer and stops all remaining leases. The pool rejects new acquires
-   * afterwards. When a provider stop fails, the lease stays tracked and this method throws an
-   * `AggregateError`; calling `dispose()` again retries the remaining stops.
+   * afterwards. When a provider stop fails, the lease stays tracked, an internal stop retry is
+   * armed, and this method throws an `AggregateError`; calling `dispose()` again also retries
+   * the remaining stops.
    */
   async dispose(): Promise<void> {
     this.disposed = true;
     for (const id of this.expiryTimers.keys()) this.clearExpiry(id);
-    const results = await Promise.allSettled(
-      Array.from(this.leases.keys(), (id) => this.release(id)),
-    );
-    const failures = results.flatMap((result) =>
-      result.status === 'rejected' ? [result.reason as unknown] : [],
+    const failures: unknown[] = [];
+    await Promise.all(
+      Array.from(this.leases.keys(), async (id) => {
+        try {
+          await this.release(id);
+        } catch (error) {
+          // Keep an automatic cleanup path alive even when the caller never retries dispose().
+          this.scheduleStopRetry(id);
+          failures.push(error);
+        }
+      }),
     );
     if (failures.length > 0)
       throw new AggregateError(
@@ -225,13 +242,23 @@ export class RunnerPool {
       this.expiryTimers.delete(id);
       this.release(id).catch(() => {
         // The provider stop failed; the lease stays tracked, so retry on a bounded interval.
-        if (!this.disposed && this.leases.has(id)) this.scheduleExpiry(id, this.expiryRetryMs);
+        this.scheduleStopRetry(id);
       });
     }, delayMs);
     // The timer stays referenced on purpose: lease state is process-local, so letting the process
     // exit before the deadline would leave the remote sandbox running with no cleanup path.
     // Callers that want to exit early must release the lease or dispose the pool.
     this.expiryTimers.set(id, timer);
+  }
+
+  /**
+   * Retries a failed provider stop on a bounded interval. This deliberately keeps running after
+   * the pool is disposed: a tracked lease still owns a live remote sandbox, so the retry loop is
+   * the only automatic cleanup path left once no expiry timer or dispose() call is pending.
+   */
+  private scheduleStopRetry(id: string): void {
+    if (!this.leases.has(id)) return;
+    this.scheduleExpiry(id, this.expiryRetryMs);
   }
 
   private clearExpiry(id: string): void {

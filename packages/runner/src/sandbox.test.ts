@@ -288,6 +288,69 @@ describe('RunnerPool', () => {
       expect(pool.snapshot().active).toBe(0);
     });
 
+    it('surfaces a failed stop after disposal during provisioning and retries it internally', async () => {
+      vi.useFakeTimers();
+      let releaseProvision!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        releaseProvision = resolve;
+      });
+      let failStops = true;
+      const adapter = provider();
+      adapter.provision = async (sandboxRequest) => {
+        await gate;
+        return { externalId: `remote-${sandboxRequest.taskId}`, runner };
+      };
+      adapter.stop = async (id) => {
+        if (failStops) throw new Error('stop failed');
+        adapter.stopped.push(id);
+      };
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+        expiryRetryMs: 500,
+      });
+      const pending = pool.acquire(request);
+      await pool.dispose();
+      releaseProvision();
+      // The cleanup failure is surfaced instead of being swallowed behind a quota error.
+      await expect(pending).rejects.toBeInstanceOf(AggregateError);
+      expect(pool.snapshot().active).toBe(1);
+      // The retry loop keeps running after disposal, across repeated failures.
+      await vi.advanceTimersByTimeAsync(500);
+      expect(pool.snapshot().active).toBe(1);
+      failStops = false;
+      await vi.advanceTimersByTimeAsync(500);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('re-arms the internal stop retry when dispose fails to stop a lease', async () => {
+      vi.useFakeTimers();
+      let failStops = true;
+      const adapter = provider();
+      adapter.stop = async (id) => {
+        if (failStops) throw new Error('stop failed');
+        adapter.stopped.push(id);
+      };
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+        expiryRetryMs: 500,
+      });
+      await pool.acquire(request);
+      await expect(pool.dispose()).rejects.toBeInstanceOf(AggregateError);
+      expect(pool.snapshot().active).toBe(1);
+      failStops = false;
+      // No second dispose() call: the pool's own retry timer stops the leaked runner.
+      await vi.advanceTimersByTimeAsync(500);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('dispose clears timers, stops remaining leases, and rejects new acquires', async () => {
       vi.useFakeTimers();
       const adapter = provider();
