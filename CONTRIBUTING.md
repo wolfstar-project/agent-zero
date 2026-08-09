@@ -76,6 +76,13 @@ pnpm skills:install  # restore Skilld links for Codex
 
 Oxfmt owns formatting and Oxlint owns linting. Avoid unrelated formatting churn.
 
+`pnpm install` installs Git hooks through the `prepare` script (`.husky/install.mjs`), which skips hook installation in CI and production environments:
+
+- `pre-commit` runs `pnpm exec nano-staged`, which formats staged files with Oxfmt and re-stages them.
+- `commit-msg` runs `pnpm exec commitlint --edit`, which enforces Conventional Commit messages.
+
+If `pre-commit` fails, fix the reported error and commit again; formatting fixes are applied automatically. If `commit-msg` rejects your message, reword it to follow the Conventional Commit format below (after a failed commit, rerun `git commit` with a valid message; to fix the previous commit, use `git commit --amend`).
+
 Use Conventional Commit-style messages and PR titles:
 
 ```text
