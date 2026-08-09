@@ -68,6 +68,9 @@ export class RunnerPoolQuotaError extends Error {
  */
 export class RunnerPool {
   private readonly leases = new Map<string, SandboxLease>();
+  private readonly stopping = new Map<string, Promise<void>>();
+  private pendingTotal = 0;
+  private readonly pendingByRepository = new Map<string, number>();
   private readonly now: () => number;
 
   constructor(
@@ -81,37 +84,63 @@ export class RunnerPool {
   }
 
   async acquire(request: SandboxRequest): Promise<SandboxLease> {
-    if (this.leases.size >= this.options.maxActive)
-      throw new RunnerPoolQuotaError('Runner pool capacity is exhausted');
-    const repositoryActive = [...this.leases.values()].filter(
-      (lease) => lease.repository === request.repository,
-    ).length;
-    if (repositoryActive >= this.options.maxActivePerRepository)
-      throw new RunnerPoolQuotaError('Repository runner quota is exhausted');
+    if (!Number.isFinite(request.leaseMs) || request.leaseMs <= 0)
+      throw new RunnerPoolQuotaError('Requested lease duration must be a positive number');
     if (request.leaseMs > this.options.maxLeaseMs)
       throw new RunnerPoolQuotaError('Requested lease exceeds the configured maximum');
+    if (this.leases.size + this.pendingTotal >= this.options.maxActive)
+      throw new RunnerPoolQuotaError('Runner pool capacity is exhausted');
+    const repositoryActive =
+      [...this.leases.values()].filter((lease) => lease.repository === request.repository).length +
+      (this.pendingByRepository.get(request.repository) ?? 0);
+    if (repositoryActive >= this.options.maxActivePerRepository)
+      throw new RunnerPoolQuotaError('Repository runner quota is exhausted');
 
-    const started = this.now();
-    const provisioned = await this.provider.provision(Object.freeze({ ...request }));
-    const lease: SandboxLease = {
-      id: `lease_${randomUUID()}`,
-      taskId: request.taskId,
-      repository: request.repository,
-      provider: this.provider.kind,
-      externalId: provisioned.externalId,
-      acquiredAt: new Date(started).toISOString(),
-      expiresAt: new Date(started + request.leaseMs).toISOString(),
-      runner: provisioned.runner,
-    };
-    this.leases.set(lease.id, lease);
-    return lease;
+    // Reserve capacity before awaiting provisioning so overlapping acquires cannot bypass quotas.
+    this.pendingTotal += 1;
+    this.pendingByRepository.set(
+      request.repository,
+      (this.pendingByRepository.get(request.repository) ?? 0) + 1,
+    );
+    try {
+      const started = this.now();
+      const provisioned = await this.provider.provision(Object.freeze({ ...request }));
+      const lease: SandboxLease = {
+        id: `lease_${randomUUID()}`,
+        taskId: request.taskId,
+        repository: request.repository,
+        provider: this.provider.kind,
+        externalId: provisioned.externalId,
+        acquiredAt: new Date(started).toISOString(),
+        expiresAt: new Date(started + request.leaseMs).toISOString(),
+        runner: provisioned.runner,
+      };
+      this.leases.set(lease.id, lease);
+      return lease;
+    } finally {
+      this.pendingTotal -= 1;
+      const remaining = (this.pendingByRepository.get(request.repository) ?? 1) - 1;
+      if (remaining > 0) this.pendingByRepository.set(request.repository, remaining);
+      else this.pendingByRepository.delete(request.repository);
+    }
   }
 
   async release(id: string): Promise<boolean> {
     const lease = this.leases.get(id);
     if (!lease) return false;
+    // Keep the lease tracked until the provider stop succeeds so a failed stop can be retried,
+    // while sharing one in-flight stop between concurrent release and sweep calls.
+    let stop = this.stopping.get(id);
+    if (!stop) {
+      stop = this.provider.stop(lease.externalId);
+      this.stopping.set(id, stop);
+    }
+    try {
+      await stop;
+    } finally {
+      this.stopping.delete(id);
+    }
     this.leases.delete(id);
-    await this.provider.stop(lease.externalId);
     return true;
   }
 
@@ -119,8 +148,8 @@ export class RunnerPool {
     const expired = [...this.leases.values()].filter(
       (lease) => Date.parse(lease.expiresAt) <= this.now(),
     );
-    await Promise.all(expired.map((lease) => this.release(lease.id)));
-    return expired.length;
+    const results = await Promise.allSettled(expired.map((lease) => this.release(lease.id)));
+    return results.filter((result) => result.status === 'fulfilled' && result.value).length;
   }
 
   snapshot(): RunnerPoolSnapshot {

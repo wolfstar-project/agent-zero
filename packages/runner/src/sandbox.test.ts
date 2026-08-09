@@ -72,6 +72,97 @@ describe('RunnerPool', () => {
     ).rejects.toThrow('exceeds');
   });
 
+  it('rejects non-finite and non-positive lease durations before provisioning', async () => {
+    let provisioned = 0;
+    const adapter = provider();
+    const original = adapter.provision.bind(adapter);
+    adapter.provision = async (sandboxRequest) => {
+      provisioned += 1;
+      return original(sandboxRequest);
+    };
+    const pool = new RunnerPool(adapter, {
+      maxActive: 1,
+      maxActivePerRepository: 1,
+      maxLeaseMs: 1_000,
+    });
+    for (const leaseMs of [Number.NaN, 0, -1, Number.POSITIVE_INFINITY]) {
+      await expect(pool.acquire({ ...request, leaseMs })).rejects.toBeInstanceOf(
+        RunnerPoolQuotaError,
+      );
+    }
+    expect(provisioned).toBe(0);
+    expect(pool.snapshot().active).toBe(0);
+  });
+
+  it('reserves capacity before provisioning so overlapping acquires cannot bypass quotas', async () => {
+    let releaseProvision: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      releaseProvision = resolve;
+    });
+    const adapter = provider();
+    adapter.provision = async (sandboxRequest) => {
+      await gate;
+      return { externalId: `remote-${sandboxRequest.taskId}`, runner };
+    };
+    const pool = new RunnerPool(adapter, {
+      maxActive: 1,
+      maxActivePerRepository: 1,
+      maxLeaseMs: 1_000,
+    });
+    const first = pool.acquire(request);
+    const second = pool.acquire({ ...request, taskId: 'task-2' });
+    await expect(second).rejects.toBeInstanceOf(RunnerPoolQuotaError);
+    releaseProvision();
+    await expect(first).resolves.toMatchObject({ taskId: 'task-1' });
+    expect(pool.snapshot().active).toBe(1);
+  });
+
+  it('releases reserved capacity when provisioning fails', async () => {
+    const adapter = provider();
+    adapter.provision = async () => {
+      throw new Error('provision failed');
+    };
+    const pool = new RunnerPool(adapter, {
+      maxActive: 1,
+      maxActivePerRepository: 1,
+      maxLeaseMs: 1_000,
+    });
+    await expect(pool.acquire(request)).rejects.toThrow('provision failed');
+    adapter.provision = async (sandboxRequest) => ({
+      externalId: `remote-${sandboxRequest.taskId}`,
+      runner,
+    });
+    await expect(pool.acquire({ ...request, taskId: 'task-2' })).resolves.toMatchObject({
+      taskId: 'task-2',
+    });
+  });
+
+  it('keeps leases retryable when the provider stop fails', async () => {
+    let current = 1_000;
+    let failStops = true;
+    const adapter = provider();
+    adapter.stop = async (id) => {
+      if (failStops) throw new Error('stop failed');
+      adapter.stopped.push(id);
+    };
+    const pool = new RunnerPool(adapter, {
+      maxActive: 1,
+      maxActivePerRepository: 1,
+      maxLeaseMs: 1_000,
+      now: () => current,
+    });
+    const lease = await pool.acquire(request);
+    await expect(pool.release(lease.id)).rejects.toThrow('stop failed');
+    expect(pool.snapshot().active).toBe(1);
+    current = 3_000;
+    await expect(pool.sweepExpired()).resolves.toBe(0);
+    expect(pool.snapshot().active).toBe(1);
+    failStops = false;
+    await expect(pool.release(lease.id)).resolves.toBe(true);
+    expect(adapter.stopped).toEqual(['remote-task-1']);
+    expect(pool.snapshot().active).toBe(0);
+  });
+
   it('stops expired sandboxes deterministically', async () => {
     let current = 1_000;
     const adapter = provider();
