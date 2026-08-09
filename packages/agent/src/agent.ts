@@ -1,5 +1,6 @@
 import {
   knownLockfiles,
+  mayAutofixChange,
   mayModifyRepository,
   resolveChecks,
   type AgentZeroConfig,
@@ -14,6 +15,7 @@ import {
   taskId,
   truncateTail,
   type CheckResult,
+  type ChangeRisk,
   type Finding,
   type ModelFinding,
   type ProposedChange,
@@ -62,17 +64,45 @@ export class AgentZero {
   private async execute(run: Run, input: ReviewInput): Promise<TaskResult> {
     const { config, model, runner } = this.dependencies;
 
+    if (
+      input.trigger !== 'proactive' &&
+      !input.items?.length &&
+      (input.feedback === undefined || input.feedback.trim().length === 0)
+    )
+      throw new Error('Feedback is required unless the review trigger is proactive');
+
     run.emit('discovering', 'Collecting the checkout, its diff, and its native checks');
     const probe = await this.probeRepository();
     const checks = resolveChecks(config.checks, probe);
-    const repositoryContext = await runner.context();
+    const contextOptions = input.pullRequest
+      ? { baseSha: input.pullRequest.baseSha, headSha: input.pullRequest.headSha }
+      : undefined;
+    const reviewFiles =
+      input.trigger === 'proactive' ? await runner.reviewFiles(contextOptions) : [];
+    const effectiveInput: ReviewInput =
+      input.trigger === 'proactive' ? { ...input, files: reviewFiles } : input;
+    const repositoryContext = await runner.context(contextOptions);
 
-    run.emit('understanding', `Interpreting ${describeFeedback(input)} against the checkout`);
-    let decision = await model.decide({ input, repositoryContext });
+    run.emit(
+      'understanding',
+      `Interpreting ${describeFeedback(effectiveInput)} against the checkout`,
+    );
+    let decision = await model.decide({ input: effectiveInput, repositoryContext });
 
     run.emit('validating', 'Testing the claim against repository evidence');
-    const outcome = await validateFinding(decision.finding, config.validation, runner);
-    const finding = run.recordFinding(decision.finding, outcome.verdict, outcome.reasons);
+    const outcome = await validateFinding(
+      decision.finding,
+      config.validation,
+      runner,
+      input.trigger === 'proactive' ? { requiredFiles: reviewFiles } : {},
+    );
+    let changeRisk = classifyChangeRisk(decision.changeRisk, decision.changes);
+    const finding = run.recordFinding(
+      decision.finding,
+      changeRisk,
+      outcome.verdict,
+      outcome.reasons,
+    );
 
     if (outcome.verdict === 'rejected')
       return run.finish(
@@ -85,7 +115,7 @@ export class AgentZero {
     run.emit('planning', 'Recording an evidence-backed plan', 1);
     run.plan = [...decision.plan];
 
-    const refusal = this.authorize(input, finding, checks);
+    const refusal = this.authorize(input, finding, changeRisk, checks);
     if (refusal) return run.finish(refusal.state, refusal.summary);
 
     let previousFailure: string | undefined;
@@ -94,14 +124,23 @@ export class AgentZero {
       if (attempt > 1) {
         run.emit('planning', 'Replanning after failed verification', attempt);
         decision = await model.decide({
-          input,
+          input: effectiveInput,
           repositoryContext,
           ...(previousFailure === undefined ? {} : { previousFailure }),
         });
+        changeRisk = classifyChangeRisk(decision.changeRisk, decision.changes);
+        run.recordChangeRisk(changeRisk);
         run.plan = [...decision.plan];
+        const repairRefusal = this.authorize(input, finding, changeRisk, checks);
+        if (repairRefusal) return run.finish(repairRefusal.state, repairRefusal.summary);
       }
 
-      const scoped = scopeChanges(decision.changes, finding, input, config.agent.maxChangedFiles);
+      const scoped = scopeChanges(
+        decision.changes,
+        finding,
+        effectiveInput,
+        config.agent.maxChangedFiles,
+      );
       if ('reason' in scoped) return run.finish('needs-human', scoped.reason);
 
       run.emit('executing', `Applying ${String(scoped.changes.length)} planned change(s)`, attempt);
@@ -142,6 +181,7 @@ export class AgentZero {
   private authorize(
     input: ReviewInput,
     finding: Finding,
+    changeRisk: ChangeRisk,
     checks: readonly string[],
   ): { state: TerminalState; summary: string } | undefined {
     const { config, runner } = this.dependencies;
@@ -158,10 +198,29 @@ export class AgentZero {
         state: 'needs-human',
         summary: `Confidence ${finding.confidence.toFixed(2)} is below the ${config.autofix.minConfidence.toFixed(2)} required to change files.`,
       };
+    if (changeRisk === 'high-impact')
+      return {
+        state: 'needs-human',
+        summary: 'The proposed fix is high-impact and always requires human approval.',
+      };
+    if (!mayAutofixChange(config, changeRisk))
+      return {
+        state: 'needs-human',
+        summary: `Repository policy does not allow ${changeRisk} changes to be fixed automatically.`,
+      };
     if (!runner.describe().writable)
       return {
         state: 'needs-human',
         summary: 'The execution boundary is read-only, so no change could be applied.',
+      };
+    if (
+      (input.mode === 'autonomous' || input.trigger === 'proactive') &&
+      config.autofix.requireIsolated &&
+      !runner.describe().isolated
+    )
+      return {
+        state: 'needs-human',
+        summary: 'Repository policy requires an isolated runner for proactive or autonomous fixes.',
       };
     if (checks.length === 0)
       return {
@@ -222,16 +281,22 @@ class Run {
 
   recordFinding(
     finding: ModelFinding,
+    changeRisk: ChangeRisk,
     verdict: Finding['verdict'],
     rejectionReasons: readonly string[],
   ): Finding {
     this.finding = {
       ...finding,
       id: `${this.id}_finding`,
+      changeRisk,
       verdict,
       rejectionReasons: [...rejectionReasons],
     };
     return this.finding;
+  }
+
+  recordChangeRisk(changeRisk: ChangeRisk): void {
+    if (this.finding) this.finding.changeRisk = changeRisk;
   }
 
   /**
@@ -300,6 +365,43 @@ export function scopeChanges(
   return { changes: accepted };
 }
 
+const HIGH_IMPACT_PATHS = [
+  /(^|\/)\.agent-zero\.ya?ml$/u,
+  /(^|\/)\.github\//u,
+  /(^|\/)(?:migrations?|schema)\//u,
+  /(^|\/)(?:package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/u,
+  /(^|\/)(?:tests?|__tests__)\//u,
+  /(?:^|\.)test\.[^/]+$/u,
+  /(?:^|\.)spec\.[^/]+$/u,
+] as const;
+const EXECUTABLE_SOURCE =
+  /\.(?:[cm]?[jt]sx?|py|rb|php|go|rs|java|kt|kts|swift|cs|cpp|cc|c|h|sh|bash|zsh|fish)$/iu;
+const RISK_RANK: Readonly<Record<ChangeRisk, number>> = {
+  mechanical: 0,
+  behavioral: 1,
+  'high-impact': 2,
+};
+
+/**
+ * Raise, but never lower, the model's untrusted risk classification from the proposed paths.
+ *
+ * Tests, dependency metadata, CI, repository policy, schemas, and migrations can alter the safety
+ * or meaning of verification itself, so they always need approval. Executable source is at least
+ * behavioral; only non-executable edits can remain mechanical.
+ */
+export function classifyChangeRisk(
+  declared: ChangeRisk,
+  changes: readonly ProposedChange[],
+): ChangeRisk {
+  let inferred: ChangeRisk = 'mechanical';
+  for (const change of changes) {
+    const path = normalizePath(change.path);
+    if (HIGH_IMPACT_PATHS.some((pattern) => pattern.test(path))) return 'high-impact';
+    if (EXECUTABLE_SOURCE.test(path)) inferred = 'behavioral';
+  }
+  return RISK_RANK[declared] >= RISK_RANK[inferred] ? declared : inferred;
+}
+
 const LEADING_DOT_SLASH = /^\.\//;
 
 function normalizePath(path: string): string {
@@ -307,6 +409,7 @@ function normalizePath(path: string): string {
 }
 
 function describeFeedback(input: ReviewInput): string {
+  if (input.trigger === 'proactive') return 'the pull-request diff proactively';
   const items = input.items?.length ?? 0;
   if (items === 0) return '1 feedback item';
   return `${String(items)} feedback item(s)`;

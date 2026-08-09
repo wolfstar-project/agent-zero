@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { checkConclusion, GitHubChecks } from './checks.js';
 
-const target = { owner: 'acme', repo: 'app', number: 7, headSha: 'a'.repeat(40) };
+const target = {
+  owner: 'acme',
+  repo: 'app',
+  number: 7,
+  baseSha: 'b'.repeat(40),
+  headSha: 'a'.repeat(40),
+};
 const REDACTED_MARKER = /\[redacted]/;
 const LEAKED_TOKEN = /ghs_token_value/;
 
@@ -23,6 +29,7 @@ function bundle(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
     verdict: 'accepted',
     verified: true,
     mode: 'fix',
+    trigger: 'feedback',
     source: 'github:acme/app#7',
     runner: { kind: 'container', isolated: true, writable: true, network: 'none' },
     finding: null,

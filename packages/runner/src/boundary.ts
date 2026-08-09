@@ -52,12 +52,20 @@ export interface Runner {
   /** What this boundary is actually allowed to do, recorded in run evidence. */
   describe(): RunnerDescription;
   /** A bounded summary of the checkout for model context. */
-  context(): Promise<string>;
+  context(options?: RepositoryContextOptions): Promise<string>;
+  /** Files in the working-tree or committed pull-request diff under review. */
+  reviewFiles(options?: RepositoryContextOptions): Promise<string[]>;
   read(path: string): Promise<string>;
   exists(path: string): Promise<boolean>;
   write(path: string, content: string): Promise<void>;
   check(command: string, timeoutMs: number): Promise<CheckResult>;
   changedFiles(): Promise<string[]>;
+}
+
+/** Selects a committed pull-request diff instead of the default working-tree diff. */
+export interface RepositoryContextOptions {
+  baseSha?: string;
+  headSha?: string;
 }
 
 export interface BoundaryOptions {
@@ -74,6 +82,7 @@ const DEFAULT_MAX_OUTPUT_BYTES = 200_000;
 const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
+const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -147,16 +156,30 @@ export abstract class RepositoryBoundary implements Runner {
     }
   }
 
-  async context(): Promise<string> {
+  async context(options: RepositoryContextOptions = {}): Promise<string> {
+    const diffRange = contextDiffRange(options);
     const files = await this.git(['ls-files']);
-    const diff = await this.git(['diff', '--no-ext-diff', '--']);
+    const changedFiles = await this.reviewFiles(options);
+    const diff = await this.git(['diff', '--no-ext-diff', ...diffRange, '--']);
     return [
       'FILES',
       truncateTail(files.stdout, MAX_FILE_LIST),
       '',
+      'CHANGED FILES',
+      truncateTail(changedFiles.join('\n'), MAX_FILE_LIST),
+      '',
       'DIFF',
       truncateTail(diff.stdout, MAX_DIFF),
     ].join('\n');
+  }
+
+  async reviewFiles(options: RepositoryContextOptions = {}): Promise<string[]> {
+    const diffRange = contextDiffRange(options);
+    const outcome = await this.git(['diff', '--name-only', ...diffRange, '--']);
+    return outcome.stdout
+      .split('\n')
+      .map((path) => path.trim())
+      .filter((path) => path.length > 0 && isRepositoryRelativePath(path));
   }
 
   async changedFiles(): Promise<string[]> {
@@ -322,6 +345,14 @@ export abstract class RepositoryBoundary implements Runner {
     this.resolvedRoot ??= await realpath(this.root);
     return this.resolvedRoot;
   }
+}
+
+function contextDiffRange(options: RepositoryContextOptions): string[] {
+  const { baseSha, headSha } = options;
+  if (baseSha === undefined && headSha === undefined) return [];
+  if (!baseSha || !headSha || !COMMIT_SHA.test(baseSha) || !COMMIT_SHA.test(headSha))
+    throw new Error('Repository context requires valid base and head commit SHAs');
+  return [`${baseSha}...${headSha}`];
 }
 
 function assertInside(root: string, candidate: string, original: string): void {

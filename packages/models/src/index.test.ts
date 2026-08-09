@@ -19,6 +19,7 @@ const decision: AgentDecision = {
     evidence: ['`return null;`'],
     files: ['src/user.ts'],
   },
+  changeRisk: 'mechanical',
   plan: ['Guard the null return'],
   changes: [{ path: 'src/user.ts', content: 'export const load = () => ({});\n', reason: 'guard' }],
 };
@@ -76,6 +77,15 @@ describe('renderPrompt', () => {
       }),
     );
     expect(prompt).toContain('[review-comment (changes requested) by alice on src/user.ts:2]');
+  });
+
+  it('requests independent diff analysis without inventing feedback for a proactive review', () => {
+    const prompt = renderPrompt(
+      context({ input: { repository: '/checkout', mode: 'observe', trigger: 'proactive' } }),
+    );
+    expect(prompt).toContain('<review-trigger>');
+    expect(prompt).toContain('inspect the supplied pull-request or working-tree diff');
+    expect(prompt).not.toContain('<untrusted-review-feedback>');
   });
 
   it('includes the previous failure only when repairing', () => {
@@ -170,6 +180,7 @@ describe('isAgentDecision', () => {
       { finding: { ...decision.finding, severity: 'catastrophic' }, plan: [], changes: [] },
       { finding: { ...decision.finding, confidence: Number.NaN }, plan: [], changes: [] },
       { finding: decision.finding, plan: [], changes: [{ path: 'a.ts' }] },
+      { ...decision, changeRisk: 'anything-goes' },
     ])
       expect(isAgentDecision(candidate)).toBe(false);
   });

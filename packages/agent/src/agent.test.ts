@@ -11,7 +11,7 @@ import type {
 } from '@agent-zero/shared';
 import { describe, expect, it } from 'vitest';
 
-import { AgentZero } from './agent.js';
+import { AgentZero, classifyChangeRisk } from './agent.js';
 
 const sourceFile = 'export function load() {\n  return null;\n}\n';
 
@@ -19,7 +19,13 @@ function config(overrides: Partial<AgentZeroConfig> = {}): AgentZeroConfig {
   return {
     ...structuredClone(defaultConfig),
     checks: ['pnpm run test'],
-    autofix: { enabled: true, minConfidence: 0.8 },
+    autofix: {
+      ...defaultConfig.autofix,
+      enabled: true,
+      minConfidence: 0.8,
+      allowedChangeRisks: ['mechanical', 'behavioral'],
+      requireIsolated: false,
+    },
     agent: { maxAttempts: 2, timeoutMs: 1_000, maxChangedFiles: 5 },
     ...overrides,
   };
@@ -41,6 +47,7 @@ function finding(overrides: Partial<ModelFinding> = {}): ModelFinding {
 function decision(overrides: Partial<AgentDecision> = {}): AgentDecision {
   return {
     finding: finding(),
+    changeRisk: 'mechanical',
     plan: ['Guard the null return'],
     changes: [
       {
@@ -63,6 +70,7 @@ interface HarnessOptions {
   overrides?: Partial<AgentZeroConfig>;
   runner?: Partial<RunnerDescription>;
   files?: Record<string, string>;
+  reviewFiles?: string[];
   changedFiles?: string[];
   onEvent?: (event: TaskEvent) => void;
   model?: ModelProvider;
@@ -73,6 +81,7 @@ interface Harness {
   writes: { path: string; content: string }[];
   commands: string[];
   modelCalls: ModelContext[];
+  contextCalls: Parameters<Runner['context']>[0][];
 }
 
 function harness(options: HarnessOptions = {}): Harness {
@@ -85,6 +94,7 @@ function harness(options: HarnessOptions = {}): Harness {
   const writes: { path: string; content: string }[] = [];
   const commands: string[] = [];
   const modelCalls: ModelContext[] = [];
+  const contextCalls: Parameters<Runner['context']>[0][] = [];
   const checksPerAttempt = options.checksPerAttempt ?? 1;
   let checkCall = 0;
 
@@ -105,7 +115,11 @@ function harness(options: HarnessOptions = {}): Harness {
 
   const runner: Runner = {
     describe: () => description,
-    context: async () => 'FILES\nsrc/user.ts\n\nDIFF\n',
+    context: async (contextOptions) => {
+      contextCalls.push(contextOptions);
+      return 'FILES\nsrc/user.ts\n\nCHANGED FILES\nsrc/user.ts\n\nDIFF\n';
+    },
+    reviewFiles: async () => options.reviewFiles ?? ['src/user.ts'],
     read: async (path) => {
       const content = files[path];
       if (content === undefined) throw new Error(`missing ${path}`);
@@ -145,6 +159,7 @@ function harness(options: HarnessOptions = {}): Harness {
     writes,
     commands,
     modelCalls,
+    contextCalls,
   };
 }
 
@@ -173,13 +188,64 @@ describe('read-only modes', () => {
 
   it('reports only when repository policy disables autofix', async () => {
     const { agent, writes } = harness({
-      overrides: { autofix: { enabled: false, minConfidence: 0.8 } },
+      overrides: { autofix: { ...defaultConfig.autofix, enabled: false, minConfidence: 0.8 } },
     });
     const result = await run(agent, 'fix');
     expect(result.state).toBe('completed');
     expect(result.verified).toBe(false);
     expect(writes).toEqual([]);
     expect(result.summary).toContain('policy disables automatic fixes');
+  });
+});
+
+describe('proactive review', () => {
+  it('inspects the pull-request base-to-head diff without requiring reviewer feedback', async () => {
+    const { agent, contextCalls, modelCalls, writes } = harness();
+    const result = await agent.run({
+      repository: '/checkout',
+      mode: 'observe',
+      trigger: 'proactive',
+      pullRequest: {
+        owner: 'acme',
+        repo: 'app',
+        number: 7,
+        baseSha: 'b'.repeat(40),
+        headSha: 'a'.repeat(40),
+      },
+    });
+    expect(result.state).toBe('completed');
+    expect(contextCalls).toEqual([{ baseSha: 'b'.repeat(40), headSha: 'a'.repeat(40) }]);
+    expect(modelCalls[0]?.input.trigger).toBe('proactive');
+    expect(writes).toEqual([]);
+  });
+
+  it('requires feedback for a feedback-triggered run', async () => {
+    const { agent } = harness();
+    const result = await agent.run({ repository: '/checkout', mode: 'observe' });
+    expect(result.state).toBe('failed');
+    expect(result.summary).toContain('failed before a verified result');
+  });
+
+  it('rejects a proactive finding that is unrelated to the changed files', async () => {
+    const { agent, writes } = harness({
+      reviewFiles: ['src/changed.ts'],
+      files: {
+        'src/user.ts': sourceFile,
+        'src/changed.ts': 'export const changed = true;\n',
+        'package.json': JSON.stringify({ scripts: { test: 'vitest run' } }),
+        'pnpm-lock.yaml': '',
+      },
+    });
+    const result = await agent.run({
+      repository: '/checkout',
+      mode: 'fix',
+      trigger: 'proactive',
+    });
+    expect(result.verdict).toBe('rejected');
+    expect(result.finding?.rejectionReasons).toContain(
+      'The finding does not cite a file changed by the proactive review diff.',
+    );
+    expect(writes).toEqual([]);
   });
 });
 
@@ -221,7 +287,7 @@ describe('authorization refusals', () => {
   it('stops when confidence is below the autofix threshold', async () => {
     const { agent, writes } = harness({
       decisions: [decision({ finding: finding({ confidence: 0.7 }) })],
-      overrides: { autofix: { enabled: true, minConfidence: 0.9 } },
+      overrides: { autofix: { ...defaultConfig.autofix, enabled: true, minConfidence: 0.9 } },
     });
     const result = await run(agent, 'fix');
     expect(result.state).toBe('needs-human');
@@ -237,6 +303,59 @@ describe('authorization refusals', () => {
     expect(writes).toEqual([]);
   });
 
+  it('always sends a high-impact proposed change for human approval', async () => {
+    const { agent, writes } = harness({
+      decisions: [decision({ changeRisk: 'high-impact' })],
+      overrides: {
+        autofix: {
+          ...defaultConfig.autofix,
+          enabled: true,
+          allowedChangeRisks: ['mechanical', 'behavioral'],
+          requireIsolated: false,
+        },
+      },
+    });
+    const result = await run(agent, 'fix');
+    expect(result.state).toBe('needs-human');
+    expect(result.summary).toContain('high-impact');
+    expect(writes).toEqual([]);
+  });
+
+  it('requires approval when repository policy excludes behavioral autofixes', async () => {
+    const { agent, writes } = harness({
+      decisions: [decision({ changeRisk: 'behavioral' })],
+      overrides: {
+        autofix: {
+          ...defaultConfig.autofix,
+          enabled: true,
+          allowedChangeRisks: ['mechanical'],
+          requireIsolated: false,
+        },
+      },
+    });
+    const result = await run(agent, 'fix');
+    expect(result.state).toBe('needs-human');
+    expect(result.summary).toContain('does not allow behavioral');
+    expect(writes).toEqual([]);
+  });
+
+  it('requires an isolated runner for autonomous fixes when configured', async () => {
+    const { agent, writes } = harness({
+      overrides: {
+        autofix: {
+          ...defaultConfig.autofix,
+          enabled: true,
+          allowedChangeRisks: ['mechanical', 'behavioral'],
+          requireIsolated: true,
+        },
+      },
+    });
+    const result = await run(agent, 'autonomous');
+    expect(result.state).toBe('needs-human');
+    expect(result.summary).toContain('isolated runner');
+    expect(writes).toEqual([]);
+  });
+
   it('refuses to change files it cannot verify', async () => {
     const { agent, writes } = harness({
       overrides: { checks: [] },
@@ -246,6 +365,31 @@ describe('authorization refusals', () => {
     expect(result.state).toBe('needs-human');
     expect(result.summary).toContain('No repository-native checks were found');
     expect(writes).toEqual([]);
+  });
+});
+
+describe('runtime change-risk classification', () => {
+  it('raises executable source changes to behavioral', () => {
+    expect(
+      classifyChangeRisk('mechanical', [
+        { path: 'src/user.ts', content: 'export const user = {};\n', reason: 'fix' },
+      ]),
+    ).toBe('behavioral');
+  });
+
+  it('raises verification and dependency changes to high-impact', () => {
+    for (const path of ['src/user.test.ts', 'package.json', '.github/workflows/ci.yaml'])
+      expect(classifyChangeRisk('mechanical', [{ path, content: '', reason: 'change' }])).toBe(
+        'high-impact',
+      );
+  });
+
+  it('never lowers a conservative model classification', () => {
+    expect(
+      classifyChangeRisk('high-impact', [
+        { path: 'README.md', content: '# Docs\n', reason: 'docs' },
+      ]),
+    ).toBe('high-impact');
   });
 });
 

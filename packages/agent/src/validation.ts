@@ -13,6 +13,11 @@ export interface ValidationOutcome {
   reasons: string[];
 }
 
+export interface ValidationScope {
+  /** At least one cited file must belong to this diff when the field is present. */
+  requiredFiles?: readonly string[];
+}
+
 /** Shortest backtick-quoted span worth checking against the repository. */
 const MINIMUM_QUOTE_LENGTH = 8;
 
@@ -29,6 +34,7 @@ export async function validateFinding(
   finding: ModelFinding,
   policy: ValidationPolicy,
   probe: ValidationProbe,
+  scope: ValidationScope = {},
 ): Promise<ValidationOutcome> {
   const reasons: string[] = [];
 
@@ -46,6 +52,13 @@ export async function validateFinding(
     reasons.push(`Cited paths are not inside the checkout: ${unsafe.join(', ')}.`);
 
   const candidates = finding.files.filter((path) => isRepositoryRelativePath(path));
+  if (scope.requiredFiles) {
+    const required = new Set(scope.requiredFiles.map(normalizePath));
+    if (required.size === 0)
+      reasons.push('The proactive review diff does not contain any files to inspect.');
+    else if (!candidates.some((path) => required.has(normalizePath(path))))
+      reasons.push('The finding does not cite a file changed by the proactive review diff.');
+  }
   const known: string[] = [];
   const missing: string[] = [];
   for (const path of candidates) {
@@ -79,6 +92,12 @@ export async function validateFinding(
     };
 
   return { verdict: 'accepted', reasons: [] };
+}
+
+const LEADING_DOT_SLASH = /^\.\//;
+
+function normalizePath(path: string): string {
+  return path.replaceAll('\\', '/').replace(LEADING_DOT_SLASH, '');
 }
 
 /** Extract backtick-quoted spans long enough to identify real repository content. */

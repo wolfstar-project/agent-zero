@@ -242,8 +242,30 @@ describe('git inspection', () => {
     });
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('FILES');
+    expect(context).toContain('CHANGED FILES');
     expect(context).toContain('DIFF');
-    expect(calls.map((call) => call.args[0])).toEqual(['ls-files', 'diff']);
+    expect(calls.map((call) => call.args[0])).toEqual(['ls-files', 'diff', 'diff']);
+  });
+
+  it('collects a committed pull-request diff from the fixed merge-base range', async () => {
+    const { runner: process, calls } = recordingProcess();
+    const baseSha = 'b'.repeat(40);
+    const headSha = 'a'.repeat(40);
+    await new LocalRunner(root, { process }).context({ baseSha, headSha });
+    const range = `${baseSha}...${headSha}`;
+    expect(calls[1]?.args).toEqual(['diff', '--name-only', range, '--']);
+    expect(calls[2]?.args).toEqual(['diff', '--no-ext-diff', range, '--']);
+  });
+
+  it('rejects untrusted commit references before invoking git', async () => {
+    const { runner: process, calls } = recordingProcess();
+    await expect(
+      new LocalRunner(root, { process }).context({
+        baseSha: 'main; rm -rf .',
+        headSha: 'a'.repeat(40),
+      }),
+    ).rejects.toThrow('valid base and head commit SHAs');
+    expect(calls).toEqual([]);
   });
 
   it('reports the changed-file set and resolves renames to the new path', async () => {

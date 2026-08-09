@@ -9,6 +9,7 @@ export {
   RepositoryBoundary,
   RunnerWriteDeniedError,
   type BoundaryOptions,
+  type RepositoryContextOptions,
   type Runner,
 } from './boundary.js';
 export {

@@ -3,6 +3,7 @@ import type {
   CheckResult,
   Finding,
   ReviewInput,
+  ReviewTrigger,
   RunMode,
   RunnerDescription,
   TaskEvent,
@@ -23,6 +24,7 @@ export interface EvidenceBundle {
   verdict: Verdict;
   verified: boolean;
   mode: RunMode;
+  trigger: ReviewTrigger;
   source: string | null;
   runner: RunnerDescription;
   finding: Finding | null;
@@ -37,7 +39,7 @@ export interface EvidenceBundle {
 /** Build the evidence bundle for a finished run. */
 export function evidenceFromResult(
   result: TaskResult,
-  input: Pick<ReviewInput, 'mode' | 'source'>,
+  input: Pick<ReviewInput, 'mode' | 'source' | 'trigger'>,
 ): EvidenceBundle {
   return {
     taskId: result.id,
@@ -45,6 +47,7 @@ export function evidenceFromResult(
     verdict: result.verdict,
     verified: result.verified,
     mode: input.mode,
+    trigger: input.trigger ?? 'feedback',
     source: input.source ?? null,
     runner: result.runner,
     finding: result.finding,
@@ -86,7 +89,7 @@ export function renderEvidenceMarkdown(
   const clean = (text: string): string => redactSecrets(text, secrets);
 
   const lines: string[] = [
-    `## Agent Zero — feedback ${bundle.verdict}`,
+    `## Agent Zero — ${bundle.trigger === 'proactive' ? 'proactive finding' : 'feedback'} ${bundle.verdict}`,
     '',
     clean(bundle.summary),
     '',
@@ -94,6 +97,7 @@ export function renderEvidenceMarkdown(
     '| --- | --- |',
     `| Task | \`${bundle.taskId}\` |`,
     `| Mode | \`${bundle.mode}\` |`,
+    `| Trigger | \`${bundle.trigger}\` |`,
     `| Terminal state | \`${bundle.state}\` |`,
     `| Verification | ${verificationLabel(bundle)} |`,
     `| Repair attempts | ${String(bundle.attempts)} |`,
@@ -107,7 +111,7 @@ export function renderEvidenceMarkdown(
     lines.push(
       '### Finding',
       '',
-      `**${clean(finding.title)}** — severity \`${finding.severity}\`, model confidence \`${finding.confidence.toFixed(2)}\``,
+      `**${clean(finding.title)}** — severity \`${finding.severity}\`, model confidence \`${finding.confidence.toFixed(2)}\`, change risk \`${finding.changeRisk}\``,
       '',
       clean(truncateHead(finding.explanation, MAX_EXPLANATION)),
       '',

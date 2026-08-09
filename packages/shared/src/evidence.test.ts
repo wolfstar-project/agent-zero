@@ -10,6 +10,7 @@ const result: TaskResult = {
   verified: true,
   finding: {
     id: 'az_test_finding',
+    changeRisk: 'mechanical',
     title: 'Unhandled null dereference',
     explanation: 'The loader returns null but the caller dereferences it.',
     severity: 'high',

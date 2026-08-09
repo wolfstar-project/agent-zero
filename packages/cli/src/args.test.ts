@@ -9,6 +9,7 @@ describe('parseCliArguments', () => {
       feedback: 'check this',
       help: false,
       json: true,
+      proactive: false,
       version: false,
     });
   });
@@ -34,5 +35,18 @@ describe('parseCliArguments', () => {
     expect(() => parseCliArguments(['doctor', '--feedback', 'text'])).toThrow(
       '--feedback is only valid',
     );
+    expect(() => parseCliArguments(['doctor', '--proactive'])).toThrow('--proactive is only valid');
+    expect(() => parseCliArguments(['review', '--proactive', '--feedback', 'text'])).toThrow(
+      'cannot be combined',
+    );
+  });
+
+  it('supports proactive diff review without reviewer feedback', () => {
+    const parsed = parseCliArguments(['review', '--proactive']);
+    expect(parsed).toMatchObject({
+      command: 'review',
+      proactive: true,
+    });
+    expect(parsed.feedback).toBeUndefined();
   });
 });

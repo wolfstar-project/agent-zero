@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultConfig,
   loadConfig,
+  mayAutofixChange,
   mayModifyRepository,
   validateConfig,
   type AgentZeroConfig,
@@ -76,7 +77,9 @@ describe('validateConfig', () => {
 
   it('rejects confidence thresholds outside zero to one', () => {
     expect(() =>
-      validateConfig(config({ autofix: { enabled: true, minConfidence: 1.5 } })),
+      validateConfig(
+        config({ autofix: { ...defaultConfig.autofix, enabled: true, minConfidence: 1.5 } }),
+      ),
     ).toThrow('autofix.minConfidence must be between 0 and 1');
   });
 
@@ -104,7 +107,9 @@ describe('validateConfig', () => {
 
 describe('mayModifyRepository', () => {
   it('never permits writing in a read-only mode', () => {
-    const enabled = config({ autofix: { enabled: true, minConfidence: 0.5 } });
+    const enabled = config({
+      autofix: { ...defaultConfig.autofix, enabled: true, minConfidence: 0.5 },
+    });
     expect(mayModifyRepository(enabled, 'observe')).toBe(false);
     expect(mayModifyRepository(enabled, 'suggest')).toBe(false);
   });
@@ -112,10 +117,30 @@ describe('mayModifyRepository', () => {
   it('requires both a write mode and repository permission', () => {
     expect(mayModifyRepository(config(), 'fix')).toBe(false);
     expect(
-      mayModifyRepository(config({ autofix: { enabled: true, minConfidence: 0.5 } }), 'fix'),
+      mayModifyRepository(
+        config({ autofix: { ...defaultConfig.autofix, enabled: true, minConfidence: 0.5 } }),
+        'fix',
+      ),
     ).toBe(true);
     expect(
-      mayModifyRepository(config({ autofix: { enabled: true, minConfidence: 0.5 } }), 'autonomous'),
+      mayModifyRepository(
+        config({ autofix: { ...defaultConfig.autofix, enabled: true, minConfidence: 0.5 } }),
+        'autonomous',
+      ),
     ).toBe(true);
+  });
+});
+
+describe('mayAutofixChange', () => {
+  it('allows only repository-approved low-impact change classes', () => {
+    const policy = config({
+      autofix: {
+        ...defaultConfig.autofix,
+        allowedChangeRisks: ['mechanical', 'behavioral'],
+      },
+    });
+    expect(mayAutofixChange(policy, 'mechanical')).toBe(true);
+    expect(mayAutofixChange(policy, 'behavioral')).toBe(true);
+    expect(mayAutofixChange(policy, 'high-impact')).toBe(false);
   });
 });
