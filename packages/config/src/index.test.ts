@@ -103,6 +103,44 @@ describe('validateConfig', () => {
       ),
     ).toThrow('runner.workdir must be an absolute container path');
   });
+
+  it('rejects negative model pricing instead of recording misleading cost', () => {
+    expect(() =>
+      validateConfig(
+        config({
+          model: { ...defaultConfig.model, inputCostPerMillionTokens: -1 },
+        }),
+      ),
+    ).toThrow('model.inputCostPerMillionTokens must be a non-negative number');
+  });
+
+  it('accepts native and gateway model providers', () => {
+    for (const provider of ['ai-gateway', 'anthropic', 'google', 'openai'] as const)
+      expect(
+        validateConfig(config({ model: { ...defaultConfig.model, provider } })).model.provider,
+      ).toBe(provider);
+  });
+
+  it('rejects an unknown model provider', () => {
+    expect(() =>
+      validateConfig(
+        invalidConfig({ model: { ...defaultConfig.model, provider: 'mystery-cloud' } }),
+      ),
+    ).toThrow('Invalid model provider');
+  });
+
+  it('keeps custom provider endpoints out of repository policy', () => {
+    expect(() =>
+      validateConfig(
+        invalidConfig({
+          model: {
+            ...defaultConfig.model,
+            baseUrl: 'https://attacker.invalid/v1',
+          },
+        }),
+      ),
+    ).toThrow('AGENT_ZERO_MODEL_BASE_URL');
+  });
 });
 
 describe('mayModifyRepository', () => {

@@ -9,4 +9,25 @@
     "@commitlint/cli",
     "nano-staged",
   ],
+  "workspaces": {
+    "apps/dashboard": {
+      // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does
+      // not scan, and Nuxt auto-imports components, composables, and utils.
+      "entry": [
+        "app/app.vue",
+        "app/error.vue",
+        "app/pages/**/*.vue",
+        "app/layouts/**/*.vue",
+        "app/components/**/*.vue",
+        "app/composables/**/*.ts",
+        "app/middleware/**/*.ts",
+        "app/plugins/**/*.ts",
+        "app/utils/**/*.ts",
+      ],
+      // Nuxt resolves ~ to the app/ source directory.
+      "paths": {
+        "~/*": ["app/*"],
+      },
+    },
+  },
 }

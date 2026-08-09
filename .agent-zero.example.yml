@@ -57,5 +57,11 @@ runner:
   maxOutputBytes: 200000
 
 model:
+  # ai-gateway, anthropic, google, openai, or openai-compatible.
+  # Credentials are read only from the provider's documented environment variable; they are
+  # never accepted from repository configuration or persisted with task evidence.
   provider: openai-compatible
   name: gpt-5
+  # Optional explicit pricing enables deterministic cost accounting.
+  # inputCostPerMillionTokens: 1.25
+  # outputCostPerMillionTokens: 10

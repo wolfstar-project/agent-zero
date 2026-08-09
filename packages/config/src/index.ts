@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ChangeRisk, NetworkPolicy, RunMode } from '@agent-zero/shared';
+import type { ChangeRisk, ModelProviderKind, NetworkPolicy, RunMode } from '@agent-zero/shared';
 import { parse } from 'yaml';
 
 import { assertExecutableCommand } from './checks.js';
@@ -72,7 +72,12 @@ export interface AgentZeroConfig {
   agent: { maxAttempts: number; timeoutMs: number; maxChangedFiles: number };
   permissions: { network: NetworkPolicy };
   runner: RunnerPolicy;
-  model: { provider: 'openai-compatible'; name: string; baseUrl?: string };
+  model: {
+    provider: ModelProviderKind;
+    name: string;
+    inputCostPerMillionTokens?: number;
+    outputCostPerMillionTokens?: number;
+  };
 }
 
 export const defaultConfig: AgentZeroConfig = {
@@ -105,6 +110,13 @@ export const defaultConfig: AgentZeroConfig = {
 
 const runModes = new Set<string>(['observe', 'suggest', 'fix', 'autonomous']);
 const networkPolicies = new Set<string>(['none', 'restricted', 'full']);
+const modelProviders = new Set<string>([
+  'ai-gateway',
+  'anthropic',
+  'google',
+  'openai',
+  'openai-compatible',
+]);
 
 function assertConfig(value: unknown): asserts value is Partial<AgentZeroConfig> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -146,6 +158,14 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
   if (!runModes.has(config.mode)) throw new Error(`Invalid mode: ${config.mode}`);
   if (!networkPolicies.has(config.permissions.network))
     throw new Error(`Invalid network policy: ${config.permissions.network}`);
+  if (!modelProviders.has(config.model.provider))
+    throw new Error(`Invalid model provider: ${config.model.provider}`);
+  if (typeof config.model.name !== 'string' || config.model.name.trim().length === 0)
+    throw new Error('model.name must be a non-empty string');
+  if (Object.hasOwn(config.model, 'baseUrl'))
+    throw new Error(
+      'model.baseUrl is not allowed in repository policy; use AGENT_ZERO_MODEL_BASE_URL',
+    );
 
   if (!Array.isArray(config.checks)) throw new Error('checks must be a list of commands');
   for (const command of config.checks) {
@@ -170,6 +190,14 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
   assertPositiveInteger(config.agent.timeoutMs, 'agent.timeoutMs');
   assertPositiveInteger(config.agent.maxChangedFiles, 'agent.maxChangedFiles');
   assertPositiveInteger(config.runner.maxOutputBytes, 'runner.maxOutputBytes');
+  assertNonNegativeOptional(
+    config.model.inputCostPerMillionTokens,
+    'model.inputCostPerMillionTokens',
+  );
+  assertNonNegativeOptional(
+    config.model.outputCostPerMillionTokens,
+    'model.outputCostPerMillionTokens',
+  );
 
   if (config.runner.isolation !== 'local' && config.runner.isolation !== 'container')
     throw new Error(`Invalid runner isolation: ${String(config.runner.isolation)}`);
@@ -205,6 +233,11 @@ function assertRatio(value: number, name: string): void {
 
 function assertPositiveInteger(value: number, name: string): void {
   if (!Number.isInteger(value) || value < 1) throw new Error(`${name} must be a positive integer`);
+}
+
+function assertNonNegativeOptional(value: number | undefined, name: string): void {
+  if (value !== undefined && (!Number.isFinite(value) || value < 0))
+    throw new Error(`${name} must be a non-negative number`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

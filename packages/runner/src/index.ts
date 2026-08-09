@@ -28,6 +28,16 @@ export {
   type ProcessOutcome,
   type ProcessRunner,
 } from './process.js';
+export {
+  RunnerPool,
+  RunnerPoolQuotaError,
+  type ProvisionedSandbox,
+  type RunnerPoolOptions,
+  type RunnerPoolSnapshot,
+  type SandboxLease,
+  type SandboxProvider,
+  type SandboxRequest,
+} from './sandbox.js';
 
 export interface CreateRunnerOptions extends Omit<BoundaryOptions, 'network'> {
   isolation: 'local' | 'container';

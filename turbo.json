@@ -11,7 +11,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.tsbuildinfo"]
+      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -23,6 +23,11 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
       "outputs": []
     },
     "dev": {

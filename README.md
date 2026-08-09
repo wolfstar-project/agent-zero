@@ -33,10 +33,7 @@ Feedback is never treated as truth merely because it came from a human or an AI 
 ## Architecture
 
 ```text
-GitHub webhook / CLI
-        │
-        ▼
-     Server API ─── task events
+GitHub adapter / CLI
         │
         ▼
    Agent state machine
@@ -46,6 +43,8 @@ GitHub webhook / CLI
         │
         ▼
  Runner boundary ─── repository commands and file operations
+
+Nuxt dashboard ─── frontend-only operational interface
 ```
 
 | Package                                | Responsibility                                                 |
@@ -57,7 +56,7 @@ GitHub webhook / CLI
 | [`packages/config`](./packages/config) | Configuration parsing and policy                               |
 | [`packages/shared`](./packages/shared) | Stable cross-package contracts                                 |
 | [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                     |
-| [`apps/server`](./apps/server)         | oRPC transport and control-plane composition                   |
+| [`apps/dashboard`](./apps/dashboard)   | Frontend-only Nuxt operational dashboard                       |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -97,22 +96,40 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 
 ---
 
-## Control plane
+## Dashboard
 
-The type-safe oRPC API starts on `http://localhost:4040` and exposes `health`, `tasks.list`, `tasks.get`, and `tasks.create`. Call it from a dashboard or another service with `@orpc/client`:
+`aube run dev` starts the frontend-only Nuxt dashboard on `http://localhost:3000`. It is an operational interface shell: it does not expose API or RPC routes, persist task data, import runtime packages, or execute repository work.
 
-```ts
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterClient } from '@orpc/server';
-import type { AppRouter } from '@agent-zero/server/router';
+`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the Playwright smoke suite. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
 
-const zero: RouterClient<AppRouter> = createORPCClient(
-  new RPCLink({ url: 'http://localhost:4040' }),
-);
+Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 
-await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mode: 'observe' });
-await zero.tasks.create({ repository: '.', trigger: 'proactive', mode: 'observe' });
+Agent Zero supports native OpenAI, Anthropic, and Google Generative AI adapters, Vercel AI
+Gateway, and arbitrary OpenAI-compatible endpoints. Select the transport in repository policy and
+provide its credential through the environment:
+
+| `model.provider`    | Credential environment variable                          | Model example                 |
+| ------------------- | -------------------------------------------------------- | ----------------------------- |
+| `ai-gateway`        | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
+| `anthropic`         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
+| `google`            | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
+| `openai`            | `OPENAI_API_KEY`                                         | `gpt-5`                       |
+| `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+
+`AGENT_ZERO_MODEL_BASE_URL` is an optional operator environment variable for custom gateways and
+self-hosted endpoints. Endpoint URLs and credentials cannot be named or embedded in
+`.agent-zero.yml`, so untrusted repository policy cannot redirect a provider secret. The AI Gateway
+accepts `provider/model` identifiers and exposes the broader AI SDK provider catalog without adding
+provider-specific logic to the Agent Zero runtime.
+
+To record cost, configure explicit rates; Agent Zero never guesses provider pricing:
+
+```yaml
+model:
+  provider: openai-compatible
+  name: gpt-5
+  inputCostPerMillionTokens: 1.25
+  outputCostPerMillionTokens: 10
 ```
 
 `observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive/autonomous work) an isolated runner. High-impact changes always require human approval.
@@ -124,7 +141,7 @@ await zero.tasks.create({ repository: '.', trigger: 'proactive', mode: 'observe'
 - **[aube](https://aube.jdx.dev)** &ndash; package manager, pinned through `packageManager`, reusing the pnpm lockfile and workspace files.
 - **[typescript-native-bridge](https://github.com/johnsoncodehk/typescript-native-bridge)** &ndash; overrides `typescript` repo-wide, so `tsc` keeps the classic package surface while the checker runs on tsgo in-process. The override lives in `pnpm-workspace.yaml` and is pinned exactly; the fork only publishes prerelease versions.
 - **[Turborepo](https://turborepo.dev)** &ndash; schedules workspace tasks in dependency order and caches tsdown build outputs.
-- **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). Apps stay ESM-only.
+- **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). The Nuxt dashboard uses the Nuxt build pipeline instead.
 - **[Oxlint](https://oxc.rs) + [Oxfmt](https://oxc.rs)** &ndash; type-aware linting and repository-wide formatting, extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.
 - **[Knip](https://knip.dev)** &ndash; detects unused files, exports, and dependencies across the workspace as part of `lint:ci`.
 - **[`@arethetypeswrong/cli`](https://github.com/arethetypeswrong/arethetypeswrong.github.io) + [Publint](https://publint.dev)** &ndash; validate every package build.
@@ -136,7 +153,7 @@ GitHub Actions run typecheck, build/export validation, Oxlint, Oxfmt, tests, and
 
 ## Security model
 
-The included `LocalRunner` is intended for trusted local development. Production deployments must place it inside Docker, a microVM, or another ephemeral sandbox with CPU, memory, filesystem, and network policies. The server never invokes shell commands directly.
+The included `LocalRunner` is intended for trusted local development. Production deployments must place it inside Docker, a microVM, or another ephemeral sandbox with CPU, memory, filesystem, and network policies. Only `packages/runner` may invoke shell commands.
 
 Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md). Do not open a public issue.
 
@@ -144,7 +161,7 @@ Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md). D
 
 ## Agent Skills
 
-Task-specific Agent Skills live in `.skills/` and are exposed to coding agents through `.agents/skills/`. Skilld manages the versioned tsdown skill, and the same portable layout covers architecture, CLI, oRPC, Turborepo, and safety work:
+Task-specific Agent Skills live in `.skills/` and are exposed to coding agents through `.agents/skills/`. Skilld manages the versioned tsdown skill, and the same portable layout covers architecture, CLI, Turborepo, and safety work:
 
 ```bash
 aube run skills:list

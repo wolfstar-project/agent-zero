@@ -26,6 +26,15 @@ const result: TaskResult = {
   changedFiles: ['src/user.ts'],
   attempts: 1,
   events: [{ state: 'completed', message: 'All configured checks passed', timestamp: 'T0' }],
+  usage: {
+    modelCalls: 1,
+    inputTokens: 100,
+    outputTokens: 25,
+    totalTokens: 125,
+    latencyMs: 400,
+    costUsd: 0.001,
+    models: { 'gpt-5': 1 },
+  },
   runner: { kind: 'container', isolated: true, writable: true, network: 'none' },
   summary: 'Fixed and verified: Unhandled null dereference',
 };

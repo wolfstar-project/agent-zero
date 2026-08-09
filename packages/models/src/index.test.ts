@@ -2,7 +2,11 @@ import type { AgentDecision, ReviewInput } from '@agent-zero/shared';
 import { describe, expect, it } from 'vitest';
 
 import {
+  AISdkModelProvider,
+  isModelConfigured,
   isAgentDecision,
+  modelCredentialEnvironmentVariables,
+  modelFromEnvironment,
   OpenAICompatibleProvider,
   renderPrompt,
   UnconfiguredModelProvider,
@@ -43,8 +47,14 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-function chatResponse(content: string): Response {
-  return jsonResponse({ choices: [{ message: { content }, finish_reason: 'stop' }] });
+function chatResponse(
+  content: string,
+  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number },
+): Response {
+  return jsonResponse({
+    choices: [{ message: { content }, finish_reason: 'stop' }],
+    ...(usage ? { usage } : {}),
+  });
 }
 
 describe('renderPrompt', () => {
@@ -110,7 +120,17 @@ describe('OpenAICompatibleProvider', () => {
       model: 'gpt-5',
       fetch: async () => chatResponse(JSON.stringify(decision)),
     });
-    await expect(provider.decide(context())).resolves.toEqual(decision);
+    await expect(provider.decide(context())).resolves.toMatchObject({
+      ...decision,
+      usage: {
+        provider: 'openai-compatible',
+        model: 'gpt-5',
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        costUsd: 0,
+      },
+    });
   });
 
   it('sends the key as a bearer header and nothing else', async () => {
@@ -127,6 +147,29 @@ describe('OpenAICompatibleProvider', () => {
     await provider.decide(context());
     expect(seen?.body).not.toContain('test-key-value');
     expect(seen?.signal).toBeDefined();
+  });
+
+  it('records provider usage and computes cost only from configured rates', async () => {
+    const provider = new OpenAICompatibleProvider({
+      apiKey: 'test-key-value',
+      model: 'gpt-5',
+      inputCostPerMillionTokens: 2,
+      outputCostPerMillionTokens: 10,
+      fetch: async () =>
+        chatResponse(JSON.stringify(decision), {
+          prompt_tokens: 1_000,
+          completion_tokens: 500,
+          total_tokens: 1_500,
+        }),
+    });
+    await expect(provider.decide(context())).resolves.toMatchObject({
+      usage: {
+        inputTokens: 1_000,
+        outputTokens: 500,
+        totalTokens: 1_500,
+        costUsd: 0.007,
+      },
+    });
   });
 
   it('rejects output that does not match the decision contract', async () => {
@@ -164,6 +207,54 @@ describe('UnconfiguredModelProvider', () => {
     expect(result.finding.valid).toBe(false);
     expect(result.finding.confidence).toBe(0);
     expect(result.changes).toEqual([]);
+  });
+});
+
+describe('modelFromEnvironment', () => {
+  it('selects each native provider with its dedicated credential', () => {
+    const cases = [
+      ['ai-gateway', 'AI_GATEWAY_API_KEY'],
+      ['anthropic', 'ANTHROPIC_API_KEY'],
+      ['google', 'GOOGLE_GENERATIVE_AI_API_KEY'],
+      ['openai', 'OPENAI_API_KEY'],
+      ['openai-compatible', 'OPENAI_COMPATIBLE_API_KEY'],
+    ] as const;
+
+    for (const [provider, key] of cases) {
+      const configured = modelFromEnvironment(
+        { provider, name: 'test-model' },
+        { [key]: 'test-key-value' },
+      );
+      expect(configured).toBeInstanceOf(AISdkModelProvider);
+      expect(configured).toMatchObject({ provider, model: 'test-model' });
+    }
+  });
+
+  it('preserves OPENAI_API_KEY compatibility for openai-compatible endpoints', () => {
+    expect(
+      modelFromEnvironment(
+        { provider: 'openai-compatible', name: 'legacy-model' },
+        { OPENAI_API_KEY: 'legacy-key-value' },
+      ),
+    ).toMatchObject({ provider: 'openai-compatible', model: 'legacy-model' });
+  });
+
+  it('stays unconfigured when the selected provider credential is absent', () => {
+    expect(modelFromEnvironment({ provider: 'anthropic', name: 'claude-test' }, {})).toBeInstanceOf(
+      UnconfiguredModelProvider,
+    );
+    expect(isModelConfigured('anthropic', {})).toBe(false);
+  });
+
+  it('documents every accepted credential source', () => {
+    expect(modelCredentialEnvironmentVariables('ai-gateway')).toEqual([
+      'AI_GATEWAY_API_KEY',
+      'VERCEL_OIDC_TOKEN',
+    ]);
+    expect(modelCredentialEnvironmentVariables('openai-compatible')).toEqual([
+      'OPENAI_COMPATIBLE_API_KEY',
+      'OPENAI_API_KEY',
+    ]);
   });
 });
 

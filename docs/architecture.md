@@ -4,10 +4,12 @@ Agent Zero is organized as a dependency-directed monorepo. The core decides what
 
 ```text
 GitHub adapter ─┐
-CLI adapter ────┼──> agent runtime ──> runner boundary ──> isolated checkout
-oRPC server ────┘         │
-                          ├──> model abstraction ──> provider
-                          └──> shared contracts
+CLI adapter ────┴──> agent runtime ──> runner boundary ──> isolated checkout
+                         │
+                         ├──> model abstraction ──> provider
+                         └──> shared contracts
+
+Nuxt dashboard ───> frontend-only operational interface
 ```
 
 ## Dependency direction
@@ -15,13 +17,14 @@ oRPC server ────┘         │
 - `shared` contains stable data contracts and must not import feature packages.
 - `config`, `models`, `github`, and `runner` implement focused capabilities around shared contracts.
 - `agent` composes policies and state transitions without knowing HTTP or terminal details.
-- `cli` and `apps/server` are entry-point adapters. They may depend on the runtime, but the runtime must not depend on them.
+- `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
+- `apps/dashboard` is a frontend-only Nuxt interface and does not import runtime packages.
 
 If a change creates a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime.
 
 ## Execution boundary
 
-Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A server handler, GitHub adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
+Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A transport handler, GitHub adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
 
 `observe` is the default mode. It can inspect and report but cannot write. Enabling `fix` requires both an explicit mode and repository policy permission.
 
@@ -30,6 +33,14 @@ Only `packages/runner` may execute commands or mutate a target repository at run
 Git inspection runs in the trusting process because its argv is fixed by the runner package. Repository-supplied commands are the untrusted ones, and those are what isolation moves into a sandbox.
 
 `createRunner` and `runnerOptionsFromPolicy` are the only mapping from policy to a concrete boundary. `runnerOptionsFromPolicy` declares the policy fields it needs structurally, so the runner does not depend on the configuration package. Composition roots call both; nothing else constructs a runner.
+
+Hosted sandboxes follow the same rule. `RunnerPool` lives in `packages/runner`, accepts credential-free `SandboxRequest` values, enforces global/repository quotas and lease ceilings before provisioning, and returns only a `Runner`. Provider credentials are constructor state of a vendor adapter and never enter a request, lease snapshot, agent state, or log. A composition root may schedule and release a lease, but it cannot execute a command itself.
+
+Model transports follow the same adapter rule. `packages/models` owns the AI SDK integrations for OpenAI, Anthropic, Google, AI Gateway, and OpenAI-compatible endpoints behind one `ModelProvider` contract. Composition roots pass the validated provider policy; credentials come only from fixed provider-specific environment variables, and a custom endpoint can only come from the operator-owned `AGENT_ZERO_MODEL_BASE_URL` environment variable. The agent runtime sees neither SDK objects nor credentials, and all adapters share one structured-output, usage-accounting, timeout, and error-redaction path.
+
+## Dashboard boundary
+
+`apps/dashboard` owns presentation only. It has no custom Nitro server routes, RPC contracts, persistence adapters, scheduler, runtime-package dependencies, shell capability, or target-filesystem capability. Any future live data source must be implemented as a separate adapter with an explicit contract rather than composed into the dashboard.
 
 ## State transitions
 
@@ -71,4 +82,4 @@ Validation lives in `packages/agent/src/validation.ts` and is independent of any
 2. Add the capability to the narrowest package.
 3. Keep external SDK types behind the relevant adapter.
 4. Add deterministic unit tests, including failure and policy cases.
-5. Expose it through CLI or oRPC only after the runtime contract is stable.
+5. Expose it through the CLI or a dedicated transport adapter only after the runtime contract is stable.

@@ -1,0 +1,107 @@
+<script setup lang="ts">
+import type { DashboardOverview } from '~/types/dashboard';
+
+const emptyOverview = (): DashboardOverview => ({
+  tasks: [],
+  active: 0,
+  queued: 0,
+  awaitingApproval: 0,
+  totalTokens: 0,
+  costUsd: 0,
+});
+
+const overview = ref<DashboardOverview>(emptyOverview());
+const selectedId = ref<string>();
+const now = ref(new Date());
+
+const selectedTask = computed(() =>
+  overview.value.tasks.find((task) => task.id === selectedId.value),
+);
+
+watch(
+  () => overview.value.tasks,
+  (tasks) => {
+    if (tasks.length === 0) selectedId.value = undefined;
+    else if (!tasks.some((task) => task.id === selectedId.value)) selectedId.value = tasks[0]?.id;
+  },
+  { immediate: true },
+);
+
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  clockTimer = setInterval(() => {
+    now.value = new Date();
+  }, 1_000);
+});
+
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer);
+});
+
+function refreshDashboard(): void {
+  overview.value = emptyOverview();
+  selectedId.value = undefined;
+  now.value = new Date();
+}
+</script>
+
+<template>
+  <header
+    class="h-16 flex items-center justify-between border-b border-line bg-canvas/92 px-4 backdrop-blur md:px-6"
+  >
+    <div>
+      <p class="m-0 text-3xs text-muted font-700 tracking-[0.18em] uppercase">
+        Agent Zero / Operations
+      </p>
+      <h1 class="m-0 mt-1 text-lg font-650 tracking-tight">Dashboard</h1>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden text-end sm:block">
+        <p class="m-0 az-mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
+        <p class="m-0 mt-0.5 text-3xs text-accent font-700 tracking-wider uppercase">
+          Local interface
+        </p>
+      </div>
+      <ClientOnly>
+        <ColorModeToggle />
+        <template #fallback>
+          <span class="h-9 w-9 border border-line bg-raised" aria-hidden="true" />
+        </template>
+      </ClientOnly>
+      <button
+        class="az-focus h-9 flex items-center gap-2 border border-line bg-raised px-3 text-xs text-ink font-650 transition hover:border-muted disabled:cursor-wait disabled:opacity-60"
+        type="button"
+        @click="refreshDashboard"
+      >
+        <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+          <path d="M20 7v5h-5M4 17v-5h5" stroke="currentColor" stroke-width="1.8" />
+          <path
+            d="M18.2 9A7 7 0 0 0 6.1 6.6L4 9m2 6a7 7 0 0 0 12.1 2.4L20 15"
+            stroke="currentColor"
+            stroke-width="1.8"
+          />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div class="p-3 sm:p-4 md:p-5">
+    <RunnerMetrics :overview="overview" />
+
+    <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div class="min-w-0 space-y-4">
+        <TaskTable
+          :tasks="overview.tasks"
+          :selected-id="selectedId"
+          @select="selectedId = $event"
+        />
+        <TaskTimeline :task="selectedTask" />
+      </div>
+
+      <TaskInspector :task="selectedTask" />
+    </section>
+  </div>
+</template>

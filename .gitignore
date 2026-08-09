@@ -2,14 +2,16 @@ node_modules/
 .turbo/
 dist/
 .output/
+.nuxt/
 *.tsbuildinfo
 coverage/
+playwright-report/
+test-results/
+test-report.junit.xml
 .env
 .env.*
 !.env.example
 .agent-zero/
+.data/
 *.log
 .DS_Store
-
-# Nitro build output
-.output/

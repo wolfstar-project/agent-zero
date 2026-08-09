@@ -9,7 +9,7 @@ import {
   loadConfig,
   mayModifyRepository,
 } from '@agent-zero/config';
-import { modelFromEnvironment } from '@agent-zero/models';
+import { isModelConfigured, modelFromEnvironment } from '@agent-zero/models';
 import { createRunner, LocalRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
 import {
   evidenceFromResult,
@@ -119,7 +119,8 @@ async function runDoctor(asJson: boolean): Promise<void> {
   const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
-    modelConfigured: Boolean(process.env.OPENAI_API_KEY),
+    modelConfigured: isModelConfigured(config.model.provider),
+    modelProvider: config.model.provider,
     mode: config.mode,
     isolation: config.runner.isolation,
     network: config.permissions.network,
@@ -135,6 +136,7 @@ async function runDoctor(asJson: boolean): Promise<void> {
   p.log.info(`Node ${status.node}`);
   logCheck('Git repository', status.gitRepository);
   logCheck('Model configured', status.modelConfigured);
+  p.log.info(`Model provider: ${status.modelProvider}`);
   logCheck(
     `Isolated runner (${status.isolation}, network ${status.network})`,
     status.isolation === 'container',
@@ -173,7 +175,7 @@ async function runAgent(
   );
 
   const agent = new AgentZero({
-    model: modelFromEnvironment(config.model.name, config.model.baseUrl),
+    model: modelFromEnvironment(config.model),
     runner,
     config,
     onEvent: (event) => {
