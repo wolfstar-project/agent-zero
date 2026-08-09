@@ -74,7 +74,9 @@ describe('assertExecutableCommand', () => {
     expect(() => assertExecutableCommand('oxlint src/**/*.ts --deny-warnings')).not.toThrow();
   });
 
-  it('rejects chaining, redirection, substitution, and empty commands', () => {
+  it('rejects only empty commands and defers shell syntax to the runner', () => {
+    // Shell semantics are owned by packages/runner, where ViteHub Shell analyzes every command
+    // immediately before execution; configuration only enforces that a command exists at all.
     for (const command of [
       'pnpm test && pnpm build',
       'pnpm test; rm -rf .',
@@ -83,7 +85,7 @@ describe('assertExecutableCommand', () => {
       'echo $(whoami)',
       'echo `whoami`',
     ])
-      expect(() => assertExecutableCommand(command)).toThrow('must not contain shell operators');
+      expect(() => assertExecutableCommand(command)).not.toThrow();
     expect(() => assertExecutableCommand('   ')).toThrow('must not be empty');
   });
 });

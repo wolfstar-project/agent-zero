@@ -46,10 +46,14 @@ describe('loadConfig', () => {
     expect(loaded.validation.requireEvidence).toBe(true);
   });
 
-  it('rejects a check command that would need a shell', async () => {
-    await expect(withConfig('version: 1\nchecks:\n  - pnpm test && pnpm build\n')).rejects.toThrow(
-      'must not contain shell operators',
+  it('rejects an empty check command and defers shell syntax to the runner', async () => {
+    // The runner boundary rejects shell expressions at execution time via ViteHub Shell analysis;
+    // configuration loading only refuses commands that are empty.
+    await expect(withConfig('version: 1\nchecks:\n  - "   "\n')).rejects.toThrow(
+      'must not be empty',
     );
+    const loaded = await withConfig('version: 1\nchecks:\n  - pnpm test && pnpm build\n');
+    expect(loaded.checks).toEqual(['pnpm test && pnpm build']);
   });
 
   it('rejects container isolation without an image', async () => {
