@@ -99,15 +99,4 @@ pnpm check:repo
 
 `llms.txt`, `.github/copilot-instructions.md`, and `docs/architecture.md` provide concise entry points for coding agents without replacing the human contributor guide.
 
-## Roadmap
-
-Agent Zero is being developed incrementally around the **find, fix, and verify** loop. The current milestones are:
-
-- **v0.1:** resolve GitHub review feedback with evidence
-- **v0.2:** proactive PR review and confidence-gated autofix
-- **v0.3:** control plane, task history, cost tracking, dashboard, and runner pools
-- **v0.4:** bounded issue-to-PR autonomous workflows
-
-See the [full project roadmap](./ROADMAP.md) for milestone goals, planned capabilities, longer-term directions, and explicit non-goals. Roadmap-level progress and changes are tracked in the roadmap tracking issue, [#5](https://github.com/wolfstar-project/agent-zero/issues/5).
-
 Apache-2.0 © WolfStar Project.
