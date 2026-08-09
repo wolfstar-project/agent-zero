@@ -99,11 +99,4 @@ pnpm check:repo
 
 `llms.txt`, `.github/copilot-instructions.md`, and `docs/architecture.md` provide concise entry points for coding agents without replacing the human contributor guide.
 
-## Roadmap
-
-- v0.1: resolve GitHub review feedback with evidence
-- v0.2: proactive PR review and confidence-gated autofix
-- v0.3: dashboard, task history, cost tracking, and runner pools
-- v0.4: issue-to-PR autonomous workflows
-
 Apache-2.0 © WolfStar Project.
