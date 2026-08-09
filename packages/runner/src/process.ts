@@ -2,7 +2,15 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { analyzeShellCommand } from '@vite-hub/shell';
-import { anyOf, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
+import {
+  anyOf,
+  charIn,
+  charNotIn,
+  createRegExp,
+  exactly,
+  global,
+  oneOrMore,
+} from 'magic-regexp';
 
 const execFileAsync = promisify(execFile);
 
@@ -77,6 +85,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const SHELL_OPERATORS = createRegExp(charIn(';&|<>`$(){}\n\r'));
 const commandPart = anyOf(
   oneOrMore(charNotIn(' \t\n\r\f\v"\'')),
   exactly('"').and(charNotIn('"').times.any()).and('"'),
@@ -85,24 +94,34 @@ const commandPart = anyOf(
 const COMMAND_PARTS = createRegExp(commandPart, [global]);
 
 /**
- * Analyze a configured command with ViteHub Shell before Agent Zero tokenizes or executes it.
+ * Convert a repository-provided verification command into the argv that a runner may execute.
  *
- * ViteHub owns shell syntax analysis. Agent Zero deliberately keeps execution argv-based and
- * shell-free, so only syntax ViteHub can parse is accepted here. The repository boundary separately
- * enforces the narrower Agent Zero invariant that verification commands cannot contain shell
- * operators before the argv is executed with `shell: false`.
+ * This is the single command preflight path for every runner. ViteHub Shell parses the command and
+ * rejects malformed shell syntax; Agent Zero then applies its deliberately narrower argv-only
+ * policy and refuses shell operators because execution always uses `shell: false`.
  */
-export async function assertSimpleCommand(command: string): Promise<void> {
+export async function commandArgv(command: string): Promise<[string, string[]]> {
+  if (SHELL_OPERATORS.test(command))
+    throw new CommandRejectedError(command, 'commands run without a shell');
+
   const analysis = await analyzeShellCommand(command, { maxInputBytes: 16_384, timeoutMs: 1_000 });
   if (!analysis.ok)
     throw new CommandRejectedError(command, 'ViteHub Shell could not analyze the command');
+
+  const [program, ...args] = splitCommand(command);
+  if (!program) throw new CommandRejectedError(command, 'no program to execute');
+  return [program, args];
+}
+
+/** Parse command syntax with ViteHub without converting it to argv. */
+export async function assertSimpleCommand(command: string): Promise<void> {
+  await commandArgv(command);
 }
 
 /**
- * Split an already-analyzed simple command into an argv array.
+ * Tokenize a command only after ViteHub Shell and Agent Zero policy have accepted its syntax.
  *
- * `magic-regexp` is used only for lightweight token extraction after ViteHub Shell has accepted the
- * command syntax; it is not a second shell parser or policy engine.
+ * `magic-regexp` handles the small argv extraction surface; it is not used as a second shell parser.
  */
 export function splitCommand(command: string): string[] {
   const parts = command.match(COMMAND_PARTS) ?? [];
