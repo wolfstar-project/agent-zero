@@ -1,0 +1,6 @@
+# Privileged PR automation is intentionally isolated to this workflow:
+# it does not checkout pull request head code, and it only reads PR metadata and sets status.
+rules:
+  dangerous-triggers:
+    ignore:
+      - semantic-pull-requests.yml
