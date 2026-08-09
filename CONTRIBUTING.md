@@ -41,7 +41,7 @@ aube test
 | Configuration and policy         | `packages/config` |
 | Shared contracts                 | `packages/shared` |
 | CLI parsing and presentation     | `packages/cli`    |
-| HTTP control-plane composition   | `apps/server`     |
+| Dashboard frontend               | `apps/dashboard`  |
 
 Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before making architectural or safety-sensitive changes.
 

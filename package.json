@@ -19,6 +19,7 @@
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
     "test": "turbo run test --concurrency=1",
+    "test:e2e": "turbo run test:e2e",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck",
     "zero": "node --import tsx packages/cli/src/index.ts"

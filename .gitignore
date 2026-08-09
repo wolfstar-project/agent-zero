@@ -5,6 +5,9 @@ dist/
 .nuxt/
 *.tsbuildinfo
 coverage/
+playwright-report/
+test-results/
+test-report.junit.xml
 .env
 .env.*
 !.env.example

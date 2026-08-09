@@ -8,6 +8,6 @@
     { "path": "packages/github" },
     { "path": "packages/agent" },
     { "path": "packages/cli" },
-    { "path": "apps/server" }
+    { "path": "apps/dashboard" }
   ]
 }

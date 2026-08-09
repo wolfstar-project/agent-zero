@@ -32,7 +32,7 @@ body:
         - Agent runtime
         - Runner
         - CLI
-        - oRPC server
+        - Dashboard
         - GitHub adapter
         - Model provider
         - Developer experience

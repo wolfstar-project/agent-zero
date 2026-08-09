@@ -31,7 +31,7 @@ body:
         - Agent runtime
         - Runner
         - CLI
-        - oRPC server
+        - Dashboard
         - GitHub adapter
         - Configuration
         - Build or CI

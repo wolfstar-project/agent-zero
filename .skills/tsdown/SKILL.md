@@ -10,7 +10,7 @@ Use this skill when changing build entries, output formats, declarations, packag
 ## Repository rules
 
 - The base configuration is `scripts/tsdown.config.ts`.
-- Every package or app keeps a small `tsdown.config.ts` that imports the shared factory.
+- Every workspace built with tsdown keeps a small `tsdown.config.ts` that imports the shared factory. The Nuxt dashboard uses the Nuxt build pipeline and does not keep a tsdown config.
 - Publishable packages output ESM and CommonJS with declarations and source maps.
 - Apps and the CLI output ESM executables without publishable-library declarations unless explicitly needed.
 - Publishable package builds must keep `publint` and `attw` validation enabled.

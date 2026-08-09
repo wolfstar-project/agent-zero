@@ -33,10 +33,7 @@ Feedback is never treated as truth merely because it came from a human or an AI 
 ## Architecture
 
 ```text
-GitHub webhook / CLI
-        │
-        ▼
- Nitro + oRPC control plane ─── durable task events / approvals
+GitHub adapter / CLI
         │
         ▼
    Agent state machine
@@ -46,6 +43,8 @@ GitHub webhook / CLI
         │
         ▼
  Runner boundary ─── repository commands and file operations
+
+Nuxt dashboard ─── frontend-only operational interface
 ```
 
 | Package                                | Responsibility                                                 |
@@ -57,7 +56,7 @@ GitHub webhook / CLI
 | [`packages/config`](./packages/config) | Configuration parsing and policy                               |
 | [`packages/shared`](./packages/shared) | Stable cross-package contracts                                 |
 | [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                     |
-| [`apps/server`](./apps/server)         | oRPC transport and control-plane composition                   |
+| [`apps/dashboard`](./apps/dashboard)   | Frontend-only Nuxt operational dashboard                       |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -97,29 +96,13 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 
 ---
 
-## Control plane
+## Dashboard
 
-`aube run dev` starts the Nuxt control plane, backed by Nitro, on `http://localhost:3000`. The operational dashboard is served at `/`; the type-safe oRPC endpoint at `/rpc` exposes `health`, `tasks.list`, `tasks.get`, `tasks.create`, and `approvals.decide`.
+`aube run dev` starts the frontend-only Nuxt dashboard on `http://localhost:3000`. It is an operational interface shell: it does not expose API or RPC routes, persist task data, import runtime packages, or execute repository work.
 
-Task history, structured lifecycle events, evidence, model/token/latency/cost usage, and approval decisions are stored through Nitro storage. The development mount uses `.data/agent-zero`; production deployments can replace it with Redis or provider KV without changing task logic. Checkout paths, review input, provider credentials, and raw provider responses are not persisted, and all persisted strings are redacted before storage.
+`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the Playwright smoke suite. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
 
-Call the API from another service with `@orpc/client`:
-
-```ts
-import { createORPCClient } from '@orpc/client';
-import { RPCLink } from '@orpc/client/fetch';
-import type { RouterClient } from '@orpc/server';
-import type { RpcRouter } from '@agent-zero/server';
-
-const zero: RouterClient<RpcRouter> = createORPCClient(
-  new RPCLink({ url: 'http://localhost:3000/rpc' }),
-);
-
-await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mode: 'observe' });
-await zero.tasks.create({ repository: '.', trigger: 'proactive', mode: 'observe' });
-```
-
-The scheduler admits at most four tasks globally, one active task per repository, and 100 queued tasks by default. Hosted execution is injected as a provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
+Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 
 Agent Zero supports native OpenAI, Anthropic, and Google Generative AI adapters, Vercel AI
 Gateway, and arbitrary OpenAI-compatible endpoints. Select the transport in repository policy and
@@ -158,7 +141,7 @@ model:
 - **[aube](https://aube.jdx.dev)** &ndash; package manager, pinned through `packageManager`, reusing the pnpm lockfile and workspace files.
 - **[typescript-native-bridge](https://github.com/johnsoncodehk/typescript-native-bridge)** &ndash; overrides `typescript` repo-wide, so `tsc` keeps the classic package surface while the checker runs on tsgo in-process. The override lives in `pnpm-workspace.yaml` and is pinned exactly; the fork only publishes prerelease versions.
 - **[Turborepo](https://turborepo.dev)** &ndash; schedules workspace tasks in dependency order and caches tsdown build outputs.
-- **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). Apps stay ESM-only.
+- **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). The Nuxt dashboard uses the Nuxt build pipeline instead.
 - **[Oxlint](https://oxc.rs) + [Oxfmt](https://oxc.rs)** &ndash; type-aware linting and repository-wide formatting, extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.
 - **[Knip](https://knip.dev)** &ndash; detects unused files, exports, and dependencies across the workspace as part of `lint:ci`.
 - **[`@arethetypeswrong/cli`](https://github.com/arethetypeswrong/arethetypeswrong.github.io) + [Publint](https://publint.dev)** &ndash; validate every package build.
@@ -170,7 +153,7 @@ GitHub Actions run typecheck, build/export validation, Oxlint, Oxfmt, tests, and
 
 ## Security model
 
-The included `LocalRunner` is intended for trusted local development. Production deployments must place it inside Docker, a microVM, or another ephemeral sandbox with CPU, memory, filesystem, and network policies. The server never invokes shell commands directly.
+The included `LocalRunner` is intended for trusted local development. Production deployments must place it inside Docker, a microVM, or another ephemeral sandbox with CPU, memory, filesystem, and network policies. Only `packages/runner` may invoke shell commands.
 
 Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md). Do not open a public issue.
 
@@ -178,7 +161,7 @@ Report vulnerabilities privately as described in [SECURITY.md](./SECURITY.md). D
 
 ## Agent Skills
 
-Task-specific Agent Skills live in `.skills/` and are exposed to coding agents through `.agents/skills/`. Skilld manages the versioned tsdown skill, and the same portable layout covers architecture, CLI, oRPC, Turborepo, and safety work:
+Task-specific Agent Skills live in `.skills/` and are exposed to coding agents through `.agents/skills/`. Skilld manages the versioned tsdown skill, and the same portable layout covers architecture, CLI, Turborepo, and safety work:
 
 ```bash
 aube run skills:list

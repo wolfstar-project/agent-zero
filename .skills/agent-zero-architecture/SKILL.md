@@ -16,7 +16,7 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
-- `apps/server`: composition root for webhook ingestion, task execution, and evidence publication.
+- `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
 
 ## Workflow
 
@@ -30,7 +30,7 @@ Keep dependency direction explicit while changing the monorepo.
 
 ## Reject these designs
 
-- Shell execution in the server, CLI presentation, GitHub adapter, model adapter, or agent state machine.
+- Shell execution in a transport adapter, CLI presentation, GitHub adapter, model adapter, or agent state machine.
 - HTTP request/response types inside the runtime.
 - GitHub SDK objects passed through shared contracts.
 - A generic `utils` package used to bypass ownership decisions.
