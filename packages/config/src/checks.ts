@@ -44,9 +44,7 @@ export const knownLockfiles: readonly string[] = lockfileManagers.map(([lockfile
  * and stops untrusted repository content from smuggling operators into a command line. Glob
  * characters are allowed because tools that accept patterns expand them themselves.
  */
-const SHELL_METACHARACTERS = createRegExp(
-  anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn),
-);
+const SHELL_METACHARACTERS = createRegExp(anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn));
 
 /** Script names Agent Zero is willing to invoke. Anything else is untrusted repository content. */
 const SAFE_SCRIPT_NAME = createRegExp(

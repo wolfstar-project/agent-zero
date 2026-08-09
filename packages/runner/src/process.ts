@@ -81,7 +81,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const commandPart = anyOf(
-  oneOrMore(charNotIn(" \t\n\r\f\v\"'")),
+  oneOrMore(charNotIn(' \t\n\r\f\v"\'')),
   exactly('"').and(charNotIn('"').times.any()).and('"'),
   exactly("'").and(charNotIn("'").times.any()).and("'"),
 );
