@@ -1,6 +1,7 @@
 import type { CheckResult, RunnerDescription } from '@agent-zero/shared';
 
 import { RepositoryBoundary, type BoundaryOptions } from './boundary.js';
+import { assertSimpleCommand } from './process.js';
 
 /** Container engines the isolated runner knows how to drive. */
 export type ContainerEngine = 'docker' | 'podman';
@@ -8,29 +9,21 @@ export type ContainerEngine = 'docker' | 'podman';
 export interface ContainerOptions extends BoundaryOptions {
   engine: ContainerEngine;
   image: string;
-  /** Mount point of the checkout inside the container. */
   workdir: string;
   cpus?: string;
   memory?: string;
-  /** Pre-provisioned network used for the `restricted` egress policy. */
   networkName?: string;
-  /** Container user, for example `1000:1000`, so writes keep host ownership. */
   user?: string;
 }
 
-/** Network name used for `restricted` egress when the deployment does not name one. */
 export const DEFAULT_RESTRICTED_NETWORK = 'agent-zero';
 
 /**
- * Runs repository commands inside an ephemeral container.
+ * Compatibility isolation adapter for self-hosted Docker/Podman deployments.
  *
- * This is the production boundary. Repository-supplied commands are the untrusted part of a run, so
- * they execute in a container that is removed afterwards, drops all capabilities, cannot gain new
- * privileges, and receives the configured egress policy. No environment variables are forwarded, so
- * host credentials are not reachable from a check command.
- *
- * The checkout is bind-mounted, and file inspection still happens through the validated boundary in
- * the host process. Isolation is applied where arbitrary repository code runs.
+ * ViteHub Shell owns command analysis before this adapter receives argv. Hosted production should
+ * prefer ViteHub Sandbox/Workspace providers; this adapter remains for installations that already
+ * operate their own container engine.
  */
 export class ContainerRunner extends RepositoryBoundary {
   private readonly container: ContainerOptions;
@@ -50,6 +43,7 @@ export class ContainerRunner extends RepositoryBoundary {
   }
 
   async check(command: string, timeoutMs: number): Promise<CheckResult> {
+    await assertSimpleCommand(command);
     const [program, args] = this.toArgv(command);
     const started = Date.now();
     const outcome = await this.process(
@@ -60,7 +54,6 @@ export class ContainerRunner extends RepositoryBoundary {
     return this.toCheckResult(command, outcome, Date.now() - started);
   }
 
-  /** The engine arguments that make a run ephemeral, bounded, and isolated. */
   engineArguments(): string[] {
     const { workdir } = this.container;
     const args = [
