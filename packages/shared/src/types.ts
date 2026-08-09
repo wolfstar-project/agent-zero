@@ -161,9 +161,13 @@ export function allChecksPassed(checks: readonly CheckResult[]): boolean {
  * a cheap pre-check for untrusted model and reviewer input; the runner still enforces the
  * boundary before touching the filesystem.
  */
+const WINDOWS_DRIVE_PREFIX = /^[A-Za-z]:[/\\]/;
+const PATH_SEPARATORS = /[/\\]/;
+
 export function isRepositoryRelativePath(path: string): boolean {
   if (path.length === 0 || path.includes('\0')) return false;
-  if (path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:[/\\]/.test(path)) return false;
-  const segments = path.split(/[/\\]/);
+  if (path.startsWith('/') || path.startsWith('\\') || WINDOWS_DRIVE_PREFIX.test(path))
+    return false;
+  const segments = path.split(PATH_SEPARATORS);
   return !segments.includes('..') && !segments.includes('.git');
 }

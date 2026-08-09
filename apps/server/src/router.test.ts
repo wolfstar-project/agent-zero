@@ -18,6 +18,7 @@ import {
 } from './router.js';
 
 const secret = 'webhook-secret-value';
+const MODE_ERROR = /mode/i;
 
 function sign(body: string): string {
   return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
@@ -63,7 +64,7 @@ describe('server task API', () => {
 
   it('rejects an unknown mode at the transport edge', () => {
     expect(() => taskInput.parse({ repository: '.', feedback: 'x', mode: 'yolo' })).toThrow(
-      /mode/i,
+      MODE_ERROR,
     );
   });
 });

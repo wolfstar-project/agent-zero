@@ -300,8 +300,10 @@ export function scopeChanges(
   return { changes: accepted };
 }
 
+const LEADING_DOT_SLASH = /^\.\//;
+
 function normalizePath(path: string): string {
-  return path.replaceAll('\\', '/').replace(/^\.\//, '');
+  return path.replaceAll('\\', '/').replace(LEADING_DOT_SLASH, '');
 }
 
 function describeFeedback(input: ReviewInput): string {

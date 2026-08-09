@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { checkConclusion, GitHubChecks } from './checks.js';
 
 const target = { owner: 'acme', repo: 'app', number: 7, headSha: 'a'.repeat(40) };
+const REDACTED_MARKER = /\[redacted]/;
+const LEAKED_TOKEN = /ghs_token_value/;
 
 const passing: CheckResult = {
   command: 'pnpm run test',
@@ -173,8 +175,8 @@ describe('GitHubChecks', () => {
 
   it('redacts the token from a failed request instead of leaking it', async () => {
     const { checks } = client(() => new Response(`bad credentials for ${token}`, { status: 401 }));
-    await expect(checks.publish(target, bundle())).rejects.toThrow(/\[redacted]/);
-    await expect(checks.publish(target, bundle())).rejects.not.toThrow(/ghs_token_value/);
+    await expect(checks.publish(target, bundle())).rejects.toThrow(REDACTED_MARKER);
+    await expect(checks.publish(target, bundle())).rejects.not.toThrow(LEAKED_TOKEN);
   });
 
   it('fails loudly when GitHub does not return a check run id', async () => {

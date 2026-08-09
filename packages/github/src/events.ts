@@ -31,6 +31,7 @@ export interface ParseOptions {
 
 /** Untrusted comment bodies are bounded before they reach a prompt or an evidence report. */
 const MAX_BODY = 8_000;
+const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
 
 /**
  * Turn a GitHub webhook payload into a review event, or null when there is nothing to act on.
@@ -167,7 +168,7 @@ function readPullRequest(payload: Record<string, unknown>): PullRequestRef | nul
   const owner = typeof ownerRecord?.login === 'string' ? ownerRecord.login : undefined;
 
   if (number === undefined || !headSha || !repo || !owner) return null;
-  if (!/^[0-9a-f]{7,64}$/i.test(headSha)) return null;
+  if (!COMMIT_SHA.test(headSha)) return null;
   return { owner, repo, number, headSha };
 }
 

@@ -23,6 +23,8 @@ const decision: AgentDecision = {
   changes: [{ path: 'src/user.ts', content: 'export const load = () => ({});\n', reason: 'guard' }],
 };
 
+const REDACTED_MARKER = /\[redacted]/;
+
 const input: ReviewInput = {
   repository: '/checkout',
   feedback: 'load() can return null',
@@ -142,7 +144,7 @@ describe('OpenAICompatibleProvider', () => {
       fetch: async () =>
         new Response('rejected authorization: Bearer ghp_0123456789abcdefghijkl', { status: 401 }),
     });
-    await expect(provider.decide(context())).rejects.toThrow(/\[redacted]/);
+    await expect(provider.decide(context())).rejects.toThrow(REDACTED_MARKER);
   });
 });
 

@@ -39,7 +39,7 @@ export function health() {
 }
 
 export function listTasks() {
-  return { tasks: [...tasks.values()].map((task) => task.result) };
+  return { tasks: Array.from(tasks.values(), (task) => task.result) };
 }
 
 export function getTask(id: string): TaskResult | undefined {

@@ -81,6 +81,7 @@ const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
 const SHELL_OPERATORS = /[;&|<>`$(){}\n\r]/;
+const PATH_SEPARATORS = /[/\\]/;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -304,7 +305,7 @@ export abstract class RepositoryBoundary implements Runner {
   private async createDirectories(target: string, original: string): Promise<void> {
     const root = await this.rootRealPath();
     let current = root;
-    for (const segment of relative(root, dirname(target)).split(/[/\\]/)) {
+    for (const segment of relative(root, dirname(target)).split(PATH_SEPARATORS)) {
       if (segment.length === 0) continue;
       current = join(current, segment);
       try {
@@ -345,7 +346,7 @@ export abstract class RepositoryBoundary implements Runner {
 
 function assertInside(root: string, candidate: string, original: string): void {
   const rel = relative(root, candidate);
-  if (rel.length > 0 && (isAbsolute(rel) || rel.split(/[/\\]/).includes('..')))
+  if (rel.length > 0 && (isAbsolute(rel) || rel.split(PATH_SEPARATORS).includes('..')))
     throw new PathEscapeError(original, 'resolves outside the checkout');
 }
 
