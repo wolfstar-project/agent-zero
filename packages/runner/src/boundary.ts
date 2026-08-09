@@ -23,6 +23,7 @@ import {
   type NetworkPolicy,
   type RunnerDescription,
 } from '@agent-zero/shared';
+import { charIn, createRegExp } from 'magic-regexp';
 
 import {
   CommandRejectedError,
@@ -80,8 +81,7 @@ const DEFAULT_MAX_OUTPUT_BYTES = 200_000;
 const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
-const SHELL_OPERATORS = /[;&|<>`$(){}\n\r]/;
-const PATH_SEPARATORS = /[/\\]/;
+const SHELL_OPERATORS = createRegExp(charIn(';&|<>`$(){}\n\r'));
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -259,39 +259,34 @@ export abstract class RepositoryBoundary implements Runner {
    * atomic rename, and both names resolve through the held descriptor (`/proc/self/fd` on Linux),
    * never through re-walked path components. The target inode itself is never written, so a
    * concurrent rename carrying it outside the checkout after validation moves nothing but the
-   * file's previous content; the mutation can only ever land inside the verified directory inode.
-   *
-   * Protected so that tests can interleave an adversarial rename at exactly this point.
+   * previous content.
    */
-  protected async replaceInside(
-    dir: FileHandle,
-    parent: string,
-    base: string,
+  private async replaceInside(
+    directory: FileHandle,
+    fallbackParent: string,
+    targetName: string,
     content: string,
     original: string,
   ): Promise<void> {
-    const anchor = await directoryAnchor(dir, parent);
-    const destination = join(anchor, base);
-    const existing = await lstat(destination).catch(() => undefined);
-    // The old open used O_NOFOLLOW and refused final-component links; keep that behavior explicit.
-    if (existing?.isSymbolicLink())
-      throw new PathEscapeError(original, 'refusing to replace a symbolic link');
-    const staged = join(anchor, `.agent-zero-${randomUUID()}.tmp`);
+    const anchor = await directoryAnchor(directory, fallbackParent, original);
+    const temporaryName = `.agent-zero-${randomUUID()}.tmp`;
+    const temporary = join(anchor, temporaryName);
+    const target = join(anchor, targetName);
     const handle = await open(
-      staged,
+      temporary,
       constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW,
+      0o600,
     );
     try {
-      // Rename-replace creates a new inode; carry the mode over so scripts stay executable.
-      if (existing) await handle.chmod(existing.mode & 0o7777);
       await handle.writeFile(content, 'utf8');
+      await handle.sync();
     } finally {
       await handle.close();
     }
     try {
-      await rename(staged, destination);
+      await rename(temporary, target);
     } catch (error) {
-      await rm(staged, { force: true });
+      await rm(temporary, { force: true });
       throw error;
     }
   }
@@ -305,7 +300,7 @@ export abstract class RepositoryBoundary implements Runner {
   private async createDirectories(target: string, original: string): Promise<void> {
     const root = await this.rootRealPath();
     let current = root;
-    for (const segment of relative(root, dirname(target)).split(PATH_SEPARATORS)) {
+    for (const segment of relative(root, dirname(target)).replaceAll('\\', '/').split('/')) {
       if (segment.length === 0) continue;
       current = join(current, segment);
       try {
@@ -346,7 +341,7 @@ export abstract class RepositoryBoundary implements Runner {
 
 function assertInside(root: string, candidate: string, original: string): void {
   const rel = relative(root, candidate);
-  if (rel.length > 0 && (isAbsolute(rel) || rel.split(PATH_SEPARATORS).includes('..')))
+  if (rel.length > 0 && (isAbsolute(rel) || rel.replaceAll('\\', '/').split('/').includes('..')))
     throw new PathEscapeError(original, 'resolves outside the checkout');
 }
 
@@ -377,20 +372,26 @@ async function descriptorPath(
 }
 
 /**
- * A name for an open directory that stays coupled to its inode.
- *
- * On Linux, `/proc/self/fd/<fd>` makes the kernel resolve every operation through the descriptor
- * itself, so no concurrent rename of any path component can redirect it. Elsewhere the verified
- * path is the best available anchor, and the descriptor still pins the directory for the
- * operation's lifetime.
+ * Resolve a stable path through the directory handle itself. Linux exposes descriptors under
+ * `/proc/self/fd`, so renaming the directory cannot redirect the mutation through a different path.
+ * On platforms without that facility we re-resolve the fallback immediately before use and verify
+ * that it is still the same directory inode held by the descriptor.
  */
-async function directoryAnchor(dir: FileHandle, verified: string): Promise<string> {
-  const anchor = `/proc/self/fd/${dir.fd}`;
+async function directoryAnchor(
+  directory: FileHandle,
+  fallback: string,
+  original: string,
+): Promise<string> {
+  const descriptor = `/proc/self/fd/${directory.fd}`;
   try {
-    await readlink(anchor);
-    return anchor;
+    await lstat(descriptor);
+    return descriptor;
   } catch {
-    return verified;
+    const real = await realpath(fallback);
+    const [expected, current] = await Promise.all([directory.stat(), stat(real)]);
+    if (expected.dev !== current.dev || expected.ino !== current.ino)
+      throw new PathEscapeError(original, 'parent replaced while writing');
+    return real;
   }
 }
 
