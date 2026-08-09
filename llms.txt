@@ -1,0 +1,17 @@
+# Agent Zero
+
+> Agent Zero is an open-source autonomous engineer that finds, fixes, and verifies problems in pull requests. It ingests review feedback, validates the claim, applies a narrowly scoped fix, runs the repository's real checks, inspects the resulting diff, and produces evidence.
+
+The runtime is a pnpm/Turborepo monorepo with strict package boundaries: `packages/agent` owns orchestration and state transitions, `packages/runner` is the only boundary allowed to execute repository commands or mutate a checkout, `packages/models` owns model-provider abstractions, `packages/github` adapts GitHub events and APIs, `packages/config` parses configuration and policy, `packages/shared` holds stable cross-package contracts, `packages/cli` handles argument parsing and terminal presentation, and `apps/server` composes the oRPC control plane.
+
+## Docs
+
+- [README](README.md): project overview, architecture diagram, and quick start
+- [Architecture](docs/architecture.md): package boundaries and runtime design
+- [Contributor instructions](AGENTS.md): toolchain, boundaries, and required checks
+- [Contributing guide](CONTRIBUTING.md): workflow and verification expectations
+- [Security policy](SECURITY.md): how to report vulnerabilities
+
+## Optional
+
+- [Code of conduct](CODE_OF_CONDUCT.md): community standards

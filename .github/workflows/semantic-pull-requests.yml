@@ -1,0 +1,56 @@
+name: Semantic Pull Requests
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  semantic-pr:
+    permissions:
+      contents: read
+      pull-requests: read # analyze pull requests
+      statuses: write # publish validation status
+    if: github.repository == 'wolfstar-project/agent-zero'
+    runs-on: ubuntu-latest
+    name: 🏷️ Validate PR title
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        with:
+          scopes: |
+            agent
+            api
+            ci
+            cli
+            config
+            deps
+            docs
+            github
+            models
+            release
+            runner
+            safety
+            server
+            shared
+            test
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            doesn't start with an uppercase character.
+
+            Examples:
+              ✅ feat(agent): add review validation
+              ✅ docs: update README
+              ❌ feat(agent): Add review validation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
