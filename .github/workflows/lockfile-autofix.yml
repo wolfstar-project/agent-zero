@@ -1,4 +1,4 @@
-name: autofix.ci
+name: lockfile artifact
 
 on:
   pull_request:
@@ -34,4 +34,10 @@ jobs:
       - name: Regenerate lockfile
         run: pnpm install --lockfile-only --no-frozen-lockfile
 
-      - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
+      - name: Upload lockfile
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: generated-pnpm-lock
+          path: pnpm-lock.yaml
+          if-no-files-found: error
+          retention-days: 1
