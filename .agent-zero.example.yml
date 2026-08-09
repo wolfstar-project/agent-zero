@@ -1,17 +1,50 @@
 version: 1
+
+# observe and suggest can never write. fix and autonomous also require autofix.enabled below.
 mode: observe
-checks:
-  - pnpm lint
-  - pnpm typecheck
-  - pnpm test
+
+# Commands used to verify a change. Leave empty to discover this repository's own
+# lint, typecheck, test, and build scripts. Commands run without a shell, so
+# operators such as &&, |, ;, and $() are rejected.
+checks: []
+
 autofix:
   enabled: false
+  # Confidence required before Agent Zero may change files.
   minConfidence: 0.85
+
+# How a reviewer's claim is checked against the repository before it is acted on.
+validation:
+  # Below this confidence a supported claim is reported as inconclusive, never fixed.
+  minConfidence: 0.6
+  requireEvidence: true
+  requireKnownFiles: true
+  verifyQuotedEvidence: true
+
 agent:
+  # Repair attempts before a run stops and asks for a human.
   maxAttempts: 3
   timeoutMs: 1800000
+  # Upper bound on files a single narrow fix may touch.
+  maxChangedFiles: 10
+
 permissions:
+  # none, restricted, or full. Enforced by the container runner.
   network: restricted
+
+runner:
+  # local runs commands on the host and is for trusted development only.
+  # container is required for production; set an image to enable it.
+  isolation: local
+  engine: docker
+  # image: node:22-bookworm-slim
+  workdir: /workspace
+  # cpus: '2'
+  # memory: 4g
+  # Pre-provisioned network used when permissions.network is restricted.
+  # network: agent-zero
+  maxOutputBytes: 200000
+
 model:
   provider: openai-compatible
   name: gpt-5

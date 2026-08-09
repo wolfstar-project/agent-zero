@@ -10,3 +10,6 @@ coverage/
 .agent-zero/
 *.log
 .DS_Store
+
+# Nitro build output
+.output/

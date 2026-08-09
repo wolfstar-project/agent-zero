@@ -1,7 +1,27 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-import type { ReviewInput } from '@agent-zero/shared';
+export {
+  checkConclusion,
+  GitHubChecks,
+  type CheckConclusion,
+  type GitHubChecksOptions,
+} from './checks.js';
+export {
+  parseReviewEvent,
+  renderFeedback,
+  reviewInputFromEvent,
+  supportedEvents,
+  type ParseOptions,
+  type ReviewEvent,
+  type SupportedEvent,
+} from './events.js';
 
+/**
+ * Verify a webhook signature in constant time.
+ *
+ * The comparison length is checked first because `timingSafeEqual` throws on a length mismatch, and
+ * a thrown error would be a slower path than a rejection.
+ */
 export function verifyWebhook(
   body: string,
   signature: string | undefined,
@@ -13,25 +33,4 @@ export function verifyWebhook(
     signature.length === expected.length &&
     timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
   );
-}
-
-export interface ReviewCommentPayload {
-  action: string;
-  comment: { body: string; path?: string };
-  repository: { full_name: string; clone_url: string };
-  pull_request: { number: number };
-}
-
-export function reviewInputFromWebhook(
-  payload: ReviewCommentPayload,
-  checkoutPath: string,
-): ReviewInput | null {
-  if (payload.action !== 'created') return null;
-  return {
-    repository: checkoutPath,
-    feedback: payload.comment.body,
-    mode: 'observe',
-    source: `github:${payload.repository.full_name}#${payload.pull_request.number}`,
-    ...(payload.comment.path ? { files: [payload.comment.path] } : {}),
-  };
 }

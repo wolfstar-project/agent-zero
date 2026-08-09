@@ -9,14 +9,14 @@ Keep dependency direction explicit while changing the monorepo.
 
 ## Package ownership
 
-- `shared`: stable contracts only.
-- `config`: configuration and repository policy.
+- `shared`: stable contracts only, plus pure functions over them (evidence rendering, redaction, path predicates).
+- `config`: configuration, repository policy, and check discovery. Pure; the agent supplies what it read through the runner.
 - `models`: provider-independent model contracts and provider adapters.
-- `github`: GitHub-specific translation and API behavior.
-- `runner`: command execution and checkout mutation boundary.
-- `agent`: orchestration and state transitions.
+- `github`: GitHub-specific translation, event parsing, and Checks API behavior.
+- `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
+- `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
-- `apps/server`: oRPC transport and composition root.
+- `apps/server`: composition root for webhook ingestion, task execution, and evidence publication.
 
 ## Workflow
 
@@ -35,3 +35,6 @@ Keep dependency direction explicit while changing the monorepo.
 - GitHub SDK objects passed through shared contracts.
 - A generic `utils` package used to bypass ownership decisions.
 - Cross-package imports from another package's `src/` directory.
+- A capability package importing another capability package. When `runner` needs policy, it declares the fields it needs structurally instead of importing `config`.
+- Direct filesystem or `child_process` access outside `packages/runner`, including in the agent's discovery step.
+- A second place that decides whether a run may write, or whether a run is verified. Both have exactly one home.
