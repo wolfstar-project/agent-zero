@@ -10,11 +10,11 @@
 
 <!-- List exact commands, tests, or manual scenarios and their results. -->
 
-- [ ] `pnpm check:repo`
-- [ ] `pnpm lint:ci`
-- [ ] `pnpm typecheck`
-- [ ] `pnpm test`
-- [ ] `pnpm build`
+- [ ] `aube run check:repo`
+- [ ] `aube run lint:ci`
+- [ ] `aube run typecheck`
+- [ ] `aube test`
+- [ ] `aube run build`
 
 ## Safety and compatibility
 

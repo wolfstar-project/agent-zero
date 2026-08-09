@@ -1,5 +1,5 @@
 name: Setup toolchain
-description: Setup pinned Node.js and pnpm versions with local caches
+description: Setup pinned Node.js and aube versions with local caches
 
 runs:
   using: composite
@@ -10,16 +10,15 @@ runs:
         node-version: 22.22.1
         package-manager-cache: false
 
-    - name: Setup pnpm
-      shell: bash
-      run: |
-        corepack enable
-        corepack prepare pnpm@10.15.0 --activate
+    - name: Setup aube
+      uses: jdx/aube-action@f82ca2f6c943dbde1904945d9f0ee1a0faf8e945 # v1.0.0
+      with:
+        version: 1.38.0
 
     - name: Verify package manager metadata
       shell: bash
       run: |
-        expected="pnpm@$(pnpm --version)"
+        expected="aube@$(aube --version | cut -d' ' -f1)"
         actual="$(node --print "require('./package.json').packageManager")"
         if [[ "$actual" != "$expected" ]]; then
           echo "package.json packageManager must be $expected, found $actual" >&2
@@ -35,19 +34,19 @@ runs:
           ${{ runner.os }}-turbo-${{ github.ref_name }}-
           ${{ runner.os }}-turbo-
 
-    - name: Resolve pnpm store
-      id: pnpm-store
+    - name: Resolve aube store
+      id: aube-store
       shell: bash
-      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      run: echo "path=$(aube store path)" >> "$GITHUB_OUTPUT"
 
-    - name: Cache pnpm store
+    - name: Cache aube store
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       with:
-        path: ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('package.json', 'pnpm-lock.yaml') }}
+        path: ${{ steps.aube-store.outputs.path }}
+        key: ${{ runner.os }}-aube-store-${{ hashFiles('package.json', 'pnpm-lock.yaml') }}
         restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+          ${{ runner.os }}-aube-store-
 
     - name: Install dependencies
       shell: bash
-      run: pnpm install --frozen-lockfile
+      run: aube ci

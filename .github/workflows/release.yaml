@@ -29,7 +29,7 @@ jobs:
         uses: ./.github/actions/setup-toolchain
 
       - name: Build release artifacts
-        run: pnpm build
+        run: aube run build
 
       - name: Verify injected version
         run: node --input-type=module --eval "import('./packages/shared/dist/index.mjs').then(({ version }) => { if (version !== '0.1.0') process.exit(1) })"

@@ -11,20 +11,24 @@ Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), and proj
 Requirements:
 
 - Node.js 22.18 or newer
-- Corepack
+- [aube](https://aube.jdx.dev), the pinned package manager
 - Git
+
+`mise.toml` pins both Node.js and aube, so [mise](https://mise.jdx.dev) installs the whole toolchain in one step:
 
 ```bash
 git clone https://github.com/wolfstar-project/agent-zero.git
 cd agent-zero
-corepack enable
-pnpm install --frozen-lockfile
+mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
+aube ci
 cp .env.example .env
-pnpm check:repo
-pnpm test
+aube run check:repo
+aube test
 ```
 
-The lockfile pins pnpm. Do not use npm, Yarn, Bun, or another package manager in this repository.
+`package.json` pins aube through `packageManager`. aube reads and writes the existing `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place, so the lockfile stays in pnpm's v9 format. Do not use npm, Yarn, Bun, or another package manager in this repository, and do not add a second lockfile.
+
+`pnpm-workspace.yaml` overrides `typescript` to [`typescript-native-bridge`](https://github.com/johnsoncodehk/typescript-native-bridge), a drop-in fork whose checker runs on tsgo in-process. `tsc` prints `TNB ACTIVE` to stderr on the first type-check in a process; no banner means stock TypeScript is loaded and the install is stale. Keep the pin exact — the fork only publishes prerelease versions, which caret ranges never match — and reinstall after changing it.
 
 ## Choose the right package
 
@@ -54,16 +58,19 @@ Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before m
 Useful commands:
 
 ```bash
-pnpm dev             # watch workspace development tasks
-pnpm zero doctor     # inspect the local environment
-pnpm test            # deterministic Vitest suites
-pnpm typecheck       # TypeScript checks across the graph
-pnpm lint:ci         # Oxfmt check plus type-aware Oxlint
-pnpm build           # build and package validation
-pnpm check:repo      # community files and Agent Skills
-pnpm skills:list     # show Skilld-managed project skills
-pnpm skills:install  # restore Skilld links for Codex
+aube run dev             # watch workspace development tasks
+aube run zero doctor     # inspect the local environment
+aube test                # deterministic Vitest suites
+aube run typecheck       # TypeScript checks across the graph
+aube run lint:ci         # Oxfmt check plus type-aware Oxlint
+aube run build           # build and package validation
+aube run check:repo      # community files and Agent Skills
+aube run skills:list     # show Skilld-managed project skills
+aube run skills:install  # restore Skilld links for Codex
 ```
+
+`aube run <script>` and `aube test` check install freshness first and install
+only when `node_modules` is stale, so a separate install step is rarely needed.
 
 ## Tests and safety
 
@@ -78,10 +85,10 @@ pnpm skills:install  # restore Skilld links for Codex
 
 Oxfmt owns formatting and Oxlint owns linting. Avoid unrelated formatting churn.
 
-`pnpm install` installs Git hooks through the `prepare` script (`.husky/install.mjs`), which skips hook installation in CI and production environments:
+`aube install` installs Git hooks through the `prepare` script (`.husky/install.mjs`), which skips hook installation in CI and production environments:
 
-- `pre-commit` runs `pnpm exec nano-staged`, which formats staged files with Oxfmt and re-stages them.
-- `commit-msg` runs `pnpm exec commitlint --edit`, which enforces Conventional Commit messages.
+- `pre-commit` runs `aube exec nano-staged`, which formats staged files with Oxfmt and re-stages them.
+- `commit-msg` runs `aube exec commitlint --edit`, which enforces Conventional Commit messages.
 
 If `pre-commit` fails, fix the reported error and commit again; formatting fixes are applied automatically. If `commit-msg` rejects your message, reword it to follow the Conventional Commit format below (after a failed commit, rerun `git commit` with a valid message; to fix the previous commit, use `git commit --amend`).
 
@@ -99,11 +106,11 @@ test(agent): cover failed verification transition
 Before opening a PR, run:
 
 ```bash
-pnpm check:repo
-pnpm lint:ci
-pnpm typecheck
-pnpm test
-pnpm build
+aube run check:repo
+aube run lint:ci
+aube run typecheck
+aube test
+aube run build
 ```
 
 In the PR, describe what changed, why it belongs at that boundary, how it was verified, and whether it changes runtime permissions or safety guarantees. Screenshots are useful only for user-visible terminal or UI changes; logs or test names are better evidence for runtime changes.

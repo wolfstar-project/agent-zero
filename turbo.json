@@ -11,13 +11,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.tsbuildinfo"],
-      "env": ["TMPDIR"]
+      "outputs": ["dist/**", "*.tsbuildinfo"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": ["*.tsbuildinfo"],
-      "env": ["TMPDIR"]
+      "outputs": ["*.tsbuildinfo"]
     },
     "lint": {
       "dependsOn": ["^build"],
@@ -25,8 +23,7 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": [],
-      "env": ["TMPDIR"]
+      "outputs": []
     },
     "dev": {
       "dependsOn": ["^build"],

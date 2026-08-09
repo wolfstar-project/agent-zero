@@ -26,20 +26,17 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
-        with:
-          run_install: false
-
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: package.json
-          cache: pnpm
 
-      - name: 📦 Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: jdx/aube-action@f82ca2f6c943dbde1904945d9f0ee1a0faf8e945 # v1.0.0
+        with:
+          version: 1.38.0
+          run-install: true
 
       - name: 🔠 Fix formatting
-        run: pnpm format
+        run: aube run format
 
       # merge_group events have no pull_request payload, so the autofix action
       # would target the synthetic gh-readonly-queue/... ref. Keep merge-queue

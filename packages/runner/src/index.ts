@@ -83,7 +83,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const commandTokenPattern = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g;
+const surroundingQuotePattern = /^(['"])(.*)\1$/;
+
 export function splitCommand(command: string): string[] {
-  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
-  return parts.map((part) => part.replace(/^(['"])(.*)\1$/, '$2'));
+  const parts = command.match(commandTokenPattern) ?? [];
+  return parts.map((part) => part.replace(surroundingQuotePattern, '$2'));
 }

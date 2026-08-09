@@ -23,6 +23,6 @@ Turborepo schedules workspace tasks; package scripts perform package work.
 1. Inspect `package.json`, `pnpm-workspace.yaml`, and `turbo.json`.
 2. Identify inputs, dependency edges, outputs, and environment variables.
 3. Change the graph before adding ad-hoc sequencing to CI.
-4. Use `pnpm exec turbo run <task> --dry=json` to inspect non-trivial graph changes.
+4. Use `aube exec turbo run <task> --dry=json` to inspect non-trivial graph changes.
 5. Run the root script that contributors and CI will actually use.
 6. Confirm a second run produces expected cache hits without masking missing outputs.

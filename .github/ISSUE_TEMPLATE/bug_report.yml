@@ -60,7 +60,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Node.js and pnpm versions, runner mode, and relevant configuration with secrets removed.
+      description: OS, Node.js and aube versions, runner mode, and relevant configuration with secrets removed.
     validations:
       required: true
   - type: textarea
