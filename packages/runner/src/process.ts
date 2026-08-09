@@ -2,15 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { analyzeShellCommand } from '@vite-hub/shell';
-import {
-  anyOf,
-  charIn,
-  charNotIn,
-  createRegExp,
-  exactly,
-  global,
-  oneOrMore,
-} from 'magic-regexp';
+import { anyOf, charIn, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
 
 const execFileAsync = promisify(execFile);
 

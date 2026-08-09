@@ -24,11 +24,7 @@ import {
   type RunnerDescription,
 } from '@agent-zero/shared';
 
-import {
-  execFileProcessRunner,
-  type ProcessOutcome,
-  type ProcessRunner,
-} from './process.js';
+import { execFileProcessRunner, type ProcessOutcome, type ProcessRunner } from './process.js';
 
 /** Raised when a path would address something outside the validated checkout. */
 export class PathEscapeError extends Error {
@@ -247,8 +243,10 @@ export abstract class RepositoryBoundary implements Runner {
    * never through re-walked path components. The target inode itself is never written, so a
    * concurrent rename carrying it outside the checkout after validation moves nothing but the
    * previous content.
+   *
+   * Protected so that tests can interleave an adversarial rename at exactly this point.
    */
-  private async replaceInside(
+  protected async replaceInside(
     directory: FileHandle,
     fallbackParent: string,
     targetName: string,

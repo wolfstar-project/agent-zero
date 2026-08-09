@@ -60,14 +60,14 @@ class TargetRenamingRunner extends LocalRunner {
   }
 
   protected override async replaceInside(
-    dir: FileHandle,
-    parent: string,
-    base: string,
+    directory: FileHandle,
+    fallbackParent: string,
+    targetName: string,
     content: string,
     original: string,
   ): Promise<void> {
-    await rename(join(parent, base), this.victim);
-    return super.replaceInside(dir, parent, base, content, original);
+    await rename(join(fallbackParent, targetName), this.victim);
+    return super.replaceInside(directory, fallbackParent, targetName, content, original);
   }
 }
 
