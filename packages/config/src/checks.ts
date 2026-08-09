@@ -1,5 +1,5 @@
 import { destr } from 'destr';
-import { anyOf, carriageReturn, charIn, createRegExp, digit, letter, linefeed } from 'magic-regexp';
+import { anyOf, charIn, createRegExp, digit, letter } from 'magic-regexp';
 
 /** The repository-native check kinds a verified run is expected to execute. */
 export const checkKinds = ['lint', 'typecheck', 'test', 'build'] as const;
@@ -35,16 +35,6 @@ const lockfileManagers: readonly (readonly [string, PackageManager])[] = [
 
 /** Lockfiles worth probing for in a checkout, in the order they take precedence. */
 export const knownLockfiles: readonly string[] = lockfileManagers.map(([lockfile]) => lockfile);
-
-/**
- * Characters that would change meaning if a command were ever handed to a shell.
- *
- * Commands are executed with explicit arguments and no shell, so a command containing one of these
- * would be silently mis-parsed rather than interpreted. Rejecting them keeps configuration honest
- * and stops untrusted repository content from smuggling operators into a command line. Glob
- * characters are allowed because tools that accept patterns expand them themselves.
- */
-const SHELL_METACHARACTERS = createRegExp(anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn));
 
 /** Script names Agent Zero is willing to invoke. Anything else is untrusted repository content. */
 const SAFE_SCRIPT_NAME = createRegExp(
@@ -93,14 +83,15 @@ export function resolveChecks(configured: readonly string[], probe: RepositoryPr
   return configured.length > 0 ? [...configured] : discoverChecks(probe);
 }
 
-/** Reject a command the runner could not execute faithfully. */
+/**
+ * Validate only the configuration-level invariant here.
+ *
+ * Command syntax and shell semantics are deliberately owned by `packages/runner`, where ViteHub
+ * Shell performs the authoritative analysis immediately before execution. Keeping that decision in
+ * one layer avoids the config and runner drifting into two subtly different shell parsers.
+ */
 export function assertExecutableCommand(command: string): void {
-  const trimmed = command.trim();
-  if (trimmed.length === 0) throw new Error('Check commands must not be empty');
-  if (SHELL_METACHARACTERS.test(trimmed))
-    throw new Error(
-      `Check command must not contain shell operators because commands run without a shell: ${command}`,
-    );
+  if (command.trim().length === 0) throw new Error('Check commands must not be empty');
 }
 
 function readScripts(packageJson: string | null): string[] {
