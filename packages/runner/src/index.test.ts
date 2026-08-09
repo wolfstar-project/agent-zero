@@ -1,4 +1,14 @@
-import { access, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+  type FileHandle,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -33,6 +43,31 @@ class SwappingRunner extends LocalRunner {
     await rm(join(this.root, 'staging'), { recursive: true, force: true });
     await symlink(this.outside, join(this.root, 'staging'));
     return target;
+  }
+}
+
+/**
+ * Reproduces the descriptor-rename race deterministically: every validation has already passed,
+ * then the target inode is renamed over a file outside the checkout before the mutation commits.
+ */
+class TargetRenamingRunner extends LocalRunner {
+  constructor(
+    root: string,
+    private readonly victim: string,
+    options: Partial<BoundaryOptions> = {},
+  ) {
+    super(root, options);
+  }
+
+  protected override async replaceInside(
+    dir: FileHandle,
+    parent: string,
+    base: string,
+    content: string,
+    original: string,
+  ): Promise<void> {
+    await rename(join(parent, base), this.victim);
+    return super.replaceInside(dir, parent, base, content, original);
   }
 }
 
@@ -124,6 +159,17 @@ describe('path boundary', () => {
     );
     // Nothing may land at the outside target, not even an empty file.
     await expect(access(join(outside, 'escape.txt'))).rejects.toThrow('ENOENT');
+  });
+
+  it('keeps a write contained when the validated target inode is renamed outside before it lands', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
+    const victim = join(outside, 'victim.txt');
+    await writeFile(victim, 'external content', 'utf8');
+    const runner = new TargetRenamingRunner(root, victim, { writable: true });
+    await runner.write('src/user.ts', 'payload');
+    // The mutation must land inside the checkout; the escaped inode receives nothing.
+    await expect(readFile(victim, 'utf8')).resolves.not.toContain('payload');
+    await expect(runner.read('src/user.ts')).resolves.toBe('payload');
   });
 
   it('allows a symlink that stays inside the checkout', async () => {

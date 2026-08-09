@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import {
   access,
@@ -6,6 +7,8 @@ import {
   open,
   readlink,
   realpath,
+  rename,
+  rm,
   stat,
   type FileHandle,
 } from 'node:fs/promises';
@@ -87,14 +90,17 @@ const GIT_TIMEOUT_MS = 30_000;
 const SHELL_OPERATORS = /[;&|<>`$(){}\n\r]/;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
+const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
 
 /**
  * Shared filesystem and git behavior for every runner.
  *
  * File access is validated with path arithmetic, re-validated against resolved symlinks, and then
  * proven again on the open descriptor itself, so a link planted inside the checkout, even one
- * swapped in concurrently after validation, cannot be used to read or write outside it. Subclasses
- * decide only how repository commands are executed.
+ * swapped in concurrently after validation, cannot be used to read or write outside it. Writes go
+ * further: they are committed through a verified directory descriptor rather than a descriptor on
+ * the target file, so containment holds for the mutation's full lifetime, not only at open time.
+ * Subclasses decide only how repository commands are executed.
  */
 export abstract class RepositoryBoundary implements Runner {
   protected readonly maxOutputBytes: number;
@@ -132,17 +138,26 @@ export abstract class RepositoryBoundary implements Runner {
     }
   }
 
+  /**
+   * A write never mutates the target inode through a previously validated descriptor: a rename by
+   * a concurrent task would carry that inode outside the checkout and the write would follow it.
+   * Instead the parent directory is opened and proven to be inside the checkout, and the mutation
+   * is committed through that held descriptor, whose inode no rename can substitute.
+   */
   async write(path: string, content: string): Promise<void> {
     if (!this.options.writable)
       throw new RunnerWriteDeniedError(path, 'this runner was created read-only');
     const target = await this.resolveInside(path);
     await this.createDirectories(target, path);
-    const handle = await this.openInside(path, constants.O_WRONLY | constants.O_CREAT);
+    const root = await this.rootRealPath();
+    const parent = await realpath(dirname(target));
+    assertInside(root, parent, path);
+    const dir = await open(parent, constants.O_RDONLY | O_DIRECTORY);
     try {
-      await handle.truncate(0);
-      await handle.writeFile(content, 'utf8');
+      assertInside(root, await descriptorPath(dir, parent, path), path);
+      await this.replaceInside(dir, parent, basename(target), content, path);
     } finally {
-      await handle.close();
+      await dir.close();
     }
   }
 
@@ -224,7 +239,8 @@ export abstract class RepositoryBoundary implements Runner {
    * Validation alone races the operation: a concurrent task can swap a validated component for a
    * symlink between the check and the open. The parent directory is therefore re-resolved
    * immediately before opening, the final component is opened with `O_NOFOLLOW`, and containment
-   * is re-checked on the descriptor before any content moves through it.
+   * is re-checked on the descriptor before any content moves through it. This is sufficient for
+   * reads, whose content is fixed at open time; writes must not reuse it (see {@link write}).
    */
   private async openInside(path: string, flags: number): Promise<FileHandle> {
     const target = await this.resolveInside(path);
@@ -238,6 +254,50 @@ export abstract class RepositoryBoundary implements Runner {
       return handle;
     } catch (error) {
       await handle.close();
+      throw error;
+    }
+  }
+
+  /**
+   * Replace one entry of an already-verified directory descriptor with new content.
+   *
+   * Content is staged into a fresh, exclusively-created temporary inode and committed with an
+   * atomic rename, and both names resolve through the held descriptor (`/proc/self/fd` on Linux),
+   * never through re-walked path components. The target inode itself is never written, so a
+   * concurrent rename carrying it outside the checkout after validation moves nothing but the
+   * file's previous content; the mutation can only ever land inside the verified directory inode.
+   *
+   * Protected so that tests can interleave an adversarial rename at exactly this point.
+   */
+  protected async replaceInside(
+    dir: FileHandle,
+    parent: string,
+    base: string,
+    content: string,
+    original: string,
+  ): Promise<void> {
+    const anchor = await directoryAnchor(dir, parent);
+    const destination = join(anchor, base);
+    const existing = await lstat(destination).catch(() => undefined);
+    // The old open used O_NOFOLLOW and refused final-component links; keep that behavior explicit.
+    if (existing?.isSymbolicLink())
+      throw new PathEscapeError(original, 'refusing to replace a symbolic link');
+    const staged = join(anchor, `.agent-zero-${randomUUID()}.tmp`);
+    const handle = await open(
+      staged,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | O_NOFOLLOW,
+    );
+    try {
+      // Rename-replace creates a new inode; carry the mode over so scripts stay executable.
+      if (existing) await handle.chmod(existing.mode & 0o7777);
+      await handle.writeFile(content, 'utf8');
+    } finally {
+      await handle.close();
+    }
+    try {
+      await rename(staged, destination);
+    } catch (error) {
+      await rm(staged, { force: true });
       throw error;
     }
   }
@@ -319,6 +379,24 @@ async function descriptorPath(
     if (expected.dev !== current.dev || expected.ino !== current.ino)
       throw new PathEscapeError(original, 'replaced while it was being opened');
     return real;
+  }
+}
+
+/**
+ * A name for an open directory that stays coupled to its inode.
+ *
+ * On Linux, `/proc/self/fd/<fd>` makes the kernel resolve every operation through the descriptor
+ * itself, so no concurrent rename of any path component can redirect it. Elsewhere the verified
+ * path is the best available anchor, and the descriptor still pins the directory for the
+ * operation's lifetime.
+ */
+async function directoryAnchor(dir: FileHandle, verified: string): Promise<string> {
+  const anchor = `/proc/self/fd/${dir.fd}`;
+  try {
+    await readlink(anchor);
+    return anchor;
+  } catch {
+    return verified;
   }
 }
 
