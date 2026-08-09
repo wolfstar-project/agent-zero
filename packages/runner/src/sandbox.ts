@@ -103,8 +103,10 @@ export class RunnerPool {
       (this.pendingByRepository.get(request.repository) ?? 0) + 1,
     );
     try {
-      const started = this.now();
       const provisioned = await this.provider.provision(Object.freeze({ ...request }));
+      // Start the lease clock only after provisioning succeeds so slow provisioning cannot
+      // consume the usable lease interval and hand back an already-expired lease.
+      const started = this.now();
       const lease: SandboxLease = {
         id: `lease_${randomUUID()}`,
         taskId: request.taskId,

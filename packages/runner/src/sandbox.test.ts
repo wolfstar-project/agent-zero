@@ -117,6 +117,28 @@ describe('RunnerPool', () => {
     expect(pool.snapshot().active).toBe(1);
   });
 
+  it('starts the lease clock after provisioning so slow provisioning cannot expire the lease', async () => {
+    let current = 1_000;
+    const adapter = provider();
+    adapter.provision = async (sandboxRequest) => {
+      // Simulate provisioning that consumes more than the requested lease interval.
+      current += 2_000;
+      return { externalId: `remote-${sandboxRequest.taskId}`, runner };
+    };
+    const pool = new RunnerPool(adapter, {
+      maxActive: 1,
+      maxActivePerRepository: 1,
+      maxLeaseMs: 1_000,
+      now: () => current,
+    });
+    const lease = await pool.acquire(request);
+    expect(Date.parse(lease.acquiredAt)).toBe(3_000);
+    expect(Date.parse(lease.expiresAt)).toBe(4_000);
+    await expect(pool.sweepExpired()).resolves.toBe(0);
+    expect(adapter.stopped).toEqual([]);
+    expect(pool.snapshot().active).toBe(1);
+  });
+
   it('releases reserved capacity when provisioning fails', async () => {
     const adapter = provider();
     adapter.provision = async () => {
