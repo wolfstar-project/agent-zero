@@ -41,4 +41,12 @@ jobs:
       - name: 🔠 Fix formatting
         run: pnpm format
 
+      # merge_group events have no pull_request payload, so the autofix action
+      # would target the synthetic gh-readonly-queue/... ref. Keep merge-queue
+      # runs check-only and only hand off fixes on pull_request events.
+      - name: 🔍 Verify formatting (merge queue)
+        if: github.event_name == 'merge_group'
+        run: git diff --exit-code
+
       - uses: autofix-ci/action@c5b2d67aa2274e7b5a18224e8171550871fc7e4a # v1.3.4
+        if: github.event_name == 'pull_request'
