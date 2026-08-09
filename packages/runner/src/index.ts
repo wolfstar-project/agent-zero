@@ -1,92 +1,117 @@
-import { execFile } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
-import { promisify } from 'node:util';
+import type { NetworkPolicy } from '@agent-zero/shared';
 
-import type { CheckResult } from '@agent-zero/shared';
+import type { BoundaryOptions, Runner } from './boundary.js';
+import { ContainerRunner, type ContainerEngine, type ContainerOptions } from './container.js';
+import { LocalRunner } from './local.js';
 
-const execFileAsync = promisify(execFile);
-export interface Runner {
-  context(): Promise<string>;
-  read(path: string): Promise<string>;
-  write(path: string, content: string): Promise<void>;
-  check(command: string, timeoutMs: number): Promise<CheckResult>;
-  changedFiles(): Promise<string[]>;
+export {
+  CommandRejectedError,
+  PathEscapeError,
+  RepositoryBoundary,
+  RunnerWriteDeniedError,
+  type BoundaryOptions,
+  type Runner,
+} from './boundary.js';
+export {
+  ContainerRunner,
+  DEFAULT_RESTRICTED_NETWORK,
+  type ContainerEngine,
+  type ContainerOptions,
+} from './container.js';
+export { LocalRunner } from './local.js';
+export {
+  execFileProcessRunner,
+  splitCommand,
+  type ProcessOptions,
+  type ProcessOutcome,
+  type ProcessRunner,
+} from './process.js';
+
+export interface CreateRunnerOptions extends Omit<BoundaryOptions, 'network'> {
+  isolation: 'local' | 'container';
+  network: NetworkPolicy;
+  container?: {
+    engine: ContainerEngine;
+    image: string;
+    workdir: string;
+    cpus?: string;
+    memory?: string;
+    networkName?: string;
+    user?: string;
+  };
 }
 
-export class LocalRunner implements Runner {
-  constructor(private readonly root: string) {}
-  private safe(path: string): string {
-    const target = resolve(this.root, path);
-    const rel = relative(resolve(this.root), target);
-    if (isAbsolute(rel) || rel.startsWith('..'))
-      throw new Error(`Path escapes repository: ${path}`);
-    return target;
-  }
-  async context(): Promise<string> {
-    const result = await this.run('git', ['diff', '--no-ext-diff', '--', '.'], 30_000);
-    const names = await this.run('git', ['ls-files'], 30_000);
-    return `FILES\n${names.stdout.slice(0, 30_000)}\n\nDIFF\n${result.stdout.slice(0, 100_000)}`;
-  }
-  read(path: string): Promise<string> {
-    return readFile(this.safe(path), 'utf8');
-  }
-  write(path: string, content: string): Promise<void> {
-    return writeFile(this.safe(path), content, 'utf8');
-  }
-  async changedFiles(): Promise<string[]> {
-    const result = await this.run('git', ['status', '--porcelain'], 30_000);
-    return result.stdout
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => line.slice(3));
-  }
-  async check(command: string, timeoutMs: number): Promise<CheckResult> {
-    const [program, ...args] = splitCommand(command);
-    if (!program) throw new Error('Empty check command');
-    return this.run(program, args, timeoutMs);
-  }
-  private async run(program: string, args: string[], timeoutMs: number): Promise<CheckResult> {
-    const started = Date.now();
-    try {
-      const { stdout, stderr } = await execFileAsync(program, args, {
-        cwd: this.root,
-        timeout: timeoutMs,
-        maxBuffer: 10 * 1024 * 1024,
-      });
-      return {
-        command: [program, ...args].join(' '),
-        exitCode: 0,
-        stdout,
-        stderr,
-        durationMs: Date.now() - started,
-      };
-    } catch (error) {
-      const failure = isRecord(error) ? error : {};
-      return {
-        command: [program, ...args].join(' '),
-        exitCode: typeof failure.code === 'number' ? failure.code : 1,
-        stdout: typeof failure.stdout === 'string' ? failure.stdout : '',
-        stderr:
-          typeof failure.stderr === 'string'
-            ? failure.stderr
-            : error instanceof Error
-              ? error.message
-              : String(error),
-        durationMs: Date.now() - started,
-      };
-    }
-  }
+/**
+ * The policy fields a boundary needs, declared here so the runner does not depend on the
+ * configuration package. `AgentZeroConfig` satisfies this structurally.
+ */
+export interface RunnerPolicyInput {
+  permissions: { network: NetworkPolicy };
+  runner: {
+    isolation: 'local' | 'container';
+    engine: ContainerEngine;
+    image?: string;
+    workdir: string;
+    cpus?: string;
+    memory?: string;
+    network?: string;
+    maxOutputBytes: number;
+  };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+/**
+ * Translate repository policy into boundary options.
+ *
+ * Both the CLI and the server go through here, so there is a single answer to "what is this run
+ * allowed to do". Write access is passed in explicitly rather than inferred, because it is the
+ * caller that knows whether the run mode and the repository both authorized it.
+ */
+export function runnerOptionsFromPolicy(
+  policy: RunnerPolicyInput,
+  writable: boolean,
+): CreateRunnerOptions {
+  const { runner } = policy;
+  return {
+    isolation: runner.isolation,
+    network: policy.permissions.network,
+    writable,
+    maxOutputBytes: runner.maxOutputBytes,
+    ...(runner.isolation === 'container' && runner.image
+      ? {
+          container: {
+            engine: runner.engine,
+            image: runner.image,
+            workdir: runner.workdir,
+            ...(runner.cpus === undefined ? {} : { cpus: runner.cpus }),
+            ...(runner.memory === undefined ? {} : { memory: runner.memory }),
+            ...(runner.network === undefined ? {} : { networkName: runner.network }),
+          },
+        }
+      : {}),
+  };
 }
 
-const commandTokenPattern = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g;
-const surroundingQuotePattern = /^(['"])(.*)\1$/;
-
-export function splitCommand(command: string): string[] {
-  const parts = command.match(commandTokenPattern) ?? [];
-  return parts.map((part) => part.replace(surroundingQuotePattern, '$2'));
+/**
+ * Build the execution boundary for a run.
+ *
+ * Composition roots call this so that the mapping from policy to a concrete boundary lives in one
+ * place. Isolation is never approximated: asking for a container without an image fails rather than
+ * silently downgrading to host execution.
+ */
+export function createRunner(root: string, options: CreateRunnerOptions): Runner {
+  const { isolation, container, ...boundary } = options;
+  if (isolation === 'local') return new LocalRunner(root, boundary);
+  if (!container?.image)
+    throw new Error('Container isolation requires an image; refusing to run without a sandbox');
+  const containerOptions: ContainerOptions = {
+    ...boundary,
+    engine: container.engine,
+    image: container.image,
+    workdir: container.workdir,
+    ...(container.cpus === undefined ? {} : { cpus: container.cpus }),
+    ...(container.memory === undefined ? {} : { memory: container.memory }),
+    ...(container.networkName === undefined ? {} : { networkName: container.networkName }),
+    ...(container.user === undefined ? {} : { user: container.user }),
+  };
+  return new ContainerRunner(root, containerOptions);
 }

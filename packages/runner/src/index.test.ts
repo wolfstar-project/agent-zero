@@ -1,17 +1,287 @@
-import { describe, expect, it } from 'vitest';
+import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { LocalRunner, splitCommand } from './index.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-describe('LocalRunner', () => {
-  it('splits quoted arguments without invoking a shell', () =>
+import {
+  ContainerRunner,
+  createRunner,
+  LocalRunner,
+  splitCommand,
+  type ProcessOptions,
+  type ProcessOutcome,
+  type ProcessRunner,
+} from './index.js';
+
+interface Invocation {
+  program: string;
+  args: string[];
+  options: ProcessOptions;
+}
+
+function recordingProcess(outcomes: Partial<Record<string, ProcessOutcome>> = {}): {
+  runner: ProcessRunner;
+  calls: Invocation[];
+} {
+  const calls: Invocation[] = [];
+  const runner: ProcessRunner = async (program, args, options) => {
+    calls.push({ program, args: [...args], options });
+    return outcomes[program] ?? { exitCode: 0, stdout: '', stderr: '' };
+  };
+  return { runner, calls };
+}
+
+let root: string;
+
+beforeEach(async () => {
+  root = await mkdtemp(join(tmpdir(), 'agent-zero-runner-'));
+  await mkdir(join(root, 'src'), { recursive: true });
+  await writeFile(join(root, 'src', 'user.ts'), 'export const user = null;\n', 'utf8');
+});
+
+describe('splitCommand', () => {
+  it('splits quoted arguments without invoking a shell', () => {
     expect(splitCommand('pnpm test --filter "agent core"')).toEqual([
       'pnpm',
       'test',
       '--filter',
       'agent core',
-    ]));
-  it('rejects paths outside the repository', () => {
-    const runner = new LocalRunner(process.cwd());
-    expect(() => runner.read('../secret')).toThrow('Path escapes repository');
+    ]);
+  });
+});
+
+describe('path boundary', () => {
+  it('reads a file inside the checkout', async () => {
+    const runner = new LocalRunner(root);
+    await expect(runner.read('src/user.ts')).resolves.toContain('export const user');
+    await expect(runner.exists('src/user.ts')).resolves.toBe(true);
+    await expect(runner.exists('src/missing.ts')).resolves.toBe(false);
+  });
+
+  it('rejects paths outside the repository', async () => {
+    const runner = new LocalRunner(root);
+    await expect(runner.read('../secret')).rejects.toThrow('Path escapes repository');
+    await expect(runner.read('/etc/passwd')).rejects.toThrow('Path escapes repository');
+  });
+
+  it('refuses to read or write git metadata', async () => {
+    const runner = new LocalRunner(root, { writable: true });
+    await expect(runner.read('.git/config')).rejects.toThrow('Path escapes repository');
+    await expect(runner.write('.git/hooks/pre-commit', 'payload')).rejects.toThrow(
+      'Path escapes repository',
+    );
+  });
+
+  it('refuses a write through a symlink that leaves the checkout', async () => {
+    const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
+    await writeFile(join(outside, 'target.txt'), 'original', 'utf8');
+    await symlink(outside, join(root, 'linked'));
+    const runner = new LocalRunner(root, { writable: true });
+    await expect(runner.write('linked/target.txt', 'rewritten')).rejects.toThrow(
+      'Path escapes repository',
+    );
+    await expect(runner.read('linked/target.txt')).rejects.toThrow('Path escapes repository');
+  });
+
+  it('allows a symlink that stays inside the checkout', async () => {
+    await symlink(join(root, 'src'), join(root, 'alias'));
+    const runner = new LocalRunner(root, { writable: true });
+    await expect(runner.read('alias/user.ts')).resolves.toContain('export const user');
+  });
+});
+
+describe('write policy', () => {
+  it('refuses every write when the runner is read-only', async () => {
+    const runner = new LocalRunner(root);
+    await expect(runner.write('src/user.ts', 'changed')).rejects.toThrow(
+      'this runner was created read-only',
+    );
+    await expect(new LocalRunner(root).read('src/user.ts')).resolves.toContain('null');
+  });
+
+  it('creates missing directories for a permitted write', async () => {
+    const runner = new LocalRunner(root, { writable: true });
+    await runner.write('src/nested/deep.ts', 'export const deep = 1;\n');
+    await expect(runner.read('src/nested/deep.ts')).resolves.toContain('deep');
+  });
+});
+
+describe('command execution', () => {
+  it('passes an argv array and never a shell string', async () => {
+    const { runner: process, calls } = recordingProcess();
+    const runner = new LocalRunner(root, { process });
+    await runner.check('pnpm run test --filter "agent core"', 5_000);
+    expect(calls[0]?.program).toBe('pnpm');
+    expect(calls[0]?.args).toEqual(['run', 'test', '--filter', 'agent core']);
+    expect(calls[0]?.options.timeoutMs).toBe(5_000);
+  });
+
+  it('rejects a command that would need a shell', async () => {
+    const runner = new LocalRunner(root);
+    await expect(runner.check('pnpm test && rm -rf .', 1_000)).rejects.toThrow('Command rejected');
+    await expect(runner.check('  ', 1_000)).rejects.toThrow('Command rejected');
+  });
+
+  it('reports a non-zero exit code as failure evidence', async () => {
+    const { runner: process } = recordingProcess({
+      pnpm: { exitCode: 2, stdout: 'out', stderr: 'boom' },
+    });
+    const result = await new LocalRunner(root, { process }).check('pnpm run test', 1_000);
+    expect(result).toMatchObject({ exitCode: 2, stdout: 'out', stderr: 'boom' });
+  });
+
+  it('bounds and redacts captured output', async () => {
+    const { runner: process } = recordingProcess({
+      pnpm: {
+        exitCode: 1,
+        stdout: `${'x'.repeat(500)} ghp_0123456789abcdefghijklmnopqrstuvwxyz`,
+        stderr: 'token=super-secret-value',
+      },
+    });
+    const runner = new LocalRunner(root, { process, maxOutputBytes: 200 });
+    const result = await runner.check('pnpm run test', 1_000);
+    expect(result.stdout).not.toContain('ghp_0123456789');
+    expect(result.stdout).toContain('[truncated');
+    expect(result.stderr).toBe('token=[redacted]');
+  });
+});
+
+describe('git inspection', () => {
+  it('collects the file list and diff through fixed arguments', async () => {
+    const { runner: process, calls } = recordingProcess({
+      git: { exitCode: 0, stdout: 'src/user.ts', stderr: '' },
+    });
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('FILES');
+    expect(context).toContain('DIFF');
+    expect(calls.map((call) => call.args[0])).toEqual(['ls-files', 'diff']);
+  });
+
+  it('reports the changed-file set and resolves renames to the new path', async () => {
+    const { runner: process } = recordingProcess({
+      git: { exitCode: 0, stdout: ' M src/user.ts\nR  src/old.ts -> src/new.ts\n', stderr: '' },
+    });
+    await expect(new LocalRunner(root, { process }).changedFiles()).resolves.toEqual([
+      'src/user.ts',
+      'src/new.ts',
+    ]);
+  });
+
+  it('degrades instead of failing when the checkout has no git history', async () => {
+    const { runner: process } = recordingProcess({
+      git: { exitCode: 128, stdout: '', stderr: 'not a git repository' },
+    });
+    await expect(new LocalRunner(root, { process }).context()).resolves.toContain('FILES');
+  });
+});
+
+/** The value the engine would receive for `--network`. */
+function networkArgument(runner: ContainerRunner): string | undefined {
+  const args = runner.engineArguments();
+  return args[args.indexOf('--network') + 1];
+}
+
+describe('ContainerRunner', () => {
+  it('describes itself as an isolated boundary', () => {
+    const runner = new ContainerRunner(root, {
+      writable: true,
+      network: 'none',
+      engine: 'docker',
+      image: 'node:22',
+      workdir: '/workspace',
+    });
+    expect(runner.describe()).toEqual({
+      kind: 'container',
+      isolated: true,
+      writable: true,
+      network: 'none',
+    });
+  });
+
+  it('runs the command in an ephemeral, capability-dropped container', async () => {
+    const { runner: process, calls } = recordingProcess();
+    const runner = new ContainerRunner(root, {
+      writable: true,
+      network: 'none',
+      engine: 'docker',
+      image: 'node:22',
+      workdir: '/workspace',
+      cpus: '2',
+      memory: '4g',
+      user: '1000:1000',
+      process,
+    });
+    await runner.check('pnpm run test', 1_000);
+    const args = calls[0]?.args ?? [];
+    expect(calls[0]?.program).toBe('docker');
+    expect(args.slice(0, 3)).toEqual(['run', '--rm', '--init']);
+    expect(args).toContain('--cap-drop');
+    expect(args).toContain('no-new-privileges');
+    expect(args).toEqual(expect.arrayContaining(['--network', 'none']));
+    expect(args).toEqual(expect.arrayContaining(['--volume', `${root}:/workspace`]));
+    expect(args).toEqual(expect.arrayContaining(['--cpus', '2', '--memory', '4g']));
+    expect(args).toEqual(expect.arrayContaining(['--user', '1000:1000']));
+    expect(args.slice(-4)).toEqual(['node:22', 'pnpm', 'run', 'test']);
+  });
+
+  it('mounts the checkout read-only when the runner cannot write', () => {
+    const runner = new ContainerRunner(root, {
+      writable: false,
+      network: 'none',
+      engine: 'podman',
+      image: 'node:22',
+      workdir: '/workspace',
+    });
+    expect(runner.engineArguments()).toEqual(
+      expect.arrayContaining(['--volume', `${root}:/workspace:ro`]),
+    );
+  });
+
+  it('maps each egress policy to a concrete network', () => {
+    const options = {
+      writable: true,
+      engine: 'docker' as const,
+      image: 'node:22',
+      workdir: '/workspace',
+    };
+    expect(networkArgument(new ContainerRunner(root, { ...options, network: 'none' }))).toBe(
+      'none',
+    );
+    expect(networkArgument(new ContainerRunner(root, { ...options, network: 'full' }))).toBe(
+      'bridge',
+    );
+    expect(networkArgument(new ContainerRunner(root, { ...options, network: 'restricted' }))).toBe(
+      'agent-zero',
+    );
+    expect(
+      networkArgument(
+        new ContainerRunner(root, { ...options, network: 'restricted', networkName: 'locked' }),
+      ),
+    ).toBe('locked');
+  });
+});
+
+describe('createRunner', () => {
+  it('builds a read-only local boundary by default', () => {
+    expect(
+      createRunner(root, { isolation: 'local', network: 'full', writable: false }).describe(),
+    ).toEqual({ kind: 'local', isolated: false, writable: false, network: 'full' });
+  });
+
+  it('refuses container isolation without an image instead of downgrading', () => {
+    expect(() =>
+      createRunner(root, { isolation: 'container', network: 'none', writable: true }),
+    ).toThrow('refusing to run without a sandbox');
+  });
+
+  it('builds an isolated boundary when an image is configured', () => {
+    const runner = createRunner(root, {
+      isolation: 'container',
+      network: 'none',
+      writable: true,
+      container: { engine: 'docker', image: 'node:22', workdir: '/workspace' },
+    });
+    expect(runner.describe().isolated).toBe(true);
   });
 });

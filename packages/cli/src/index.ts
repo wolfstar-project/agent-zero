@@ -1,17 +1,36 @@
 #!/usr/bin/env node
-import { access, copyFile } from 'node:fs/promises';
+import { access, copyFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { AgentZero } from '@agent-zero/agent';
-import { loadConfig } from '@agent-zero/config';
+import {
+  discoverChecks,
+  knownLockfiles,
+  loadConfig,
+  mayModifyRepository,
+} from '@agent-zero/config';
 import { modelFromEnvironment } from '@agent-zero/models';
-import { LocalRunner } from '@agent-zero/runner';
-import { version, type RunMode } from '@agent-zero/shared';
+import { createRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
+import {
+  evidenceFromResult,
+  renderEvidenceMarkdown,
+  version,
+  type RunMode,
+  type TaskResult,
+} from '@agent-zero/shared';
 import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
 
 const cwd = process.cwd();
+
+/**
+ * Exit codes are part of the contract.
+ *
+ * `0` means the run reached a clean conclusion, `1` means it failed, and `2` means a human has to
+ * look. A run whose verification did not pass never exits `0`, so CI cannot mistake it for success.
+ */
+const exitCodes = { completed: 0, failed: 1, 'needs-human': 2 } as const;
 
 await main().catch((error: unknown) => {
   p.log.error(error instanceof Error ? error.message : String(error));
@@ -64,6 +83,7 @@ function showHelp(): void {
     ].join('\n'),
     'Commands',
   );
+  p.note(['0  concluded', '1  failed', '2  needs a human'].join('\n'), 'Exit codes');
   p.outro('Use --feedback for non-interactive environments.');
 }
 
@@ -82,24 +102,44 @@ async function initializeProject(): Promise<void> {
 
 async function runDoctor(asJson: boolean): Promise<void> {
   const config = await loadConfig(cwd);
-  const checks = {
+  const lockfiles: string[] = [];
+  for (const lockfile of knownLockfiles)
+    if (await exists(join(cwd, lockfile))) lockfiles.push(lockfile);
+  const checks =
+    config.checks.length > 0
+      ? config.checks
+      : discoverChecks({ packageJson: await readOptional(join(cwd, 'package.json')), lockfiles });
+  const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
     modelConfigured: Boolean(process.env.OPENAI_API_KEY),
     mode: config.mode,
+    isolation: config.runner.isolation,
+    network: config.permissions.network,
+    checks,
   };
 
   if (asJson) {
-    console.log(JSON.stringify(checks, null, 2));
+    console.log(JSON.stringify(status, null, 2));
     return;
   }
 
   p.intro('Agent Zero · doctor');
-  p.log.info(`Node ${checks.node}`);
-  logCheck('Git repository', checks.gitRepository);
-  logCheck('Model configured', checks.modelConfigured);
-  p.log.info(`Mode: ${checks.mode}`);
-  p.outro(checks.gitRepository && checks.modelConfigured ? 'Ready to run.' : 'Setup incomplete.');
+  p.log.info(`Node ${status.node}`);
+  logCheck('Git repository', status.gitRepository);
+  logCheck('Model configured', status.modelConfigured);
+  logCheck(
+    `Isolated runner (${status.isolation}, network ${status.network})`,
+    status.isolation === 'container',
+  );
+  logCheck(
+    checks.length > 0
+      ? `Verification checks: ${checks.join(', ')}`
+      : 'No verification checks found',
+    checks.length > 0,
+  );
+  p.log.info(`Mode: ${status.mode}`);
+  p.outro(status.gitRepository && status.modelConfigured ? 'Ready to run.' : 'Setup incomplete.');
 }
 
 async function runAgent(
@@ -115,9 +155,16 @@ async function runAgent(
 
   if (!asJson && providedFeedback !== undefined) p.intro(`Agent Zero · ${command}`);
 
+  // The boundary is created read-only unless both the mode and repository policy allow writing, so
+  // a mistake in the runtime cannot turn a review into an edit.
+  const runner = createRunner(
+    cwd,
+    runnerOptionsFromPolicy(config, mayModifyRepository(config, mode)),
+  );
+
   const agent = new AgentZero({
     model: modelFromEnvironment(config.model.name, config.model.baseUrl),
-    runner: new LocalRunner(cwd),
+    runner,
     config,
     onEvent: (event) => {
       if (asJson) console.error(`[${event.state}] ${event.message}`);
@@ -127,13 +174,16 @@ async function runAgent(
   const result = await agent.run({ repository: cwd, feedback, mode });
 
   if (asJson) console.log(JSON.stringify(result, null, 2));
-  else {
-    p.note(JSON.stringify(result, null, 2), 'Result');
-    if (result.state === 'failed') p.cancel('Run failed.');
-    else p.outro('Run completed.');
-  }
+  else report(result, mode);
 
-  if (result.state === 'failed') process.exitCode = 1;
+  process.exitCode = exitCodes[result.state];
+}
+
+function report(result: TaskResult, mode: RunMode): void {
+  p.note(renderEvidenceMarkdown(evidenceFromResult(result, { mode })), 'Evidence');
+  if (result.state === 'failed') p.cancel(result.summary);
+  else if (result.state === 'needs-human') p.log.warn(result.summary);
+  else p.outro(result.summary);
 }
 
 async function promptForFeedback(
@@ -170,5 +220,13 @@ async function exists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function readOptional(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, 'utf8');
+  } catch {
+    return null;
   }
 }
