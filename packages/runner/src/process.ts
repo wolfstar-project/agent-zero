@@ -1,7 +1,17 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { anyOf, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
+import {
+  anyOf,
+  carriageReturn,
+  charIn,
+  charNotIn,
+  createRegExp,
+  exactly,
+  global,
+  linefeed,
+  oneOrMore,
+} from 'magic-regexp';
 
 const execFileAsync = promisify(execFile);
 
@@ -76,6 +86,12 @@ const commandPart = anyOf(
   exactly("'").and(charNotIn("'").times.any()).and("'"),
 );
 const COMMAND_PARTS = createRegExp(commandPart, [global]);
+const SHELL_OPERATORS = createRegExp(anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn));
+
+/** True when a configured command would require shell parsing to preserve its meaning. */
+export function containsShellOperators(command: string): boolean {
+  return SHELL_OPERATORS.test(command);
+}
 
 /**
  * Split a configured command into an argv array.
