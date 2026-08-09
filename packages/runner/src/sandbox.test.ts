@@ -243,6 +243,51 @@ describe('RunnerPool', () => {
       expect(vi.getTimerCount()).toBe(0);
     });
 
+    it('dispose surfaces failed stops and a retried dispose stops the lease', async () => {
+      vi.useFakeTimers();
+      let failStops = true;
+      const adapter = provider();
+      adapter.stop = async (id) => {
+        if (failStops) throw new Error('stop failed');
+        adapter.stopped.push(id);
+      };
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+      });
+      await pool.acquire(request);
+      await expect(pool.dispose()).rejects.toBeInstanceOf(AggregateError);
+      expect(pool.snapshot().active).toBe(1);
+      failStops = false;
+      await expect(pool.dispose()).resolves.toBeUndefined();
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+    });
+
+    it('stops a runner whose provisioning resolves after dispose', async () => {
+      let releaseProvision!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        releaseProvision = resolve;
+      });
+      const adapter = provider();
+      adapter.provision = async (sandboxRequest) => {
+        await gate;
+        return { externalId: `remote-${sandboxRequest.taskId}`, runner };
+      };
+      const pool = new RunnerPool(adapter, {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        maxLeaseMs: 1_000,
+      });
+      const pending = pool.acquire(request);
+      await pool.dispose();
+      releaseProvision();
+      await expect(pending).rejects.toBeInstanceOf(RunnerPoolQuotaError);
+      expect(adapter.stopped).toEqual(['remote-task-1']);
+      expect(pool.snapshot().active).toBe(0);
+    });
+
     it('dispose clears timers, stops remaining leases, and rejects new acquires', async () => {
       vi.useFakeTimers();
       const adapter = provider();

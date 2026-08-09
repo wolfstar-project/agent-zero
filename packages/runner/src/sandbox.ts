@@ -127,6 +127,16 @@ export class RunnerPool {
         runner: provisioned.runner,
       };
       this.leases.set(lease.id, lease);
+      if (this.disposed) {
+        // The pool was disposed while provisioning; the runner must stop instead of escaping
+        // shutdown. A failed stop keeps the lease tracked so a retried dispose() can stop it.
+        try {
+          await this.release(lease.id);
+        } catch {
+          // Intentionally swallowed: the disposal error below is the actionable signal.
+        }
+        throw new RunnerPoolQuotaError('Runner pool was disposed during provisioning');
+      }
       // The pool owns expiry enforcement: a runner must stop at its lease deadline even when no
       // external caller ever sweeps.
       this.scheduleExpiry(lease.id, request.leaseMs);
@@ -159,11 +169,25 @@ export class RunnerPool {
     return true;
   }
 
-  /** Clears every expiry timer and stops all remaining leases. The pool cannot be reused. */
+  /**
+   * Clears every expiry timer and stops all remaining leases. The pool rejects new acquires
+   * afterwards. When a provider stop fails, the lease stays tracked and this method throws an
+   * `AggregateError`; calling `dispose()` again retries the remaining stops.
+   */
   async dispose(): Promise<void> {
     this.disposed = true;
     for (const id of this.expiryTimers.keys()) this.clearExpiry(id);
-    await Promise.allSettled(Array.from(this.leases.keys(), (id) => this.release(id)));
+    const results = await Promise.allSettled(
+      Array.from(this.leases.keys(), (id) => this.release(id)),
+    );
+    const failures = results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason as unknown] : [],
+    );
+    if (failures.length > 0)
+      throw new AggregateError(
+        failures,
+        'Runner pool disposal failed to stop every lease; call dispose() again to retry',
+      );
   }
 
   /** Manual backstop for the pool-owned expiry timers, e.g. after a process restart. */
@@ -204,8 +228,9 @@ export class RunnerPool {
         if (!this.disposed && this.leases.has(id)) this.scheduleExpiry(id, this.expiryRetryMs);
       });
     }, delayMs);
-    // Never keep the host process alive solely to enforce an expiry.
-    timer.unref();
+    // The timer stays referenced on purpose: lease state is process-local, so letting the process
+    // exit before the deadline would leave the remote sandbox running with no cleanup path.
+    // Callers that want to exit early must release the lease or dispose the pool.
     this.expiryTimers.set(id, timer);
   }
 
