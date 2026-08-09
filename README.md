@@ -101,9 +101,13 @@ pnpm check:repo
 
 ## Roadmap
 
-- v0.1: resolve GitHub review feedback with evidence
-- v0.2: proactive PR review and confidence-gated autofix
-- v0.3: dashboard, task history, cost tracking, and runner pools
-- v0.4: issue-to-PR autonomous workflows
+Agent Zero is being developed incrementally around the **find, fix, and verify** loop. The current milestones are:
+
+- **v0.1:** resolve GitHub review feedback with evidence
+- **v0.2:** proactive PR review and confidence-gated autofix
+- **v0.3:** control plane, task history, cost tracking, dashboard, and runner pools
+- **v0.4:** bounded issue-to-PR autonomous workflows
+
+See the [full project roadmap](./ROADMAP.md) for milestone goals, planned capabilities, longer-term directions, and explicit non-goals. Roadmap-level progress and changes are tracked in the linked GitHub roadmap issue.
 
 Apache-2.0 © WolfStar Project.
