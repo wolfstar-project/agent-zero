@@ -80,17 +80,13 @@ const COMMAND_PARTS = createRegExp(commandPart, [global]);
  * Analyze a configured command with ViteHub Shell before Agent Zero tokenizes or executes it.
  *
  * ViteHub owns shell syntax analysis. Agent Zero deliberately keeps execution argv-based and
- * shell-free, so only syntax ViteHub can parse is accepted here. The execution boundary remains the
- * final authority over filesystem, network, timeout, and process policy.
+ * shell-free, so only syntax ViteHub can parse is accepted here. The repository boundary separately
+ * enforces the narrower Agent Zero invariant that verification commands cannot contain shell
+ * operators before the argv is executed with `shell: false`.
  */
 export async function assertSimpleCommand(command: string): Promise<void> {
   const analysis = await analyzeShellCommand(command, { maxInputBytes: 16_384, timeoutMs: 1_000 });
   if (!analysis.ok) throw new Error('Command could not be safely analyzed by ViteHub Shell');
-
-  // A simple repository check must resolve to exactly one executable. Compound shell expressions
-  // are intentionally not emulated by Agent Zero's argv-based process runner.
-  if (analysis.commandNames.length !== 1)
-    throw new Error('Command must contain exactly one executable and no compound shell expression');
 }
 
 /**
