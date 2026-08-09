@@ -95,7 +95,7 @@ describe('RunnerPool', () => {
   });
 
   it('reserves capacity before provisioning so overlapping acquires cannot bypass quotas', async () => {
-    let releaseProvision: () => void = () => undefined;
+    let releaseProvision!: () => void;
     const gate = new Promise<void>((resolve) => {
       releaseProvision = resolve;
     });
