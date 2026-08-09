@@ -14,7 +14,7 @@
     "format:check": "oxfmt --check .",
     "lint": "TMPDIR=/tmp turbo run lint",
     "lint:ci": "pnpm format:check && pnpm lint",
-    "prepare": "husky",
+    "prepare": "node .husky/install.mjs",
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
     "test": "TMPDIR=/tmp turbo run test --concurrency=1",
