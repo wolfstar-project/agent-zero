@@ -1,3 +1,6 @@
+import { destr } from 'destr';
+import { anyOf, carriageReturn, charIn, createRegExp, digit, letter, linefeed } from 'magic-regexp';
+
 /** The repository-native check kinds a verified run is expected to execute. */
 export const checkKinds = ['lint', 'typecheck', 'test', 'build'] as const;
 export type CheckKind = (typeof checkKinds)[number];
@@ -41,10 +44,17 @@ export const knownLockfiles: readonly string[] = lockfileManagers.map(([lockfile
  * and stops untrusted repository content from smuggling operators into a command line. Glob
  * characters are allowed because tools that accept patterns expand them themselves.
  */
-const SHELL_METACHARACTERS = /[;&|<>`$(){}\n\r]/;
+const SHELL_METACHARACTERS = createRegExp(
+  anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn),
+);
 
 /** Script names Agent Zero is willing to invoke. Anything else is untrusted repository content. */
-const SAFE_SCRIPT_NAME = /^[A-Za-z0-9][A-Za-z0-9:._-]*$/;
+const SAFE_SCRIPT_NAME = createRegExp(
+  anyOf(letter, digit)
+    .at.lineStart()
+    .and(anyOf(letter, digit, charIn(':._-')).times.any())
+    .at.lineEnd(),
+);
 
 /** Identify the package manager a checkout pins, defaulting to npm. */
 export function packageManagerFromLockfiles(lockfiles: readonly string[]): PackageManager {
@@ -97,12 +107,7 @@ export function assertExecutableCommand(command: string): void {
 
 function readScripts(packageJson: string | null): string[] {
   if (!packageJson) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(packageJson);
-  } catch {
-    return [];
-  }
+  const parsed: unknown = destr(packageJson);
   if (!isRecord(parsed) || !isRecord(parsed.scripts)) return [];
   return Object.entries(parsed.scripts)
     .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
