@@ -1,15 +1,15 @@
-name: CI
+name: ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
-    paths-ignore:
-      - .vscode/**
-      - LICENSE
+    branches:
+      - main
+  push:
+    branches:
+      - main
   merge_group:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -24,71 +24,67 @@ permissions:
 
 jobs:
   lint:
-    name: Lint and format
-    runs-on: ubuntu-latest
+    name: 🔠 Lint project
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup
         uses: ./.github/actions/setup-toolchain
 
-      - name: Check formatting and lint
+      - name: 🔠 Lint project
         run: pnpm lint:ci
 
-      - name: Validate repository metadata and agent skills
+      - name: 🧭 Validate repository metadata and agent skills
         run: pnpm check:repo
 
   typecheck:
-    name: Typecheck
-    runs-on: ubuntu-latest
+    name: 🔎 Typecheck project
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup
         uses: ./.github/actions/setup-toolchain
 
-      - name: Typecheck
+      - name: 🔎 Typecheck project
         run: pnpm typecheck
 
   test:
-    name: Unit tests
-    runs-on: ubuntu-latest
+    name: 🧪 Unit tests
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup
         uses: ./.github/actions/setup-toolchain
 
-      - name: Test
+      - name: 🧪 Unit tests
         run: pnpm test
 
   build:
-    name: Build and package validation
-    runs-on: ubuntu-latest
+    name: 🏗️ Build project
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup
         uses: ./.github/actions/setup-toolchain
 
-      - name: Build and validate package exports
+      - name: 🏗️ Build project
         run: pnpm build
 
-      - name: Verify injected version
+      - name: 📦 Verify package version
         run: node --input-type=module --eval "import('./packages/shared/dist/index.mjs').then(({ version }) => { if (version !== '0.1.0') process.exit(1) })"
