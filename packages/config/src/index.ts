@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { NetworkPolicy, RunMode } from '@agent-zero/shared';
+import type { ChangeRisk, NetworkPolicy, RunMode } from '@agent-zero/shared';
 import { parse } from 'yaml';
 
 import { assertExecutableCommand } from './checks.js';
@@ -59,7 +59,15 @@ export interface AgentZeroConfig {
   mode: RunMode;
   /** Explicit check commands. When empty the checkout's own scripts are discovered. */
   checks: string[];
-  autofix: { enabled: boolean; minConfidence: number };
+  proactive: { enabled: boolean };
+  autofix: {
+    enabled: boolean;
+    minConfidence: number;
+    /** High-impact changes are never accepted here and always require human approval. */
+    allowedChangeRisks: Exclude<ChangeRisk, 'high-impact'>[];
+    /** Autonomous writes must use a runner that can prove isolation when this is true. */
+    requireIsolated: boolean;
+  };
   validation: ValidationPolicy;
   agent: { maxAttempts: number; timeoutMs: number; maxChangedFiles: number };
   permissions: { network: NetworkPolicy };
@@ -71,7 +79,13 @@ export const defaultConfig: AgentZeroConfig = {
   version: 1,
   mode: 'observe',
   checks: [],
-  autofix: { enabled: false, minConfidence: 0.85 },
+  proactive: { enabled: false },
+  autofix: {
+    enabled: false,
+    minConfidence: 0.85,
+    allowedChangeRisks: ['mechanical'],
+    requireIsolated: true,
+  },
   validation: {
     minConfidence: 0.6,
     requireEvidence: true,
@@ -110,6 +124,7 @@ export async function loadConfig(cwd: string): Promise<AgentZeroConfig> {
   return validateConfig({
     ...defaultConfig,
     ...parsed,
+    proactive: { ...defaultConfig.proactive, ...parsed.proactive },
     autofix: { ...defaultConfig.autofix, ...parsed.autofix },
     validation: { ...defaultConfig.validation, ...parsed.validation },
     agent: { ...defaultConfig.agent, ...parsed.agent },
@@ -139,6 +154,17 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
   }
 
   assertRatio(config.autofix.minConfidence, 'autofix.minConfidence');
+  if (typeof config.proactive.enabled !== 'boolean')
+    throw new Error('proactive.enabled must be a boolean');
+  if (typeof config.autofix.enabled !== 'boolean')
+    throw new Error('autofix.enabled must be a boolean');
+  if (typeof config.autofix.requireIsolated !== 'boolean')
+    throw new Error('autofix.requireIsolated must be a boolean');
+  if (!Array.isArray(config.autofix.allowedChangeRisks))
+    throw new Error('autofix.allowedChangeRisks must be a list');
+  for (const risk of config.autofix.allowedChangeRisks)
+    if (risk !== 'mechanical' && risk !== 'behavioral')
+      throw new Error(`Invalid autofix change risk: ${String(risk)}`);
   assertRatio(config.validation.minConfidence, 'validation.minConfidence');
   assertPositiveInteger(config.agent.maxAttempts, 'agent.maxAttempts');
   assertPositiveInteger(config.agent.timeoutMs, 'agent.timeoutMs');
@@ -165,6 +191,11 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
  */
 export function mayModifyRepository(config: AgentZeroConfig, mode: RunMode): boolean {
   return (mode === 'fix' || mode === 'autonomous') && config.autofix.enabled;
+}
+
+/** Whether repository policy permits this class of change to pass the autofix gate. */
+export function mayAutofixChange(config: AgentZeroConfig, risk: ChangeRisk): boolean {
+  return risk !== 'high-impact' && config.autofix.allowedChangeRisks.includes(risk);
 }
 
 function assertRatio(value: number, name: string): void {

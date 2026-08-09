@@ -61,7 +61,7 @@ async function main(): Promise<void> {
   }
 
   if (args.command === 'review' || args.command === 'fix' || args.command === 'run') {
-    await runAgent(args.command, args.feedback, args.json);
+    await runAgent(args.command, args.feedback, args.proactive, args.json);
     return;
   }
 
@@ -77,14 +77,14 @@ function showHelp(): void {
       'zero init',
       'zero --version',
       'zero doctor [--json]',
-      'zero review [--feedback <text>] [--json]',
-      'zero fix [--feedback <text>] [--json]',
-      'zero run [--feedback <text>] [--json]',
+      'zero review (--feedback <text> | --proactive) [--json]',
+      'zero fix (--feedback <text> | --proactive) [--json]',
+      'zero run (--feedback <text> | --proactive) [--json]',
     ].join('\n'),
     'Commands',
   );
   p.note(['0  concluded', '1  failed', '2  needs a human'].join('\n'), 'Exit codes');
-  p.outro('Use --feedback for non-interactive environments.');
+  p.outro('Use --feedback or --proactive for non-interactive environments.');
 }
 
 async function initializeProject(): Promise<void> {
@@ -152,10 +152,13 @@ async function runDoctor(asJson: boolean): Promise<void> {
 async function runAgent(
   command: 'review' | 'fix' | 'run',
   providedFeedback: string | undefined,
+  proactive: boolean,
   asJson: boolean,
 ): Promise<void> {
-  const feedback = providedFeedback ?? (await promptForFeedback(command, asJson));
-  if (feedback === undefined) return;
+  const feedback = proactive
+    ? undefined
+    : (providedFeedback ?? (await promptForFeedback(command, asJson)));
+  if (!proactive && feedback === undefined) return;
 
   const config = await loadConfig(cwd);
   const mode: RunMode = command === 'review' ? 'observe' : command === 'fix' ? 'fix' : config.mode;
@@ -178,7 +181,12 @@ async function runAgent(
       else p.log.step(event.message);
     },
   });
-  const result = await agent.run({ repository: cwd, feedback, mode });
+  const result = await agent.run({
+    repository: cwd,
+    mode,
+    trigger: proactive ? 'proactive' : 'feedback',
+    ...(feedback === undefined ? {} : { feedback }),
+  });
 
   if (asJson) console.log(JSON.stringify(result, null, 2));
   else report(result, mode);

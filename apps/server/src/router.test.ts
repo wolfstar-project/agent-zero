@@ -28,7 +28,11 @@ function reviewPayload(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
     action: 'submitted',
     repository: { name: 'app', owner: { login: 'acme' } },
-    pull_request: { number: 7, head: { sha: 'a'.repeat(40) } },
+    pull_request: {
+      number: 7,
+      base: { sha: 'b'.repeat(40) },
+      head: { sha: 'a'.repeat(40) },
+    },
     review: {
       id: 1,
       body: 'load() can return null',
@@ -165,11 +169,55 @@ describe('ingestWebhook', () => {
       owner: 'acme',
       repo: 'app',
       number: 7,
+      baseSha: 'b'.repeat(40),
       headSha: 'a'.repeat(40),
     });
     expect(outcome.result.runner.writable).toBe(false);
     expect(outcome.result.changedFiles).toEqual([]);
     expect(outcome.result.summary).toContain('github:acme/app#7');
+  });
+
+  it('ignores proactive pull-request events until repository policy enables them', async () => {
+    const body = JSON.stringify({
+      action: 'synchronize',
+      repository: { name: 'app', owner: { login: 'acme' } },
+      pull_request: {
+        number: 7,
+        base: { sha: 'b'.repeat(40) },
+        head: { sha: 'a'.repeat(40) },
+      },
+    });
+    await expect(
+      ingestWebhook({ event: 'pull_request', body, signature: sign(body) }, options()),
+    ).resolves.toEqual({
+      status: 'ignored',
+      reason: 'Proactive review is disabled by repository policy',
+    });
+  });
+
+  it('runs an enabled proactive pull-request review in repository mode', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nproactive:\n  enabled: true\nmode: observe\n',
+      'utf8',
+    );
+    const body = JSON.stringify({
+      action: 'opened',
+      repository: { name: 'app', owner: { login: 'acme' } },
+      pull_request: {
+        number: 7,
+        base: { sha: 'b'.repeat(40) },
+        head: { sha: 'a'.repeat(40) },
+      },
+    });
+    const outcome = await ingestWebhook(
+      { event: 'pull_request', body, signature: sign(body) },
+      options(),
+    );
+    expect(outcome.status).toBe('accepted');
+    if (outcome.status !== 'accepted') return;
+    expect(outcome.result.runner.writable).toBe(false);
+    expect(getTaskEvidence(outcome.result.id)).toContain('proactive finding');
   });
 });
 
@@ -200,7 +248,13 @@ function recordingFetch(): {
 }
 
 describe('publishEvidence', () => {
-  const target = { owner: 'acme', repo: 'app', number: 7, headSha: 'a'.repeat(40) };
+  const target = {
+    owner: 'acme',
+    repo: 'app',
+    number: 7,
+    baseSha: 'b'.repeat(40),
+    headSha: 'a'.repeat(40),
+  };
 
   it('skips publishing rather than faking a check without a token', async () => {
     const result = await runTask({ repository: checkout, feedback: 'x', mode: 'observe' });

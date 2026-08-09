@@ -45,8 +45,8 @@ discover -> understand -> validate -> plan -> execute -> verify -> review
 
 Each stage owns one decision:
 
-- **discover** collects the checkout, its diff, and its native check commands through the runner.
-- **understand** asks the model to interpret the untrusted feedback in repository context.
+- **discover** collects the checkout, its working-tree or pull-request base-to-head diff, and its native check commands through the runner.
+- **understand** asks the model to interpret untrusted feedback or proactively inspect the complete diff in repository context.
 - **validate** decides the verdict from repository evidence, never from the reviewer's or the model's assertion.
 - **plan** records the plan and resolves authorization. Each refusal is a distinct reportable outcome rather than a silent downgrade.
 - **execute** applies changes restricted to the validated scope, through the runner.
@@ -54,6 +54,8 @@ Each stage owns one decision:
 - **review** inspects the resulting diff before a run may call itself complete.
 
 Repair re-enters `plan` with the failing output as context, until `agent.maxAttempts` is spent.
+
+Proactive review is repository opt-in. Its model decision carries severity, confidence, cited evidence, affected files, and a change-risk classification. The runtime validates the evidence independently, then requires confidence and repository policy to allow the risk class. High-impact changes always stop at `needs-human`; proactive or autonomous writes use an isolated runner when policy requires it.
 
 ## Verdicts and evidence
 

@@ -17,11 +17,13 @@
 
 ## Overview
 
-Agent Zero runs one trustworthy loop: ingest review feedback, validate the claim, apply a narrowly scoped fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
+Agent Zero runs one trustworthy loop: ingest review feedback or inspect a pull-request diff proactively, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
 
 Feedback is never treated as truth merely because it came from a human or an AI reviewer.
 
 - **Evidence over assertion** &ndash; every fix carries the commands that verified it.
+- **Proactive, not speculative** &ndash; diff review reports the highest-priority finding only when checkout evidence supports it.
+- **Confidence and impact gates** &ndash; automatic fixes require confidence, an allowed change-risk class, repository permission, and verification.
 - **`observe` by default** &ndash; the safe mode inspects and reports, and never writes to a target repository.
 - **One execution boundary** &ndash; `packages/runner` is the only code allowed to run commands or mutate a checkout.
 - **Adapters at the edges** &ndash; the runtime stays independent of HTTP, GitHub, terminal UI, and model providers.
@@ -72,6 +74,7 @@ cp .env.example .env
 aube test
 aube run zero doctor
 aube run zero review --feedback "Possible null dereference in src/user.ts"
+aube run zero review --proactive
 aube run dev
 ```
 
@@ -85,12 +88,12 @@ aube run dev
 zero init                   create .agent-zero.yml
 zero --version              print the injected CLI version
 zero doctor [--json]        inspect the local environment
-zero review [--feedback X]  validate feedback without editing
-zero fix [--feedback X]     validate, edit, and verify (policy permitting)
-zero run [--feedback X]     run using the configured mode
+zero review (--feedback X | --proactive)  inspect without editing
+zero fix (--feedback X | --proactive)     validate, edit, and verify (policy permitting)
+zero run (--feedback X | --proactive)     run using the configured mode
 ```
 
-The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args) and renders with [`@clack/prompts`](https://github.com/bombshell-dev/clack). When `--feedback` is omitted in a terminal, it asks for the task interactively; use `--feedback` and `--json` for scripts and CI.
+The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args) and renders with [`@clack/prompts`](https://github.com/bombshell-dev/clack). Use `--proactive` to inspect the working-tree diff without reviewer feedback. When neither trigger is provided in a terminal, it asks for the task interactively; use `--feedback` or `--proactive` with `--json` for scripts and CI.
 
 ---
 
@@ -109,9 +112,10 @@ const zero: RouterClient<AppRouter> = createORPCClient(
 );
 
 await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mode: 'observe' });
+await zero.tasks.create({ repository: '.', trigger: 'proactive', mode: 'observe' });
 ```
 
-`observe` is the safe default and never writes files. Set `mode: fix` and `autofix.enabled: true` in `.agent-zero.yml` only after configuring a model provider and an isolated runner.
+`observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive/autonomous work) an isolated runner. High-impact changes always require human approval.
 
 ---
 

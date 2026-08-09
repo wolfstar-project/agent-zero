@@ -1,4 +1,4 @@
-export { AgentZero, scopeChanges, type AgentDependencies } from './agent.js';
+export { AgentZero, classifyChangeRisk, scopeChanges, type AgentDependencies } from './agent.js';
 export {
   canTransition,
   InvalidTransitionError,
@@ -11,4 +11,5 @@ export {
   validateFinding,
   type ValidationOutcome,
   type ValidationProbe,
+  type ValidationScope,
 } from './validation.js';

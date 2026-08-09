@@ -3,15 +3,21 @@ import {
   type FeedbackItem,
   type PullRequestRef,
   type ReviewInput,
+  type ReviewTrigger,
   type RunMode,
 } from '@agent-zero/shared';
 
 /** Webhook event names this adapter understands. */
-export const supportedEvents = ['pull_request_review', 'pull_request_review_comment'] as const;
+export const supportedEvents = [
+  'pull_request',
+  'pull_request_review',
+  'pull_request_review_comment',
+] as const;
 export type SupportedEvent = (typeof supportedEvents)[number];
 
 /** A review event normalized away from GitHub's payload shape. */
 export interface ReviewEvent {
+  trigger: ReviewTrigger;
   pullRequest: PullRequestRef;
   items: FeedbackItem[];
   /** True when at least one item came from a formal request for changes. */
@@ -48,6 +54,11 @@ export function parseReviewEvent(
   const pullRequest = readPullRequest(payload);
   if (!pullRequest) return null;
 
+  if (event === 'pull_request') {
+    if (!isProactiveAction(payload.action)) return null;
+    return { trigger: 'proactive', pullRequest, items: [], requestedChanges: false };
+  }
+
   const items =
     event === 'pull_request_review_comment'
       ? readReviewComment(payload, options)
@@ -57,6 +68,7 @@ export function parseReviewEvent(
   if (!items || items.length === 0) return null;
 
   return {
+    trigger: 'feedback',
     pullRequest,
     items,
     requestedChanges: items.some((item) => item.requestedChanges),
@@ -83,11 +95,13 @@ export function reviewInputFromEvent(
   ];
   return {
     repository: options.checkoutPath,
-    feedback: renderFeedback(event.items),
     mode: options.mode ?? 'observe',
+    trigger: event.trigger,
     source: `github:${owner}/${repo}#${String(number)}`,
-    items: event.items,
     pullRequest: event.pullRequest,
+    ...(event.trigger === 'feedback'
+      ? { feedback: renderFeedback(event.items), items: event.items }
+      : {}),
     ...(files.length > 0 ? { files } : {}),
   };
 }
@@ -162,14 +176,25 @@ function readPullRequest(payload: Record<string, unknown>): PullRequestRef | nul
 
   const number = typeof pullRequest.number === 'number' ? pullRequest.number : undefined;
   const head = isRecord(pullRequest.head) ? pullRequest.head : undefined;
+  const base = isRecord(pullRequest.base) ? pullRequest.base : undefined;
   const headSha = typeof head?.sha === 'string' ? head.sha : undefined;
+  const baseSha = typeof base?.sha === 'string' ? base.sha : undefined;
   const repo = typeof repository.name === 'string' ? repository.name : undefined;
   const ownerRecord = isRecord(repository.owner) ? repository.owner : undefined;
   const owner = typeof ownerRecord?.login === 'string' ? ownerRecord.login : undefined;
 
-  if (number === undefined || !headSha || !repo || !owner) return null;
-  if (!COMMIT_SHA.test(headSha)) return null;
-  return { owner, repo, number, headSha };
+  if (number === undefined || !baseSha || !headSha || !repo || !owner) return null;
+  if (!COMMIT_SHA.test(baseSha) || !COMMIT_SHA.test(headSha)) return null;
+  return { owner, repo, number, baseSha, headSha };
+}
+
+function isProactiveAction(action: unknown): boolean {
+  return (
+    action === 'opened' ||
+    action === 'reopened' ||
+    action === 'synchronize' ||
+    action === 'ready_for_review'
+  );
 }
 
 function readAuthor(user: unknown, options: ParseOptions): string | null {

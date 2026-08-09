@@ -26,16 +26,22 @@ export interface StoredTask {
 
 export const tasks = new Map<string, StoredTask>();
 
-export const taskInput = z.object({
-  repository: z.string().min(1),
-  feedback: z.string().min(1),
-  mode: z.enum(['observe', 'suggest', 'fix', 'autonomous']),
-  source: z.string().optional(),
-  files: z.array(z.string()).optional(),
-});
+export const taskInput = z
+  .object({
+    repository: z.string().min(1),
+    feedback: z.string().min(1).optional(),
+    trigger: z.enum(['feedback', 'proactive']).default('feedback'),
+    mode: z.enum(['observe', 'suggest', 'fix', 'autonomous']),
+    source: z.string().optional(),
+    files: z.array(z.string()).optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.trigger !== 'proactive' && input.feedback === undefined)
+      context.addIssue({ code: 'custom', path: ['feedback'], message: 'Feedback is required' });
+  });
 
 export function health() {
-  return { status: 'ok' as const, service: 'agent-zero', version: '0.1.0' };
+  return { status: 'ok' as const, service: 'agent-zero', version: '0.2.0' };
 }
 
 export function listTasks() {
@@ -55,8 +61,9 @@ export function getTaskEvidence(id: string): string | undefined {
 export async function createTask(input: z.infer<typeof taskInput>): Promise<TaskResult> {
   return runTask({
     repository: input.repository,
-    feedback: input.feedback,
     mode: input.mode,
+    trigger: input.trigger,
+    ...(input.feedback ? { feedback: input.feedback } : {}),
     ...(input.source ? { source: input.source } : {}),
     ...(input.files ? { files: input.files } : {}),
   });
@@ -109,9 +116,9 @@ export type WebhookOutcome =
 /**
  * Handle an inbound GitHub webhook.
  *
- * The signature is verified before the payload is parsed, and the resulting run always uses
- * `observe`. An unauthenticated request can therefore never cause a repository write, and neither
- * can an authenticated one without an explicit follow-up.
+ * The signature is verified before the payload is parsed. Feedback-triggered runs remain
+ * read-only; proactive pull-request runs use repository mode only after proactive review is
+ * explicitly enabled in that checkout. Writes still require the independent autofix policy gate.
  */
 export async function ingestWebhook(
   request: WebhookRequest,
@@ -134,7 +141,17 @@ export async function ingestWebhook(
   );
   if (!event) return { status: 'ignored', reason: 'No actionable review feedback in this event' };
 
-  const result = await runTask(reviewInputFromEvent(event, { checkoutPath: options.checkoutPath }));
+  let mode: ReviewInput['mode'] = 'observe';
+  if (event.trigger === 'proactive') {
+    const config = await loadConfig(options.checkoutPath);
+    if (!config.proactive.enabled)
+      return { status: 'ignored', reason: 'Proactive review is disabled by repository policy' };
+    mode = config.mode;
+  }
+
+  const result = await runTask(
+    reviewInputFromEvent(event, { checkoutPath: options.checkoutPath, mode }),
+  );
   return { status: 'accepted', result, pullRequest: event.pullRequest };
 }
 

@@ -60,7 +60,7 @@ for (const name of skillNames) {
   try {
     const stat = await lstat(linkPath);
     if (!stat.isSymbolicLink()) errors.push(`${name}: .agents/skills entry must be a symlink`);
-    const target = await readlink(linkPath);
+    const target = (await readlink(linkPath)).replaceAll('\\', '/');
     if (target !== `../../.skills/${name}`)
       errors.push(`${name}: unexpected skill symlink target ${target}`);
   } catch {

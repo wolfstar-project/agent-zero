@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { parseReviewEvent, reviewInputFromEvent } from './events.js';
 
 const repository = { name: 'app', owner: { login: 'acme' } };
-const pullRequest = { number: 7, head: { sha: 'a'.repeat(40) } };
+const pullRequest = {
+  number: 7,
+  base: { sha: 'b'.repeat(40) },
+  head: { sha: 'a'.repeat(40) },
+};
 
 function reviewComment(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -40,7 +44,14 @@ describe('parseReviewEvent for inline comments', () => {
   it('normalizes a created review comment', () => {
     const event = parseReviewEvent('pull_request_review_comment', reviewComment());
     expect(event).toEqual({
-      pullRequest: { owner: 'acme', repo: 'app', number: 7, headSha: 'a'.repeat(40) },
+      trigger: 'feedback',
+      pullRequest: {
+        owner: 'acme',
+        repo: 'app',
+        number: 7,
+        baseSha: 'b'.repeat(40),
+        headSha: 'a'.repeat(40),
+      },
       requestedChanges: false,
       items: [
         {
@@ -82,6 +93,33 @@ describe('parseReviewEvent for inline comments', () => {
   });
 });
 
+describe('parseReviewEvent for proactive pull-request changes', () => {
+  it('starts a proactive review for a new or updated pull request', () => {
+    for (const action of ['opened', 'reopened', 'synchronize', 'ready_for_review']) {
+      const event = parseReviewEvent('pull_request', {
+        action,
+        repository,
+        pull_request: pullRequest,
+      });
+      expect(event).toMatchObject({ trigger: 'proactive', items: [], requestedChanges: false });
+      expect(event?.pullRequest).toMatchObject({
+        baseSha: 'b'.repeat(40),
+        headSha: 'a'.repeat(40),
+      });
+    }
+  });
+
+  it('ignores pull-request actions that do not introduce a reviewable diff', () => {
+    expect(
+      parseReviewEvent('pull_request', {
+        action: 'closed',
+        repository,
+        pull_request: pullRequest,
+      }),
+    ).toBeNull();
+  });
+});
+
 describe('parseReviewEvent for reviews', () => {
   it('ingests a request for changes and marks it as such', () => {
     const event = parseReviewEvent('pull_request_review', review());
@@ -120,7 +158,10 @@ describe('parseReviewEvent input validation', () => {
       { ...review(), repository: {} },
       { ...review(), pull_request: { number: 7 } },
       { ...review(), pull_request: { number: '7', head: { sha: 'a'.repeat(40) } } },
-      { ...review(), pull_request: { number: 7, head: { sha: 'not-a-sha' } } },
+      {
+        ...review(),
+        pull_request: { number: 7, base: { sha: 'b'.repeat(40) }, head: { sha: 'not-a-sha' } },
+      },
     ])
       expect(parseReviewEvent('pull_request_review', payload)).toBeNull();
   });
@@ -154,11 +195,24 @@ describe('reviewInputFromEvent', () => {
     const event = parseReviewEvent('pull_request_review_comment', reviewComment());
     const input = reviewInputFromEvent(event!, { checkoutPath: '/checkout' });
     expect(input.mode).toBe('observe');
+    expect(input.trigger).toBe('feedback');
     expect(input.source).toBe('github:acme/app#7');
     expect(input.repository).toBe('/checkout');
     expect(input.files).toEqual(['src/user.ts']);
     expect(input.feedback).toContain('[review-comment by alice on src/user.ts:12]');
     expect(input.pullRequest).toMatchObject({ number: 7 });
+  });
+
+  it('builds proactive input without inventing reviewer feedback', () => {
+    const event = parseReviewEvent('pull_request', {
+      action: 'synchronize',
+      repository,
+      pull_request: pullRequest,
+    });
+    const input = reviewInputFromEvent(event!, { checkoutPath: '/checkout' });
+    expect(input.trigger).toBe('proactive');
+    expect(input.feedback).toBeUndefined();
+    expect(input.items).toBeUndefined();
   });
 
   it('carries an explicitly requested mode through', () => {

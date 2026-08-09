@@ -1,6 +1,12 @@
 /** How much authority a run has over the target checkout. */
 export type RunMode = 'observe' | 'suggest' | 'fix' | 'autonomous';
 
+/** What caused the runtime to inspect the checkout. */
+export type ReviewTrigger = 'feedback' | 'proactive';
+
+/** How much judgment a proposed change needs before it may be applied automatically. */
+export type ChangeRisk = 'mechanical' | 'behavioral' | 'high-impact';
+
 /** Reported impact of a finding. */
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 
@@ -53,14 +59,18 @@ export interface PullRequestRef {
   owner: string;
   repo: string;
   number: number;
+  baseSha: string;
   headSha: string;
 }
 
 /** A single unit of work for the runtime. */
 export interface ReviewInput {
   repository: string;
-  feedback: string;
+  /** Feedback is omitted when the diff itself triggered a proactive review. */
+  feedback?: string;
   mode: RunMode;
+  /** Defaults to `feedback` for backwards compatibility with v0.1 callers. */
+  trigger?: ReviewTrigger;
   source?: string;
   files?: string[];
   items?: FeedbackItem[];
@@ -83,6 +93,8 @@ export interface ModelFinding {
 /** A model finding after the runtime validated it against the repository. */
 export interface Finding extends ModelFinding {
   id: string;
+  /** Proposed change class recorded for policy and evidence. */
+  changeRisk: ChangeRisk;
   /** Decided by the runtime validation policy, never by the model or the reviewer. */
   verdict: Verdict;
   /** Why the finding was not accepted. Empty when the verdict is `accepted`. */
@@ -145,6 +157,8 @@ export interface TaskResult {
 /** What a model provider returns for one planning step. */
 export interface AgentDecision {
   finding: ModelFinding;
+  /** Model classification; the runtime still applies a conservative repository policy gate. */
+  changeRisk: ChangeRisk;
   plan: string[];
   changes: ProposedChange[];
 }
