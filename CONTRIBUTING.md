@@ -26,6 +26,8 @@ aube test
 
 `package.json` pins aube through `packageManager`. aube reads and writes the existing `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place, so the lockfile stays in pnpm's v9 format. Do not use npm, Yarn, Bun, or another package manager in this repository, and do not add a second lockfile.
 
+`pnpm-workspace.yaml` overrides `typescript` to [`typescript-native-bridge`](https://github.com/johnsoncodehk/typescript-native-bridge), a drop-in fork whose checker runs on tsgo in-process. `tsc` prints `TNB ACTIVE` to stderr on the first type-check in a process; no banner means stock TypeScript is loaded and the install is stale. Keep the pin exact — the fork only publishes prerelease versions, which caret ranges never match — and reinstall after changing it.
+
 ## Choose the right package
 
 | Change                           | Location          |

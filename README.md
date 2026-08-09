@@ -118,6 +118,7 @@ await zero.tasks.create({ repository: '.', feedback: 'Check error handling', mod
 ## Toolchain
 
 - **[aube](https://aube.jdx.dev)** &ndash; package manager, pinned through `packageManager`, reusing the pnpm lockfile and workspace files.
+- **[typescript-native-bridge](https://github.com/johnsoncodehk/typescript-native-bridge)** &ndash; overrides `typescript` repo-wide, so `tsc` keeps the classic package surface while the checker runs on tsgo in-process. The override lives in `pnpm-workspace.yaml` and is pinned exactly; the fork only publishes prerelease versions.
 - **[Turborepo](https://turborepo.dev)** &ndash; schedules workspace tasks in dependency order and caches tsdown build outputs.
 - **[tsdown](https://tsdown.dev)** &ndash; builds publishable packages as ESM and CommonJS with matching declarations and source maps, through the shared [tsdown configuration](./scripts/tsdown.config.ts). Apps stay ESM-only.
 - **[Oxlint](https://oxc.rs) + [Oxfmt](https://oxc.rs)** &ndash; type-aware linting and repository-wide formatting, extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.

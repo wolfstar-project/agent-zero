@@ -2,5 +2,11 @@ packages:
   - apps/*
   - packages/*
 
+# Drop-in `typescript` replacement whose checker runs on tsgo in-process.
+# Must be an exact version: the fork only publishes prerelease versions, which
+# caret ranges never match.
+overrides:
+  typescript: npm:typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
+
 onlyBuiltDependencies:
   - esbuild
