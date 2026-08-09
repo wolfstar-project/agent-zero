@@ -1,17 +1,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import {
-  anyOf,
-  carriageReturn,
-  charIn,
-  charNotIn,
-  createRegExp,
-  exactly,
-  global,
-  linefeed,
-  oneOrMore,
-} from 'magic-regexp';
+import { analyzeShellCommand } from '@vite-hub/shell';
+import { anyOf, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
 
 const execFileAsync = promisify(execFile);
 
@@ -70,8 +61,6 @@ function outcomeFromFailure(error: unknown): ProcessOutcome {
       : error instanceof Error
         ? error.message
         : String(error);
-  // A killed process reports a signal instead of a code; report a non-zero code either way so a
-  // timeout or an out-of-memory kill can never be mistaken for success.
   const exitCode = typeof failure.code === 'number' ? failure.code : 1;
   return { exitCode: exitCode === 0 ? 1 : exitCode, stdout, stderr };
 }
@@ -86,18 +75,29 @@ const commandPart = anyOf(
   exactly("'").and(charNotIn("'").times.any()).and("'"),
 );
 const COMMAND_PARTS = createRegExp(commandPart, [global]);
-const SHELL_OPERATORS = createRegExp(anyOf(charIn(';&|<>`$(){}'), linefeed, carriageReturn));
 
-/** True when a configured command would require shell parsing to preserve its meaning. */
-export function containsShellOperators(command: string): boolean {
-  return SHELL_OPERATORS.test(command);
+/**
+ * Analyze a configured command with ViteHub Shell before Agent Zero tokenizes or executes it.
+ *
+ * ViteHub owns shell syntax analysis. Agent Zero deliberately keeps execution argv-based and
+ * shell-free, so only syntax ViteHub can parse is accepted here. The execution boundary remains the
+ * final authority over filesystem, network, timeout, and process policy.
+ */
+export async function assertSimpleCommand(command: string): Promise<void> {
+  const analysis = await analyzeShellCommand(command, { maxInputBytes: 16_384, timeoutMs: 1_000 });
+  if (!analysis.ok) throw new Error('Command could not be safely analyzed by ViteHub Shell');
+
+  // A simple repository check must resolve to exactly one executable. Compound shell expressions
+  // are intentionally not emulated by Agent Zero's argv-based process runner.
+  if (analysis.commandNames.length !== 1)
+    throw new Error('Command must contain exactly one executable and no compound shell expression');
 }
 
 /**
- * Split a configured command into an argv array.
+ * Split an already-analyzed simple command into an argv array.
  *
- * Quoted segments are preserved as single arguments. This is deliberately not shell parsing: the
- * result is handed to `execFile`, never to a shell.
+ * `magic-regexp` is used only for lightweight token extraction after ViteHub Shell has accepted the
+ * command syntax; it is not a second shell parser or policy engine.
  */
 export function splitCommand(command: string): string[] {
   const parts = command.match(COMMAND_PARTS) ?? [];
