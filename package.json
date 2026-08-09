@@ -45,7 +45,7 @@
     "*.{js,mjs,cjs,ts,tsx,json,jsonc,yaml,yml,md}": "oxfmt --write"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=22.18"
   },
   "packageManager": "pnpm@10.15.0"
 }
