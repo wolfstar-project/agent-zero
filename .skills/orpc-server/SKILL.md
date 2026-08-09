@@ -24,4 +24,4 @@ description: Use when changing apps/server procedures, oRPC contracts, handlers,
 3. Keep the handler thin: validate, authorize, delegate, translate.
 4. Add router tests without opening a real network port.
 5. Update the README client example when the public router shape changes.
-6. Run `pnpm --filter @agent-zero/server test`, typecheck, and build.
+6. Run `aube run test --filter @agent-zero/server`, typecheck, and build.

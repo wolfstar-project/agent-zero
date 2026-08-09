@@ -6,26 +6,27 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "build": "TMPDIR=/tmp turbo run build",
+    "build": "turbo run build",
     "check:repo": "node scripts/check-repository.mjs",
     "clean": "turbo run clean && tsc -b --clean",
-    "dev": "TMPDIR=/tmp turbo run dev",
+    "dev": "turbo run dev",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "lint": "TMPDIR=/tmp turbo run lint",
-    "lint:ci": "pnpm format:check && pnpm lint",
+    "lint": "turbo run lint",
+    "lint:ci": "aube run format:check && aube run lint",
     "prepare": "node .husky/install.mjs",
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
-    "test": "TMPDIR=/tmp turbo run test --concurrency=1",
-    "test:watch": "TMPDIR=/tmp vitest",
-    "typecheck": "TMPDIR=/tmp turbo run typecheck",
-    "zero": "TMPDIR=/tmp node --import tsx packages/cli/src/index.ts"
+    "test": "turbo run test --concurrency=1",
+    "test:watch": "vitest",
+    "typecheck": "turbo run typecheck",
+    "zero": "node --import tsx packages/cli/src/index.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
+    "@e18e/eslint-plugin": "^0.8.0",
     "@redstardev/unplugin-version-injector": "0.0.2",
     "@types/node": "^24.3.0",
     "husky": "^9.1.7",
@@ -47,5 +48,5 @@
   "engines": {
     "node": ">=22.18"
   },
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "aube@1.38.0"
 }

@@ -13,7 +13,7 @@ Use GitHub issues for reproducible bugs, scoped feature proposals, and work that
 A useful bug report should include:
 
 - the Agent Zero version or commit SHA;
-- operating system and Node.js/pnpm versions;
+- operating system and Node.js/aube versions;
 - the runner mode and relevant configuration with secrets removed;
 - deterministic reproduction steps;
 - expected and actual behavior;

@@ -11,8 +11,8 @@ These instructions apply to humans and coding agents working in this repository.
 
 ## Toolchain
 
-- Use Node.js 22.18 or newer and the pnpm version pinned in `package.json`.
-- Use pnpm for dependencies and scripts. Do not create npm, Yarn, or Bun lockfiles.
+- Use Node.js 22.18 or newer and the aube version pinned in `package.json`.
+- Use aube for dependencies and scripts. It reads and writes `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place; keep both files and do not create npm, Yarn, or Bun lockfiles.
 - Use Turborepo through the root scripts; do not duplicate orchestration in package scripts.
 - Use tsdown through each package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`.
 - Use Oxlint with type-aware checks and Oxfmt. Do not add ESLint or Prettier.
@@ -43,11 +43,11 @@ The runtime must remain independent from HTTP, GitHub, terminal UI, and specific
 ## Required checks
 
 ```bash
-pnpm check:repo
-pnpm lint:ci
-pnpm typecheck
-pnpm test
-pnpm build
+aube run check:repo
+aube run lint:ci
+aube run typecheck
+aube test
+aube run build
 ```
 
 Use the smallest relevant check while iterating, then run the complete set before opening a pull request.

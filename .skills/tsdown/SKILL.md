@@ -24,12 +24,12 @@ Use this skill when changing build entries, output formats, declarations, packag
 2. Decide whether the target is a publishable library, CLI, or app.
 3. Change the shared factory only when the behavior should apply to multiple workspaces.
 4. Keep package-local overrides narrow and explicit.
-5. Run `pnpm --filter <package> build` while iterating.
-6. Run `pnpm build` before handoff and inspect publint/attw output.
+5. Run `aube run build --filter <package>` while iterating.
+6. Run `aube run build` before handoff and inspect publint/attw output.
 7. For version changes, run the injected-version smoke test used in `.github/workflows/ci.yaml`.
 
 ## Common failures
 
-- If packing uses an invalid Windows temp path under WSL, run through the root script, which sets `TMPDIR=/tmp`.
+- If packing uses an invalid Windows temp path under WSL, export `TMPDIR=/tmp` in the shell before running the build; the root scripts no longer set it.
 - If declarations expose private or adapter-specific types, move the contract to the correct package instead of suppressing declaration errors.
 - If ESM/CJS validation fails, align `exports`, extensions, and declarations rather than disabling validation.

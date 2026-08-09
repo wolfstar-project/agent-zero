@@ -25,4 +25,4 @@ The CLI uses `@bomb.sh/args` for typed parsing and `@clack/prompts` for human-fr
 3. Add Clack presentation only after parsing succeeds.
 4. Document the command in `README.md` and `CONTRIBUTING.md` when contributor-facing.
 5. Verify interactive and non-interactive behavior.
-6. Run `pnpm --filter @agent-zero/cli test` and the root checks.
+6. Run `aube run test --filter @agent-zero/cli` and the root checks.
