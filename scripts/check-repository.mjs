@@ -6,7 +6,6 @@ const requiredFiles = [
   'CODE_OF_CONDUCT.md',
   'CONTRIBUTING.md',
   'SECURITY.md',
-  'llms.txt',
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/ISSUE_TEMPLATE/bug_report.yml',
   '.github/ISSUE_TEMPLATE/feature_request.yml',
