@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { access, copyFile, readFile } from 'node:fs/promises';
+import { access, copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { AgentZero } from '@agent-zero/agent';
@@ -10,7 +10,7 @@ import {
   mayModifyRepository,
 } from '@agent-zero/config';
 import { modelFromEnvironment } from '@agent-zero/models';
-import { createRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
+import { createRunner, LocalRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
 import {
   evidenceFromResult,
   renderEvidenceMarkdown,
@@ -102,13 +102,20 @@ async function initializeProject(): Promise<void> {
 
 async function runDoctor(asJson: boolean): Promise<void> {
   const config = await loadConfig(cwd);
+  // Checkout inspection goes through the runner boundary like every other repository access. A
+  // read-only local runner is used deliberately so doctor can still diagnose a checkout whose
+  // container isolation is misconfigured.
+  const inspector = new LocalRunner(cwd);
   const lockfiles: string[] = [];
   for (const lockfile of knownLockfiles)
-    if (await exists(join(cwd, lockfile))) lockfiles.push(lockfile);
+    if (await inspector.exists(lockfile)) lockfiles.push(lockfile);
   const checks =
     config.checks.length > 0
       ? config.checks
-      : discoverChecks({ packageJson: await readOptional(join(cwd, 'package.json')), lockfiles });
+      : discoverChecks({
+          packageJson: await inspector.read('package.json').catch(() => null),
+          lockfiles,
+        });
   const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
@@ -220,13 +227,5 @@ async function exists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-async function readOptional(path: string): Promise<string | null> {
-  try {
-    return await readFile(path, 'utf8');
-  } catch {
-    return null;
   }
 }
