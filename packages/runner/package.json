@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@agent-zero/shared": "workspace:*",
+    "@vite-hub/shell": "^0.0.2",
     "magic-regexp": "^0.11.0"
   },
   "devDependencies": {
