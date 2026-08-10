@@ -44,6 +44,7 @@ GitHub adapter / CLI
         ▼
  Runner boundary ─── repository commands and file operations
 
+oRPC control plane ─── typed task API, persistence, and scheduling
 Nuxt dashboard ─── frontend-only operational interface
 ```
 
@@ -56,6 +57,7 @@ Nuxt dashboard ─── frontend-only operational interface
 | [`packages/config`](./packages/config) | Configuration parsing and policy                               |
 | [`packages/shared`](./packages/shared) | Stable cross-package contracts                                 |
 | [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                     |
+| [`apps/server`](./apps/server)         | oRPC control-plane transport and composition root              |
 | [`apps/dashboard`](./apps/dashboard)   | Frontend-only Nuxt operational dashboard                       |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
@@ -93,6 +95,40 @@ zero run (--feedback X | --proactive)     run using the configured mode
 ```
 
 The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args) and renders with [`@clack/prompts`](https://github.com/bombshell-dev/clack). Use `--proactive` to inspect the working-tree diff without reviewer feedback. When neither trigger is provided in a terminal, it asks for the task interactively; use `--feedback` or `--proactive` with `--json` for scripts and CI.
+
+---
+
+## Control plane
+
+`aube --filter @agent-zero/server run dev` starts the control plane on `http://localhost:3001` (override with `PORT`; 3000 belongs to the dashboard). It is the only adapter that composes a runner for hosted work, and it exposes exactly two surfaces:
+
+| Surface              | Purpose                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `/rpc/**`            | Typed oRPC router: `health`, `tasks.list/get/create`, `approvals.decide`  |
+| `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters |
+
+Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. `AGENT_ZERO_CONTROL_PLANE_MODES` holds comma-separated `name:mode|mode` grants for the execution modes each principal may request; without a grant a principal may only request the non-writable `observe` and `suggest` modes, so `fix` and `autonomous` require an explicit operator grant. The approval actor is the authenticated principal's name, never a wire-supplied value.
+
+Clients infer their types from the router rather than redeclaring request and response shapes:
+
+```ts
+import { createORPCClient } from '@orpc/client';
+import { RPCLink } from '@orpc/client/fetch';
+import type { RouterClient } from '@orpc/server';
+import type { RpcRouter } from '@agent-zero/server';
+
+const client: RouterClient<RpcRouter> = createORPCClient(
+  new RPCLink({
+    url: 'http://localhost:3001/rpc',
+    headers: { authorization: `Bearer ${process.env.CONTROL_PLANE_TOKEN}` },
+  }),
+);
+
+const { tasks } = await client.tasks.list();
+await client.approvals.decide({ taskId: tasks[0]!.id, decision: 'approved' });
+```
+
+Task history persists through a `KeyValueStorage` contract — a filesystem store by default, with Redis, KV, or Nitro storage dropping in unchanged. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
 
 ---
 
