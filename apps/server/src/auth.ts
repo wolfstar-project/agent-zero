@@ -63,7 +63,9 @@ export function accessFromEnvironment(
   if (principals.size === 0) return undefined;
   for (const name of grants.keys())
     if (!names.has(name))
-      throw new Error(`AGENT_ZERO_CONTROL_PLANE_MODES grants modes to an unknown principal: ${name}`);
+      throw new Error(
+        `AGENT_ZERO_CONTROL_PLANE_MODES grants modes to an unknown principal: ${name}`,
+      );
   return {
     principals,
     repositories: (repositories ?? '')
