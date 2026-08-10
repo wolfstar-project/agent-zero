@@ -10,6 +10,7 @@ const VALIDATION_ERROR = /validation/i;
 const APPROVAL_ERROR = /awaiting human review/i;
 const UNAUTHORIZED_ERROR = /authentication required/i;
 const FORBIDDEN_ERROR = /not allow-listed/i;
+const MODE_ERROR = /not granted/i;
 
 let store: MemoryTaskStore;
 
@@ -30,7 +31,10 @@ function client(options: ClientOptions = {}) {
 }
 
 function operator() {
-  return client({ principal: { name: 'release-manager' }, allowRepository: true });
+  return client({
+    principal: { name: 'release-manager', modes: ['observe', 'suggest', 'fix', 'autonomous'] },
+    allowRepository: true,
+  });
 }
 
 function awaiting(id: string): StoredTask {
@@ -84,12 +88,26 @@ describe('rpc router', () => {
 
   it('refuses task creation for a repository outside the allow-list', async () => {
     await expect(
-      client({ principal: { name: 'release-manager' } }).tasks.create({
+      client({ principal: { name: 'release-manager', modes: ['autonomous'] } }).tasks.create({
         repository: '/etc',
         feedback: 'x',
         mode: 'autonomous',
       }),
     ).rejects.toThrow(FORBIDDEN_ERROR);
+    await expect(store.list()).resolves.toEqual([]);
+  });
+
+  it('refuses an execution mode outside the principal grant', async () => {
+    const readOnly = client({
+      principal: { name: 'ci', modes: ['observe', 'suggest'] },
+      allowRepository: true,
+    });
+    await expect(
+      readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'fix' }),
+    ).rejects.toThrow(MODE_ERROR);
+    await expect(
+      readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+    ).rejects.toThrow(MODE_ERROR);
     await expect(store.list()).resolves.toEqual([]);
   });
 

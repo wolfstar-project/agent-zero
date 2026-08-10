@@ -8,10 +8,15 @@ import {
 } from './auth.js';
 
 const TOKEN_FORMAT_ERROR = /name:token/;
+const MODE_FORMAT_ERROR = /name:mode\|mode/;
+const UNKNOWN_MODE_ERROR = /unknown mode/;
+const UNKNOWN_PRINCIPAL_ERROR = /unknown principal/;
 
 function access(overrides: Partial<ControlPlaneAccess> = {}): ControlPlaneAccess {
   return {
-    principals: new Map([['token-value', 'release-manager']]),
+    principals: new Map([
+      ['token-value', { name: 'release-manager', modes: ['observe', 'suggest'] as const }],
+    ]),
     repositories: ['/srv/checkout'],
     ...overrides,
   };
@@ -26,14 +31,14 @@ describe('accessFromEnvironment', () => {
 
   it('parses name:token pairs and the repository allow-list', () => {
     const parsed = accessFromEnvironment('release-manager:tok1, ci:tok2', '/srv/app, ./checkout');
-    expect(parsed?.principals.get('tok1')).toBe('release-manager');
-    expect(parsed?.principals.get('tok2')).toBe('ci');
+    expect(parsed?.principals.get('tok1')?.name).toBe('release-manager');
+    expect(parsed?.principals.get('tok2')?.name).toBe('ci');
     expect(parsed?.repositories).toEqual(['/srv/app', './checkout']);
   });
 
   it('keeps tokens containing separators intact after the first colon', () => {
     const parsed = accessFromEnvironment('ops:v1:secret');
-    expect(parsed?.principals.get('v1:secret')).toBe('ops');
+    expect(parsed?.principals.get('v1:secret')?.name).toBe('ops');
   });
 
   it('refuses malformed entries rather than silently dropping them', () => {
@@ -45,11 +50,48 @@ describe('accessFromEnvironment', () => {
   it('defaults to an empty repository allow-list', () => {
     expect(accessFromEnvironment('ops:tok', undefined)?.repositories).toEqual([]);
   });
+
+  it('grants only the non-writable modes without an explicit mode entry', () => {
+    const parsed = accessFromEnvironment('ops:tok', undefined, undefined);
+    expect(parsed?.principals.get('tok')?.modes).toEqual(['observe', 'suggest']);
+  });
+
+  it('parses per-principal mode grants', () => {
+    const parsed = accessFromEnvironment(
+      'release-manager:tok1, ci:tok2',
+      undefined,
+      'release-manager:observe|fix|autonomous',
+    );
+    expect(parsed?.principals.get('tok1')?.modes).toEqual(['observe', 'fix', 'autonomous']);
+    expect(parsed?.principals.get('tok2')?.modes).toEqual(['observe', 'suggest']);
+  });
+
+  it('refuses unknown modes rather than silently granting or dropping them', () => {
+    expect(() => accessFromEnvironment('ops:tok', undefined, 'ops:yolo')).toThrow(
+      UNKNOWN_MODE_ERROR,
+    );
+  });
+
+  it('refuses mode grants for principals that hold no token', () => {
+    expect(() => accessFromEnvironment('ops:tok', undefined, 'ghost:fix')).toThrow(
+      UNKNOWN_PRINCIPAL_ERROR,
+    );
+  });
+
+  it('refuses malformed mode entries', () => {
+    expect(() => accessFromEnvironment('ops:tok', undefined, 'ops')).toThrow(MODE_FORMAT_ERROR);
+    expect(() => accessFromEnvironment('ops:tok', undefined, 'ops:')).toThrow(MODE_FORMAT_ERROR);
+    expect(() => accessFromEnvironment('ops:tok', undefined, ':fix')).toThrow(MODE_FORMAT_ERROR);
+    expect(() => accessFromEnvironment('ops:tok', undefined, 'ops:|')).toThrow(MODE_FORMAT_ERROR);
+  });
 });
 
 describe('authenticate', () => {
   it('resolves the principal for a valid bearer token', () => {
-    expect(authenticate('Bearer token-value', access())).toEqual({ name: 'release-manager' });
+    expect(authenticate('Bearer token-value', access())).toEqual({
+      name: 'release-manager',
+      modes: ['observe', 'suggest'],
+    });
   });
 
   it('rejects missing, malformed, and unknown credentials', () => {

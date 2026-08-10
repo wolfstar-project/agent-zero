@@ -42,6 +42,10 @@ export const rpcRouter = {
         throw new ORPCError('FORBIDDEN', {
           message: 'Repository is not allow-listed for task creation',
         });
+      if (!context.principal.modes.includes(input.mode))
+        throw new ORPCError('FORBIDDEN', {
+          message: `Execution mode '${input.mode}' is not granted to this principal`,
+        });
       return createTask(input, context.store);
     }),
   },

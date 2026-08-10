@@ -107,7 +107,7 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 | `/rpc/**`            | Typed oRPC router: `health`, `tasks.list/get/create`, `approvals.decide`  |
 | `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters |
 
-Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. The approval actor is the authenticated principal's name, never a wire-supplied value.
+Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. `AGENT_ZERO_CONTROL_PLANE_MODES` holds comma-separated `name:mode|mode` grants for the execution modes each principal may request; without a grant a principal may only request the non-writable `observe` and `suggest` modes, so `fix` and `autonomous` require an explicit operator grant. The approval actor is the authenticated principal's name, never a wire-supplied value.
 
 Clients infer their types from the router rather than redeclaring request and response shapes:
 
