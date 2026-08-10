@@ -73,7 +73,8 @@ class TargetRenamingRunner extends LocalRunner {
 
 /**
  * Simulates a platform without `/proc/self/fd` by anchoring the mutation to a dead descriptor:
- * the kernel cannot report where it points, exactly as on systems that lack the facility.
+ * closing the held handle first leaves it with `fd` -1, so the kernel cannot report where it
+ * points, exactly as on systems that lack the facility.
  */
 class ProclessRunner extends LocalRunner {
   protected override async replaceInside(
@@ -83,8 +84,8 @@ class ProclessRunner extends LocalRunner {
     content: string,
     original: string,
   ): Promise<void> {
-    const dead = { fd: -1 } as unknown as FileHandle;
-    return super.replaceInside(dead, parent, targetName, content, original);
+    await directory.close();
+    return super.replaceInside(directory, parent, targetName, content, original);
   }
 }
 
