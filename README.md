@@ -170,9 +170,10 @@ until you turn them on, so a fresh deployment cannot be signed up for by a stran
 | `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration    |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set |
 
-The dashboard needs to know where the adapter lives and which methods to offer:
-`NUXT_PUBLIC_SITE_URL` (default `http://localhost:3001`),
-`NUXT_PUBLIC_AUTH_ENABLE_SIGNUP`, and `NUXT_PUBLIC_AUTH_ENABLE_GITHUB_OAUTH`.
+The dashboard needs to know where the adapter lives: `NUXT_PUBLIC_SITE_URL` (default
+`http://localhost:3001`). The sign-in methods it offers are derived at build time from the same
+policy variables the adapter reads (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
+`GITHUB_CLIENT_SECRET`), so the published capabilities cannot diverge from the server's policy.
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
 `apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a

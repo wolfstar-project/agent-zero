@@ -1,15 +1,15 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' });
 
-const runtimeConfig = useRuntimeConfig();
+const appConfig = useAppConfig();
 const { localizeAuthError } = useAuthErrorMessage();
 
 const signInEmail = useSignIn('email');
 const signInSocial = useSignIn('social');
 const signUpEmail = useSignUp('email');
 
-const canSignUp = runtimeConfig.public.authEnableSignup;
-const canUseGithub = runtimeConfig.public.authEnableGithubOauth;
+const canSignUp = appConfig.auth.enableSignup;
+const canUseGithub = appConfig.auth.enableGithubOauth;
 
 const isSigningUp = ref(false);
 const email = ref('');

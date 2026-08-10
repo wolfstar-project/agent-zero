@@ -76,8 +76,17 @@ export default defineNuxtConfig({
       // In client-only mode the module reads this as the Better Auth client base URL, so it points
       // at the auth adapter rather than at the dashboard. Override with NUXT_PUBLIC_SITE_URL.
       siteUrl: config.auth.defaultServerUrl,
-      authEnableSignup: authPolicy.enableSignup,
-      authEnableGithubOauth: authPolicy.enableGithubOauth,
+    },
+  },
+  // Published through appConfig rather than runtimeConfig.public: Nuxt maps NUXT_PUBLIC_* env vars
+  // onto public runtime keys, which would let a deployment advertise a sign-in capability that
+  // diverges from the policy the auth server derives from the same environment. appConfig has no
+  // env override channel, so AUTH_ENABLE_SIGNUP and the GitHub OAuth credentials stay the single
+  // authoritative source for both processes.
+  appConfig: {
+    auth: {
+      enableSignup: authPolicy.enableSignup,
+      enableGithubOauth: authPolicy.enableGithubOauth,
     },
   },
   app: {
