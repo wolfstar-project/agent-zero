@@ -1,5 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Agent skill collections ship standalone scripts that nothing in the
+  // project imports; they are tooling for coding agents, not project code.
+  "ignore": [".agents/**"],
   // aube is provided by the packageManager field rather than a dependency.
   "ignoreBinaries": ["aube"],
   "ignoreDependencies": [
