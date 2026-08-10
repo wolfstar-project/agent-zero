@@ -318,14 +318,16 @@ describe('git inspection', () => {
   });
 
   it('includes a synthetic creation patch for each untracked file in the range-less review diff', async () => {
+    const outputs: Record<string, string> = {
+      'ls-files --others --exclude-standard': 'src/untracked.ts\n',
+      'diff --no-ext-diff --no-index -- /dev/null src/untracked.ts': '+const untracked = true;',
+    };
     const process: ProcessRunner = async (program, args) => {
-      if (program !== 'git') return { exitCode: 0, stdout: '', stderr: '' };
       const argv = args.join(' ');
-      if (argv === 'ls-files --others --exclude-standard')
-        return { exitCode: 0, stdout: 'src/untracked.ts\n', stderr: '' };
-      if (argv === 'diff --no-ext-diff --no-index -- /dev/null src/untracked.ts')
-        return { exitCode: 1, stdout: '+const untracked = true;', stderr: '' };
-      return { exitCode: 0, stdout: '', stderr: '' };
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
     };
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('src/untracked.ts');
@@ -333,16 +335,15 @@ describe('git inspection', () => {
   });
 
   it('falls back to the staged and working-tree layers when there is no commit to diff against', async () => {
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff --cached --': '+const staged = true;',
+      'diff --no-ext-diff --': '+const unstaged = true;',
+    };
     const process: ProcessRunner = async (program, args) => {
-      if (program !== 'git') return { exitCode: 0, stdout: '', stderr: '' };
       const argv = args.join(' ');
       if (argv === 'diff --no-ext-diff HEAD --')
         return { exitCode: 128, stdout: '', stderr: 'unknown revision HEAD' };
-      if (argv === 'diff --no-ext-diff --cached --')
-        return { exitCode: 0, stdout: '+const staged = true;', stderr: '' };
-      if (argv === 'diff --no-ext-diff --')
-        return { exitCode: 0, stdout: '+const unstaged = true;', stderr: '' };
-      return { exitCode: 0, stdout: '', stderr: '' };
+      return { exitCode: 0, stdout: program === 'git' ? (outputs[argv] ?? '') : '', stderr: '' };
     };
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('+const staged = true;');
