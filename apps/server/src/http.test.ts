@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -7,11 +7,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createTaskResponse, evidenceResponse, taskResponse } from './http.js';
 import { runTask, tasks } from './router.js';
 
+let root: string;
 let checkout: string;
 
 beforeEach(async () => {
   tasks.clear();
-  checkout = await mkdtemp(join(tmpdir(), 'agent-zero-server-http-'));
+  root = await mkdtemp(join(tmpdir(), 'agent-zero-server-http-'));
+  checkout = join(root, 'repo');
+  await mkdir(checkout);
   await writeFile(join(checkout, 'package.json'), JSON.stringify({ scripts: {} }), 'utf8');
 });
 
@@ -56,20 +59,41 @@ describe('evidenceResponse', () => {
 
 describe('createTaskResponse', () => {
   it('rejects a body that is not JSON', async () => {
-    expect(statusOf(await createTaskResponse(postRequest('not json')))).toBe(400);
+    const outcome = await createTaskResponse(postRequest('not json'), { checkoutRoot: root });
+    expect(statusOf(outcome)).toBe(400);
   });
 
   it('rejects input the task schema refuses', async () => {
     const outcome = await createTaskResponse(
-      postRequest(JSON.stringify({ repository: checkout, feedback: 'x', mode: 'yolo' })),
+      postRequest(JSON.stringify({ repository: 'repo', feedback: 'x', mode: 'yolo' })),
+      { checkoutRoot: root },
     );
     expect(statusOf(outcome)).toBe(400);
     expect(tasks.size).toBe(0);
   });
 
-  it('runs a validated task and stores its evidence', async () => {
+  it('fails closed when no checkout root is configured', async () => {
     const outcome = await createTaskResponse(
-      postRequest(JSON.stringify({ repository: checkout, feedback: 'x', mode: 'observe' })),
+      postRequest(JSON.stringify({ repository: 'repo', feedback: 'x', mode: 'observe' })),
+      { checkoutRoot: undefined },
+    );
+    expect(statusOf(outcome)).toBe(403);
+    expect(tasks.size).toBe(0);
+  });
+
+  it('refuses a repository outside the managed checkout root', async () => {
+    const outcome = await createTaskResponse(
+      postRequest(JSON.stringify({ repository: '../escape', feedback: 'x', mode: 'observe' })),
+      { checkoutRoot: root },
+    );
+    expect(statusOf(outcome)).toBe(403);
+    expect(tasks.size).toBe(0);
+  });
+
+  it('runs a validated task against an authorized checkout and stores its evidence', async () => {
+    const outcome = await createTaskResponse(
+      postRequest(JSON.stringify({ repository: 'repo', feedback: 'x', mode: 'observe' })),
+      { checkoutRoot: root },
     );
     expect(statusOf(outcome)).toBeUndefined();
     expect(tasks.size).toBe(1);

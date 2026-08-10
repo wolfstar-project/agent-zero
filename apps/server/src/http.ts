@@ -1,5 +1,6 @@
 import type { TaskResult } from '@agent-zero/shared';
 
+import { resolveCheckout } from './checkout.js';
 import { createTask, getTask, getTaskEvidence, taskInput } from './router.js';
 
 /**
@@ -25,15 +26,23 @@ export function evidenceResponse(id: string | undefined): Response {
   });
 }
 
+export interface CreateTaskOptions {
+  /** Supplied by the caller rather than read here, so the authorized root stays explicit. */
+  checkoutRoot: string | undefined;
+}
+
 /**
- * Validate and run one task from an inbound request body.
+ * Validate, authorize, and run one task from an inbound request body.
  *
- * The body is validated with the transport-independent schema before anything executes, so the
- * HTTP layer never chooses a mode or repository on its own.
+ * The body is validated with the transport-independent schema before anything executes, and the
+ * requested repository is an identifier that must resolve to a canonical directory inside the
+ * managed checkout root. Without a configured root the route fails closed, so the HTTP layer never
+ * chooses a mode or a checkout on its own.
  */
-export async function createTaskResponse(request: {
-  json(): Promise<unknown>;
-}): Promise<TaskResult | Response> {
+export async function createTaskResponse(
+  request: { json(): Promise<unknown> },
+  options: CreateTaskOptions,
+): Promise<TaskResult | Response> {
   let body: unknown;
   try {
     body = await request.json();
@@ -46,5 +55,7 @@ export async function createTaskResponse(request: {
       { error: 'Invalid task input', issues: parsed.error.issues },
       { status: 400 },
     );
-  return await createTask(parsed.data);
+  const checkout = await resolveCheckout(parsed.data.repository, options.checkoutRoot);
+  if (!checkout.authorized) return Response.json({ error: checkout.reason }, { status: 403 });
+  return await createTask({ ...parsed.data, repository: checkout.path });
 }
