@@ -160,7 +160,10 @@ export abstract class RepositoryBoundary implements Runner {
     const diffRange = contextDiffRange(options);
     const files = await this.git(['ls-files']);
     const changedFiles = await this.reviewFiles(options);
-    const diff = await this.git(['diff', '--no-ext-diff', ...diffRange, '--']);
+    const diff =
+      diffRange.length > 0
+        ? (await this.git(['diff', '--no-ext-diff', ...diffRange, '--'])).stdout
+        : await this.pendingDiff();
     return [
       'FILES',
       truncateTail(files.stdout, MAX_FILE_LIST),
@@ -169,17 +172,45 @@ export abstract class RepositoryBoundary implements Runner {
       truncateTail(changedFiles.join('\n'), MAX_FILE_LIST),
       '',
       'DIFF',
-      truncateTail(diff.stdout, MAX_DIFF),
+      truncateTail(diff, MAX_DIFF),
     ].join('\n');
   }
 
   async reviewFiles(options: RepositoryContextOptions = {}): Promise<string[]> {
     const diffRange = contextDiffRange(options);
-    const outcome = await this.git(['diff', '--name-only', ...diffRange, '--']);
-    return outcome.stdout
-      .split('\n')
-      .map((path) => path.trim())
-      .filter((path) => path.length > 0 && isRepositoryRelativePath(path));
+    // A committed pull-request range fixes the reviewed set. Without one, the pending local
+    // changes are the review target, and a plain `git diff` alone would silently omit index-only
+    // changes and untracked files.
+    const listings =
+      diffRange.length > 0
+        ? [await this.git(['diff', '--name-only', ...diffRange, '--'])]
+        : [
+            await this.git(['diff', '--name-only', '--cached', '--']),
+            await this.git(['diff', '--name-only', '--']),
+            await this.git(['ls-files', '--others', '--exclude-standard']),
+          ];
+    const seen = new Set<string>();
+    const paths: string[] = [];
+    for (const listing of listings)
+      for (const line of listing.stdout.split('\n')) {
+        const path = line.trim();
+        if (path.length === 0 || !isRepositoryRelativePath(path) || seen.has(path)) continue;
+        seen.add(path);
+        paths.push(path);
+      }
+    return paths;
+  }
+
+  /**
+   * The full pending local diff: staged content first, then working-tree edits.
+   *
+   * `git diff` alone reads only the working tree against the index, so index-only changes would
+   * be reviewed as if they did not exist.
+   */
+  private async pendingDiff(): Promise<string> {
+    const staged = await this.git(['diff', '--no-ext-diff', '--cached', '--']);
+    const unstaged = await this.git(['diff', '--no-ext-diff', '--']);
+    return [staged.stdout, unstaged.stdout].filter((part) => part.length > 0).join('\n');
   }
 
   async changedFiles(): Promise<string[]> {
@@ -265,18 +296,19 @@ export abstract class RepositoryBoundary implements Runner {
    * atomic rename, and both names resolve through the held descriptor (`/proc/self/fd` on Linux),
    * never through re-walked path components. The target inode itself is never written, so a
    * concurrent rename carrying it outside the checkout after validation moves nothing but the
-   * previous content.
+   * previous content. Platforms that cannot anchor the rename to the descriptor refuse the write
+   * (see {@link directoryAnchor}).
    *
    * Protected so that tests can interleave an adversarial rename at exactly this point.
    */
   protected async replaceInside(
     directory: FileHandle,
-    fallbackParent: string,
+    parent: string,
     targetName: string,
     content: string,
     original: string,
   ): Promise<void> {
-    const anchor = await directoryAnchor(directory, fallbackParent, original);
+    const anchor = await directoryAnchor(directory, original);
     const temporaryName = `.agent-zero-${randomUUID()}.tmp`;
     const temporary = join(anchor, temporaryName);
     const target = join(anchor, targetName);
@@ -390,24 +422,22 @@ async function descriptorPath(
 /**
  * Resolve a stable path through the directory handle itself. Linux exposes descriptors under
  * `/proc/self/fd`, so renaming the directory cannot redirect the mutation through a different path.
- * On platforms without that facility we re-resolve the fallback immediately before use and verify
- * that it is still the same directory inode held by the descriptor.
+ *
+ * Platforms without that facility get no fallback: any pathname alternative re-walks mutable
+ * components, so a concurrent task could swap the verified directory for a symlink between the
+ * inode comparison and the rename and redirect the write outside the checkout. Node exposes no
+ * descriptor-relative create or rename, so the write fails closed instead.
  */
-async function directoryAnchor(
-  directory: FileHandle,
-  fallback: string,
-  original: string,
-): Promise<string> {
+async function directoryAnchor(directory: FileHandle, original: string): Promise<string> {
   const descriptor = `/proc/self/fd/${directory.fd}`;
   try {
     await lstat(descriptor);
     return descriptor;
   } catch {
-    const real = await realpath(fallback);
-    const [expected, current] = await Promise.all([directory.stat(), stat(real)]);
-    if (expected.dev !== current.dev || expected.ino !== current.ino)
-      throw new PathEscapeError(original, 'parent replaced while writing');
-    return real;
+    throw new RunnerWriteDeniedError(
+      original,
+      'descriptor-anchored writes are not supported on this platform',
+    );
   }
 }
 

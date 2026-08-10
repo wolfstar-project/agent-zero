@@ -71,6 +71,23 @@ class TargetRenamingRunner extends LocalRunner {
   }
 }
 
+/**
+ * Simulates a platform without `/proc/self/fd` by anchoring the mutation to a dead descriptor:
+ * the kernel cannot report where it points, exactly as on systems that lack the facility.
+ */
+class ProclessRunner extends LocalRunner {
+  protected override async replaceInside(
+    directory: FileHandle,
+    parent: string,
+    targetName: string,
+    content: string,
+    original: string,
+  ): Promise<void> {
+    const dead = { fd: -1 } as unknown as FileHandle;
+    return super.replaceInside(dead, parent, targetName, content, original);
+  }
+}
+
 interface Invocation {
   program: string;
   args: string[];
@@ -161,6 +178,15 @@ describe('path boundary', () => {
     await expect(access(join(outside, 'escape.txt'))).rejects.toThrow('ENOENT');
   });
 
+  it('fails closed instead of renaming through a mutable path when descriptor anchoring is unavailable', async () => {
+    const runner = new ProclessRunner(root, { writable: true });
+    await expect(runner.write('src/user.ts', 'payload')).rejects.toThrow(
+      'descriptor-anchored writes are not supported on this platform',
+    );
+    // The refused write must leave the target untouched.
+    await expect(runner.read('src/user.ts')).resolves.toContain('export const user');
+  });
+
   it('keeps a write contained when the validated target inode is renamed outside before it lands', async () => {
     const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
     const victim = join(outside, 'victim.txt');
@@ -236,7 +262,7 @@ describe('command execution', () => {
 });
 
 describe('git inspection', () => {
-  it('collects the file list and diff through fixed arguments', async () => {
+  it('collects the file list and every pending local change through fixed arguments', async () => {
     const { runner: process, calls } = recordingProcess({
       git: { exitCode: 0, stdout: 'src/user.ts', stderr: '' },
     });
@@ -244,7 +270,48 @@ describe('git inspection', () => {
     expect(context).toContain('FILES');
     expect(context).toContain('CHANGED FILES');
     expect(context).toContain('DIFF');
-    expect(calls.map((call) => call.args[0])).toEqual(['ls-files', 'diff', 'diff']);
+    expect(calls.map((call) => call.args.join(' '))).toEqual([
+      'ls-files',
+      'diff --name-only --cached --',
+      'diff --name-only --',
+      'ls-files --others --exclude-standard',
+      'diff --no-ext-diff --cached --',
+      'diff --no-ext-diff --',
+    ]);
+  });
+
+  it('includes staged and untracked files in a range-less local review', async () => {
+    const outputs: Record<string, string> = {
+      'diff --name-only --cached --': 'src/staged.ts\nsrc/both.ts\n',
+      'diff --name-only --': 'src/edited.ts\nsrc/both.ts\n',
+      'ls-files --others --exclude-standard': 'src/untracked.ts\n',
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    await expect(new LocalRunner(root, { process }).reviewFiles()).resolves.toEqual([
+      'src/staged.ts',
+      'src/both.ts',
+      'src/edited.ts',
+      'src/untracked.ts',
+    ]);
+  });
+
+  it('feeds staged content into the range-less review diff', async () => {
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff --cached --': '+const staged = true;',
+      'diff --no-ext-diff --': '+const unstaged = true;',
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const staged = true;');
+    expect(context).toContain('+const unstaged = true;');
   });
 
   it('collects a committed pull-request diff from the fixed merge-base range', async () => {

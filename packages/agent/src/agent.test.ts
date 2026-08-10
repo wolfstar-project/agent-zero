@@ -438,6 +438,29 @@ describe('narrow scope', () => {
     expect(writes).toEqual([]);
   });
 
+  it('refuses a proactive change to a review file the finding does not cite', async () => {
+    const { agent, writes } = harness({
+      reviewFiles: ['src/user.ts', 'src/other.ts'],
+      files: {
+        'src/user.ts': sourceFile,
+        'src/other.ts': 'export const other = true;\n',
+        'package.json': JSON.stringify({ scripts: { test: 'vitest run' } }),
+        'pnpm-lock.yaml': '',
+      },
+      decisions: [
+        decision({
+          changes: [
+            { path: 'src/other.ts', content: 'export const other = false;\n', reason: 'drive-by' },
+          ],
+        }),
+      ],
+    });
+    const result = await agent.run({ repository: '/checkout', mode: 'fix', trigger: 'proactive' });
+    expect(result.state).toBe('needs-human');
+    expect(result.summary).toContain('outside the validated scope');
+    expect(writes).toEqual([]);
+  });
+
   it('refuses a change that tries to leave the checkout', async () => {
     const { agent, writes } = harness({
       decisions: [

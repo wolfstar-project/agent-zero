@@ -142,12 +142,7 @@ export class AgentZero {
         if (repairRefusal) return run.finish(repairRefusal.state, repairRefusal.summary);
       }
 
-      const scoped = scopeChanges(
-        decision.changes,
-        finding,
-        effectiveInput,
-        config.agent.maxChangedFiles,
-      );
+      const scoped = scopeChanges(decision.changes, finding, config.agent.maxChangedFiles);
       if ('reason' in scoped) return run.finish('needs-human', scoped.reason);
 
       run.emit('executing', `Applying ${String(scoped.changes.length)} planned change(s)`, attempt);
@@ -352,13 +347,15 @@ class Run {
 /**
  * Restrict a change set to the scope the validated finding established.
  *
- * A fix is only narrow if it touches the files the evidence pointed at. Anything else, including a
- * plausible-looking refactor of an unrelated file, is refused and handed to a human.
+ * A fix is only narrow if it touches the files the evidence pointed at, so only the files the
+ * finding itself cites are writable. Merely appearing in the review diff is not enough: the
+ * validation accepted a claim about the cited files, not about every file the diff happens to
+ * touch. Anything else, including a plausible-looking refactor of an unrelated file, is refused
+ * and handed to a human.
  */
 export function scopeChanges(
   changes: readonly ProposedChange[],
   finding: Finding,
-  input: ReviewInput,
   maxChangedFiles: number,
 ): { changes: ProposedChange[] } | { reason: string } {
   if (changes.length === 0)
@@ -369,9 +366,7 @@ export function scopeChanges(
     };
 
   const scope = new Set(
-    [...finding.files, ...(input.files ?? [])]
-      .filter((path) => isRepositoryRelativePath(path))
-      .map(normalizePath),
+    finding.files.filter((path) => isRepositoryRelativePath(path)).map(normalizePath),
   );
   const accepted: ProposedChange[] = [];
   for (const change of changes) {
