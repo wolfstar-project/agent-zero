@@ -30,6 +30,10 @@
       "cache": false,
       "outputs": []
     },
+    "i18n:status": {
+      "cache": false,
+      "outputs": []
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

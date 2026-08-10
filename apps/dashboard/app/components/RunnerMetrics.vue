@@ -3,21 +3,42 @@ import type { DashboardOverview } from '~/types/dashboard';
 
 const props = defineProps<{ overview: DashboardOverview }>();
 
+const { t, locale } = useI18n();
+
 const metrics = computed(() => [
-  { label: 'Active runners', value: props.overview.active.toString(), tone: 'text-accent' },
-  { label: 'Queued tasks', value: props.overview.queued.toString(), tone: 'text-ink' },
   {
-    label: 'Awaiting approval',
+    label: t('dashboard.metrics.activeRunners'),
+    value: props.overview.active.toString(),
+    tone: 'text-accent',
+  },
+  {
+    label: t('dashboard.metrics.queuedTasks'),
+    value: props.overview.queued.toString(),
+    tone: 'text-ink',
+  },
+  {
+    label: t('dashboard.metrics.awaitingApproval'),
     value: props.overview.awaitingApproval.toString(),
     tone: props.overview.awaitingApproval > 0 ? 'text-warning' : 'text-ink',
   },
-  { label: 'Tokens', value: props.overview.totalTokens.toLocaleString(), tone: 'text-ink' },
-  { label: 'Recorded cost', value: `$${props.overview.costUsd.toFixed(4)}`, tone: 'text-ink' },
+  {
+    label: t('dashboard.metrics.tokens'),
+    value: props.overview.totalTokens.toLocaleString(locale.value),
+    tone: 'text-ink',
+  },
+  {
+    label: t('dashboard.metrics.recordedCost'),
+    value: `$${props.overview.costUsd.toFixed(4)}`,
+    tone: 'text-ink',
+  },
 ]);
 </script>
 
 <template>
-  <section aria-label="Runner metrics" class="az-panel grid grid-cols-2 lg:grid-cols-5">
+  <section
+    :aria-label="$t('dashboard.metrics.aria')"
+    class="az-panel grid grid-cols-2 lg:grid-cols-5"
+  >
     <div
       v-for="(metric, index) in metrics"
       :key="metric.label"

@@ -6,21 +6,29 @@
     "build": "nuxt build",
     "clean": "nuxt cleanup && tsc -b --clean",
     "dev": "nuxt dev",
+    "i18n:status": "lunaria build",
+    "i18n:status:preview": "lunaria preview",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app test",
     "start": "node .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
-    "test": "vitest run app --passWithNoTests",
+    "test": "vitest run app test/unit --passWithNoTests",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:update": "playwright test --update-snapshots",
     "typecheck": "nuxt prepare && vue-tsc -b --noEmit && tsc --project tsconfig.json --pretty false --noEmit && tsc --project tsconfig.e2e.json --pretty false --noEmit"
   },
   "dependencies": {
-    "nuxt": "^4.5.2"
+    "@agent-zero/auth": "workspace:*",
+    "@onmax/nuxt-better-auth": "^0.0.7",
+    "better-auth": "^1.6.26",
+    "nuxt": "^4.5.2",
+    "vue-i18n": "^11.4.8"
   },
   "devDependencies": {
+    "@lunariajs/core": "^0.1.1",
     "@nuxt/test-utils": "4.1.0",
     "@nuxtjs/color-mode": "4.0.1",
+    "@nuxtjs/i18n": "^10.6.0",
     "@playwright/test": "^1.62.0",
     "@unocss/nuxt": "^66.7.5",
     "@unocss/preset-wind4": "^66.7.5",

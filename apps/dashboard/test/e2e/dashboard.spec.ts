@@ -1,6 +1,10 @@
-import { expect, test } from './test-utils.js';
+import { expect, mockAuthSession, test } from './test-utils.js';
 
 test.describe('Dashboard', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockAuthSession(page, true);
+  });
+
   test('renders the frontend dashboard without runtime or hydration errors', async ({
     page,
     goto,
@@ -17,15 +21,20 @@ test.describe('Dashboard', () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
-  test('refreshes local dashboard state without backend requests', async ({
+  test('refreshes local dashboard state without requests beyond the auth origin', async ({
     page,
     goto,
     consoleErrors,
   }) => {
-    const backendRequests: string[] = [];
+    // The dashboard owns no backend of its own. Authentication is the single sanctioned network
+    // dependency, and it lives on a separate origin, so nothing may hit a local API or RPC route.
+    const localBackendRequests: string[] = [];
     page.on('request', (request) => {
-      const path = new URL(request.url()).pathname;
-      if (path.startsWith('/api/') || path.startsWith('/rpc/')) backendRequests.push(path);
+      const url = new URL(request.url());
+      if (url.origin !== new URL(page.url() || 'http://localhost').origin) return;
+      if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/rpc/')) {
+        localBackendRequests.push(url.pathname);
+      }
     });
     await goto('/', { waitUntil: 'networkidle' });
     const refresh = page.getByRole('button', { name: 'Refresh' });
@@ -33,7 +42,7 @@ test.describe('Dashboard', () => {
     await refresh.click();
 
     await expect(refresh).toBeEnabled();
-    expect(backendRequests).toHaveLength(0);
+    expect(localBackendRequests).toHaveLength(0);
     expect(consoleErrors).toHaveLength(0);
   });
 
@@ -59,5 +68,17 @@ test.describe('Dashboard', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     expect(hydrationErrors).toHaveLength(0);
     expect(consoleErrors).toHaveLength(0);
+  });
+
+  test('translates the interface when the locale changes', async ({ page, goto }) => {
+    await goto('/', { waitUntil: 'networkidle' });
+
+    await expect(page.getByRole('heading', { name: 'No tasks recorded', level: 3 })).toBeVisible();
+
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('it');
+
+    await expect(
+      page.getByRole('heading', { name: 'Nessun task registrato', level: 3 }),
+    ).toBeVisible();
   });
 });

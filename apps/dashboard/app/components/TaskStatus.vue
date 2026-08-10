@@ -18,6 +18,6 @@ const statusClass = computed(() => {
     :class="statusClass"
   >
     <span class="h-1.5 w-1.5 rounded-full bg-current" />
-    {{ status.replace('-', ' ') }}
+    {{ $t(`dashboard.status.${status}`) }}
   </span>
 </template>

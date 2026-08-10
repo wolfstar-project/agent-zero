@@ -1,7 +1,10 @@
 <script setup lang="ts">
+const { t } = useI18n();
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === 'dark');
-const label = computed(() => `Switch to ${isDark.value ? 'light' : 'dark'} mode`);
+const label = computed(() =>
+  isDark.value ? t('common.theme.switchToLight') : t('common.theme.switchToDark'),
+);
 
 function toggleColorMode(): void {
   colorMode.preference = isDark.value ? 'light' : 'dark';

@@ -52,18 +52,19 @@ function refreshDashboard(): void {
   >
     <div>
       <p class="m-0 text-3xs text-muted font-700 tracking-[0.18em] uppercase">
-        Agent Zero / Operations
+        {{ $t('dashboard.header.eyebrow') }}
       </p>
-      <h1 class="m-0 mt-1 text-lg font-650 tracking-tight">Dashboard</h1>
+      <h1 class="m-0 mt-1 text-lg font-650 tracking-tight">{{ $t('dashboard.header.title') }}</h1>
     </div>
 
     <div class="flex items-center gap-3">
       <div class="hidden text-end sm:block">
         <p class="m-0 az-mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
         <p class="m-0 mt-0.5 text-3xs text-accent font-700 tracking-wider uppercase">
-          Local interface
+          {{ $t('dashboard.header.mode') }}
         </p>
       </div>
+      <LocaleSwitcher />
       <ClientOnly>
         <ColorModeToggle />
         <template #fallback>
@@ -83,7 +84,7 @@ function refreshDashboard(): void {
             stroke-width="1.8"
           />
         </svg>
-        Refresh
+        {{ $t('common.actions.refresh') }}
       </button>
     </div>
   </header>

@@ -20,6 +20,8 @@
       // not scan, and Nuxt auto-imports components, composables, and utils.
       "entry": [
         "app/app.vue",
+        // Loaded by `@onmax/nuxt-better-auth` from its configured `clientConfig` path.
+        "app/auth.config.ts",
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",

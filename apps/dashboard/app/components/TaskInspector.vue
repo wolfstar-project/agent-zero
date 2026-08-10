@@ -2,12 +2,16 @@
 import type { DashboardTask } from '~/types/dashboard';
 
 defineProps<{ task?: DashboardTask }>();
+
+const { locale } = useI18n();
 </script>
 
 <template>
   <aside class="az-panel min-h-120 overflow-hidden xl:sticky xl:top-20 xl:h-fit">
     <div class="az-section-title">
-      <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">Task inspector</h2>
+      <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
+        {{ $t('dashboard.inspector.title') }}
+      </h2>
       <span class="h-1.5 w-1.5 rounded-full" :class="task ? 'bg-accent' : 'bg-muted'" />
     </div>
 
@@ -22,36 +26,52 @@ defineProps<{ task?: DashboardTask }>();
 
       <dl class="my-4 grid grid-cols-2 border border-line">
         <div class="border-b border-r border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">Created</dt>
+          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+            {{ $t('dashboard.inspector.created') }}
+          </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
-            {{ new Date(task.createdAt).toLocaleString() }}
+            {{ new Date(task.createdAt).toLocaleString(locale) }}
           </dd>
         </div>
         <div class="border-b border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">Attempts</dt>
+          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+            {{ $t('dashboard.inspector.attempts') }}
+          </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
             {{ task.result?.attempts ?? '—' }}
           </dd>
         </div>
         <div class="border-r border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">Tokens</dt>
+          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+            {{ $t('dashboard.inspector.tokens') }}
+          </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
-            {{ task.result?.usage.totalTokens.toLocaleString() ?? '—' }}
+            {{ task.result?.usage.totalTokens.toLocaleString(locale) ?? '—' }}
           </dd>
         </div>
         <div class="p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">Verified</dt>
+          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+            {{ $t('dashboard.inspector.verified') }}
+          </dt>
           <dd
             class="mb-0 ml-0 mt-1.5 font-mono text-[10px]"
             :class="task.result?.verified ? 'text-accent' : 'text-muted'"
           >
-            {{ task.result ? (task.result.verified ? 'YES' : 'NO') : '—' }}
+            {{
+              task.result
+                ? task.result.verified
+                  ? $t('dashboard.inspector.yes')
+                  : $t('dashboard.inspector.no')
+                : '—'
+            }}
           </dd>
         </div>
       </dl>
 
       <div v-if="task.result" class="border border-line bg-raised/45 p-3">
-        <p class="m-0 text-[9px] text-muted font-700 tracking-wider uppercase">Run summary</p>
+        <p class="m-0 text-[9px] text-muted font-700 tracking-wider uppercase">
+          {{ $t('dashboard.inspector.summary') }}
+        </p>
         <p class="mb-0 mt-2 text-xs text-ink leading-relaxed">{{ task.result.summary }}</p>
       </div>
     </div>
@@ -64,9 +84,9 @@ defineProps<{ task?: DashboardTask }>();
             <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.5" />
           </svg>
         </div>
-        <h3 class="mb-0 mt-4 text-sm font-650">No task selected</h3>
+        <h3 class="mb-0 mt-4 text-sm font-650">{{ $t('dashboard.inspector.emptyTitle') }}</h3>
         <p class="mb-0 mt-2 text-xs text-muted leading-relaxed">
-          Select a queue record to inspect evidence and usage.
+          {{ $t('dashboard.inspector.emptyBody') }}
         </p>
       </div>
     </div>

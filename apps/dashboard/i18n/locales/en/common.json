@@ -1,0 +1,21 @@
+{
+  "common": {
+    "brand": {
+      "subtitle": "Dashboard"
+    },
+    "actions": {
+      "refresh": "Refresh"
+    },
+    "theme": {
+      "switchToLight": "Switch to light mode",
+      "switchToDark": "Switch to dark mode"
+    },
+    "locale": {
+      "label": "Language"
+    },
+    "system": {
+      "label": "SYSTEM",
+      "ready": "READY"
+    }
+  }
+}

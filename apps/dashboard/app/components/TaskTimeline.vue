@@ -7,8 +7,12 @@ defineProps<{ task?: DashboardTask }>();
 <template>
   <section class="az-panel">
     <div class="az-section-title">
-      <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">Execution timeline</h2>
-      <span class="az-mono text-muted">{{ task?.events.length ?? 0 }} events</span>
+      <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
+        {{ $t('dashboard.timeline.title') }}
+      </h2>
+      <span class="az-mono text-muted">
+        {{ $t('dashboard.timeline.events', { count: task?.events.length ?? 0 }) }}
+      </span>
     </div>
 
     <div v-if="task && task.events.length > 0" class="max-h-72 overflow-auto px-4 py-3">
@@ -37,7 +41,7 @@ defineProps<{ task?: DashboardTask }>();
     </div>
 
     <div v-else class="h-30 flex items-center justify-center px-4 text-center text-xs text-muted">
-      Select a task to inspect its state transitions.
+      {{ $t('dashboard.timeline.empty') }}
     </div>
   </section>
 </template>

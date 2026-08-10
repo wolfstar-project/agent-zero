@@ -1,0 +1,62 @@
+{
+  "dashboard": {
+    "header": {
+      "eyebrow": "Agent Zero / Operazioni",
+      "title": "Dashboard",
+      "mode": "Interfaccia locale"
+    },
+    "nav": {
+      "aria": "Primaria",
+      "group": "Operazioni",
+      "control": "Controllo",
+      "tasks": "Task",
+      "runners": "Runner",
+      "policies": "Criteri",
+      "footnote": "Interfaccia frontend"
+    },
+    "metrics": {
+      "aria": "Metriche runner",
+      "activeRunners": "Runner attivi",
+      "queuedTasks": "Task in coda",
+      "awaitingApproval": "In attesa di approvazione",
+      "tokens": "Token",
+      "recordedCost": "Costo registrato"
+    },
+    "queue": {
+      "title": "Coda task",
+      "order": "Più recenti prima",
+      "columns": {
+        "id": "ID",
+        "repository": "Repository",
+        "status": "Stato",
+        "updated": "Aggiornato"
+      },
+      "emptyTitle": "Nessun task registrato",
+      "emptyBody": "I dati dei task compariranno qui quando sarà collegata una sorgente di runtime."
+    },
+    "status": {
+      "queued": "in coda",
+      "running": "in esecuzione",
+      "completed": "completato",
+      "needs-human": "richiede intervento",
+      "failed": "fallito"
+    },
+    "timeline": {
+      "title": "Cronologia esecuzione",
+      "events": "{count} eventi",
+      "empty": "Seleziona un task per ispezionarne le transizioni di stato."
+    },
+    "inspector": {
+      "title": "Ispettore task",
+      "created": "Creato",
+      "attempts": "Tentativi",
+      "tokens": "Token",
+      "verified": "Verificato",
+      "yes": "SÌ",
+      "no": "NO",
+      "summary": "Riepilogo esecuzione",
+      "emptyTitle": "Nessun task selezionato",
+      "emptyBody": "Seleziona un record della coda per ispezionare evidenze e utilizzo."
+    }
+  }
+}

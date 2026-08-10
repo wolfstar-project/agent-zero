@@ -1,10 +1,10 @@
 <script setup lang="ts">
 const navItems = [
-  { label: 'Control', active: true },
-  { label: 'Tasks', active: false },
-  { label: 'Runners', active: false },
-  { label: 'Policies', active: false },
-];
+  { key: 'control', active: true },
+  { key: 'tasks', active: false },
+  { key: 'runners', active: false },
+  { key: 'policies', active: false },
+] as const;
 </script>
 
 <template>
@@ -17,15 +17,19 @@ const navItems = [
       </div>
       <div class="ml-3">
         <p class="m-0 text-sm font-750 tracking-tight">AGENT ZERO</p>
-        <p class="m-0 text-[9px] text-muted font-650 tracking-[0.18em] uppercase">Dashboard</p>
+        <p class="m-0 text-[9px] text-muted font-650 tracking-[0.18em] uppercase">
+          {{ $t('common.brand.subtitle') }}
+        </p>
       </div>
     </div>
 
-    <nav aria-label="Primary" class="flex-1 px-3 py-5">
-      <p class="mb-2 px-2 text-[9px] text-muted font-700 tracking-[0.2em] uppercase">Operations</p>
+    <nav :aria-label="$t('dashboard.nav.aria')" class="flex-1 px-3 py-5">
+      <p class="mb-2 px-2 text-[9px] text-muted font-700 tracking-[0.2em] uppercase">
+        {{ $t('dashboard.nav.group') }}
+      </p>
       <button
         v-for="item in navItems"
-        :key="item.label"
+        :key="item.key"
         class="az-focus mb-1 h-9 w-full flex items-center border-l-2 px-3 text-left text-xs font-600 transition"
         :class="
           item.active
@@ -39,19 +43,25 @@ const navItems = [
           class="mr-2.5 h-1.5 w-1.5"
           :class="item.active ? 'bg-accent' : 'border border-muted'"
         />
-        {{ item.label }}
+        {{ $t(`dashboard.nav.${item.key}`) }}
       </button>
     </nav>
 
+    <ClientOnly>
+      <UserMenu />
+    </ClientOnly>
+
     <div class="border-t border-line p-4">
       <div class="flex items-center justify-between az-mono">
-        <span class="text-muted">SYSTEM</span>
+        <span class="text-muted">{{ $t('common.system.label') }}</span>
         <span class="flex items-center gap-1.5 text-accent">
           <span class="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--az-accent-glow)]" />
-          READY
+          {{ $t('common.system.ready') }}
         </span>
       </div>
-      <p class="mb-0 mt-2 text-[10px] text-muted leading-relaxed">Frontend interface</p>
+      <p class="mb-0 mt-2 text-[10px] text-muted leading-relaxed">
+        {{ $t('dashboard.nav.footnote') }}
+      </p>
     </div>
   </aside>
 </template>

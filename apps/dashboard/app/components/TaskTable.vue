@@ -4,6 +4,8 @@ import type { DashboardTask } from '~/types/dashboard';
 defineProps<{ tasks: DashboardTask[]; selectedId?: string }>();
 defineEmits<{ select: [id: string] }>();
 
+const { locale } = useI18n();
+
 function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 8)}…` : id;
 }
@@ -18,12 +20,14 @@ function repositoryName(repository: string): string {
   <section class="az-panel overflow-hidden">
     <div class="az-section-title">
       <div class="flex items-center gap-2">
-        <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">Task queue</h2>
+        <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
+          {{ $t('dashboard.queue.title') }}
+        </h2>
         <span class="border border-line bg-raised px-1.5 py-0.5 az-mono text-muted">
           {{ tasks.length }}
         </span>
       </div>
-      <span class="az-mono text-muted">Newest first</span>
+      <span class="az-mono text-muted">{{ $t('dashboard.queue.order') }}</span>
     </div>
 
     <div v-if="tasks.length > 0" class="overflow-x-auto">
@@ -31,16 +35,16 @@ function repositoryName(repository: string): string {
         <thead>
           <tr class="border-b border-line bg-raised/55">
             <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
-              ID
+              {{ $t('dashboard.queue.columns.id') }}
             </th>
             <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
-              Repository
+              {{ $t('dashboard.queue.columns.repository') }}
             </th>
             <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
-              Status
+              {{ $t('dashboard.queue.columns.status') }}
             </th>
             <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
-              Updated
+              {{ $t('dashboard.queue.columns.updated') }}
             </th>
           </tr>
         </thead>
@@ -63,7 +67,7 @@ function repositoryName(repository: string): string {
             </td>
             <td class="px-3.5 py-3"><TaskStatus :status="task.status" /></td>
             <td class="px-3.5 py-3 font-mono text-[10px] text-muted">
-              {{ new Date(task.updatedAt).toLocaleString() }}
+              {{ new Date(task.updatedAt).toLocaleString(locale) }}
             </td>
           </tr>
         </tbody>
@@ -75,9 +79,9 @@ function repositoryName(repository: string): string {
         <div class="mx-auto h-9 w-9 grid place-items-center border border-line bg-raised">
           <span class="h-2 w-2 border border-muted" />
         </div>
-        <h3 class="mb-0 mt-4 text-sm font-650">No tasks recorded</h3>
+        <h3 class="mb-0 mt-4 text-sm font-650">{{ $t('dashboard.queue.emptyTitle') }}</h3>
         <p class="mx-auto mb-0 mt-2 max-w-80 text-xs text-muted leading-relaxed">
-          Task data will appear here when a runtime source is connected.
+          {{ $t('dashboard.queue.emptyBody') }}
         </p>
       </div>
     </div>

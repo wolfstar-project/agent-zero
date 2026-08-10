@@ -1,33 +1,90 @@
 import { defineNuxtConfig } from 'nuxt/config';
 
+import { config, defaultAuthConfig, locales } from './config/index.js';
+
+/**
+ * `@nuxtjs/i18n` wants a flat array, while the dashboard configuration keeps locales keyed by code
+ * so the switcher and the head metadata can look one up directly.
+ *
+ * Translations are split by scope rather than kept in one file per locale, which is also the unit
+ * Lunaria reports progress on.
+ */
+const i18nLocales = Object.entries(locales).map(([code, definition]) => ({
+  code,
+  language: definition.language,
+  name: definition.label,
+  files: [`${code}/common.json`, `${code}/dashboard.json`, `${code}/auth.json`],
+}));
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
   devtools: { enabled: false },
+  // Rendered as a single-page app. The session cookie belongs to the auth adapter's origin, so a
+  // server render can never see it: SSR would resolve every visitor as signed out, redirect to
+  // /login, and then be corrected by the client, flashing the login page and mismatching on every
+  // hydration. An internal console that is explicitly noindex gains nothing from SSR in exchange.
+  ssr: false,
   future: {
     compatibilityVersion: 5,
   },
   modules: [
     '@unocss/nuxt',
+    '@nuxtjs/i18n',
+    '@onmax/nuxt-better-auth',
     [
       '@nuxtjs/color-mode',
       {
-        preference: 'system',
-        fallback: 'dark',
+        preference: config.ui.colorModePreference,
+        fallback: config.ui.colorModeFallback,
         dataValue: 'theme',
-        storageKey: 'agent-zero-color-mode',
+        storageKey: config.ui.colorModeStorageKey,
       },
     ],
   ],
   css: ['~/assets/css/main.css'],
+  i18n: {
+    locales: i18nLocales,
+    defaultLocale: config.i18n.defaultLocale,
+    // The dashboard is a single internal surface, so localised URL prefixes would only churn
+    // route paths without buying any of the SEO they exist for.
+    strategy: 'no_prefix',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: config.i18n.cookieName,
+      alwaysRedirect: false,
+      fallbackLocale: config.i18n.defaultLocale,
+    },
+  },
+  auth: {
+    // Better Auth runs in `apps/auth-server`, not here. Client-only mode drops the local
+    // `/api/auth/**` handlers, the server config, and the signing secret, which is what keeps the
+    // dashboard free of Nitro auth routes and of any persistence.
+    clientOnly: true,
+    redirects: {
+      login: config.auth.loginPath,
+      guest: '/',
+      authenticated: '/',
+      logout: config.auth.loginPath,
+    },
+  },
+  runtimeConfig: {
+    public: {
+      // In client-only mode the module reads this as the Better Auth client base URL, so it points
+      // at the auth adapter rather than at the dashboard. Override with NUXT_PUBLIC_SITE_URL.
+      siteUrl: config.auth.defaultServerUrl,
+      authEnableSignup: defaultAuthConfig.enableSignup,
+      authEnableGithubOauth: defaultAuthConfig.enableGithubOauth,
+    },
+  },
   app: {
     head: {
-      htmlAttrs: { lang: 'en' },
       meta: [{ name: 'color-scheme', content: 'dark light' }],
-      title: 'Agent Zero · Dashboard',
+      title: config.app.title,
     },
   },
   routeRules: {
-    '/': { appLayout: 'default' },
+    '/': { appLayout: 'default', auth: { only: 'user' } },
+    [config.auth.loginPath]: { auth: { only: 'guest' } },
   },
   typescript: {
     strict: true,

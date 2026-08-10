@@ -1,0 +1,62 @@
+{
+  "dashboard": {
+    "header": {
+      "eyebrow": "Agent Zero / Operations",
+      "title": "Dashboard",
+      "mode": "Local interface"
+    },
+    "nav": {
+      "aria": "Primary",
+      "group": "Operations",
+      "control": "Control",
+      "tasks": "Tasks",
+      "runners": "Runners",
+      "policies": "Policies",
+      "footnote": "Frontend interface"
+    },
+    "metrics": {
+      "aria": "Runner metrics",
+      "activeRunners": "Active runners",
+      "queuedTasks": "Queued tasks",
+      "awaitingApproval": "Awaiting approval",
+      "tokens": "Tokens",
+      "recordedCost": "Recorded cost"
+    },
+    "queue": {
+      "title": "Task queue",
+      "order": "Newest first",
+      "columns": {
+        "id": "ID",
+        "repository": "Repository",
+        "status": "Status",
+        "updated": "Updated"
+      },
+      "emptyTitle": "No tasks recorded",
+      "emptyBody": "Task data will appear here when a runtime source is connected."
+    },
+    "status": {
+      "queued": "queued",
+      "running": "running",
+      "completed": "completed",
+      "needs-human": "needs human",
+      "failed": "failed"
+    },
+    "timeline": {
+      "title": "Execution timeline",
+      "events": "{count} events",
+      "empty": "Select a task to inspect its state transitions."
+    },
+    "inspector": {
+      "title": "Task inspector",
+      "created": "Created",
+      "attempts": "Attempts",
+      "tokens": "Tokens",
+      "verified": "Verified",
+      "yes": "YES",
+      "no": "NO",
+      "summary": "Run summary",
+      "emptyTitle": "No task selected",
+      "emptyBody": "Select a queue record to inspect evidence and usage."
+    }
+  }
+}

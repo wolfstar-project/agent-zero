@@ -28,10 +28,12 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
+- `packages/auth`: authentication policy and the Better Auth instance. No HTTP server, no runtime imports.
 - `apps/server`: oRPC control-plane transport and composition root.
-- `apps/dashboard`: frontend-only Nuxt operational dashboard.
+- `apps/auth-server`: the only component that owns a persistence layer. Serves the Better Auth handler and nothing else.
+- `apps/dashboard`: frontend-only Nuxt operational dashboard. Presentation plus an authenticated client of `apps/auth-server`. No Nitro server routes, no persistence, no runtime-package imports.
 
-The runtime must remain independent from HTTP, GitHub, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters.
+The runtime must remain independent from HTTP, GitHub, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/auth` nor `apps/auth-server` may import a runtime package, and neither may execute repository work.
 
 ## Safety and determinism
 
