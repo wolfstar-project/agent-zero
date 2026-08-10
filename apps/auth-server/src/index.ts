@@ -18,11 +18,13 @@ import { cors } from 'hono/cors';
 
 const DEFAULT_PORT = 3001;
 
+// Validate the complete value as a decimal port string; `Number.parseInt` would silently
+// truncate malformed configuration such as `39001abc` or `39001.5` to a valid port.
+const DECIMAL_PORT_PATTERN = /^\d+$/;
+
 function resolvePort(value: string | undefined): number {
   if (!value) return DEFAULT_PORT;
-  // Validate the complete value as a decimal port string; `Number.parseInt` would silently
-  // truncate malformed configuration such as `39001abc` or `39001.5` to a valid port.
-  if (!/^\d+$/.test(value)) {
+  if (!DECIMAL_PORT_PATTERN.test(value)) {
     throw new Error(`invalid AUTH_SERVER_PORT: expected a port number, received ${value}`);
   }
   const port = Number.parseInt(value, 10);
