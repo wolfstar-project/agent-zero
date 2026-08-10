@@ -62,3 +62,9 @@ Use the smallest relevant check while iterating, then run the complete set befor
 - Explain the problem, the chosen boundary, verification evidence, and safety impact.
 - Keep refactors separate from behavior changes when possible.
 - Update documentation, examples, and skills when commands, boundaries, or contributor workflows change.
+
+<!-- skilld -->
+
+Before modifying code, check .agents/skills/ for relevant skills.
+Read the SKILL.md for any matching package before proceeding.
+<!-- /skilld -->

@@ -16,3 +16,6 @@ test-report.junit.xml
 .data/
 *.log
 .DS_Store
+
+# Skilld references (recreated by `skilld install`)
+.skilld

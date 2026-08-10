@@ -16,7 +16,7 @@
     "knip": "knip",
     "lint": "turbo run lint",
     "lint:ci": "aube run format:check && aube run lint && aube run knip",
-    "prepare": "node .husky/install.mjs",
+    "prepare": "node .husky/install.mjs && skilld prepare --agent codex",
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
     "test": "turbo run test --concurrency=1",

@@ -15,6 +15,9 @@
     "**/node_modules/**",
     "**/.turbo/**",
     "pnpm-lock.yaml",
-    "**/.output/**"
+    "**/.output/**",
+    ".agents/skills/**",
+    ".claude/skills/**",
+    ".skills/**"
   ]
 }

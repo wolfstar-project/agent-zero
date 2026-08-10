@@ -1,0 +1,162 @@
+skills:
+  find-skills:
+    repo: vercel-labs/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/find-skills
+    ref: main
+  planning-with-files:
+    repo: othmanadi/planning-with-files
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/planning-with-files
+    ref: main
+  domain-modeling:
+    repo: mattpocock/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/engineering/domain-modeling
+    ref: main
+  improve-codebase-architecture:
+    repo: mattpocock/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/engineering/improve-codebase-architecture
+    ref: main
+  tdd:
+    repo: mattpocock/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/engineering/tdd
+    ref: main
+  grill-me:
+    repo: mattpocock/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/productivity/grill-me
+    ref: main
+  systematic-debugging:
+    repo: obra/superpowers
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/systematic-debugging
+    ref: main
+  test-driven-development:
+    repo: obra/superpowers
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/test-driven-development
+    ref: main
+  writing-plans:
+    repo: obra/superpowers
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/writing-plans
+    ref: main
+  frontend-design:
+    repo: anthropics/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/frontend-design
+    ref: main
+  skill-creator:
+    repo: anthropics/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/skill-creator
+    ref: main
+  webapp-testing:
+    repo: anthropics/skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/webapp-testing
+    ref: main
+  impeccable:
+    repo: pbakaus/impeccable
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: .agents/skills/impeccable
+    ref: main
+  web-design-guidelines:
+    repo: vercel-labs/agent-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/web-design-guidelines
+    ref: main
+  hallmark:
+    repo: nutlope/hallmark
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/hallmark
+    ref: main
+  baseline-ui:
+    repo: ibelick/ui-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/baseline-ui
+    ref: main
+  fixing-motion-performance:
+    repo: ibelick/ui-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/fixing-motion-performance
+    ref: main
+  accessibility:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/accessibility
+    ref: main
+  best-practices:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/best-practices
+    ref: main
+  core-web-vitals:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/core-web-vitals
+    ref: main
+  performance:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/performance
+    ref: main
+  seo:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/seo
+    ref: main
+  web-quality-audit:
+    repo: addyosmani/web-quality-skills
+    source: github
+    syncedAt: 2026-08-10
+    generator: external
+    path: skills/web-quality-audit
+    ref: main
