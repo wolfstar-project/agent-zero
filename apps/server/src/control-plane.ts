@@ -120,7 +120,7 @@ export class TaskScheduler {
   }
 
   schedule<T>(repository: string, run: () => Promise<T>): Promise<T> {
-    if (this.queue.length >= this.options.maxQueued && this.active >= this.options.maxConcurrent)
+    if (this.queue.length >= this.options.maxQueued && !this.hasImmediateCapacity(repository))
       throw new TaskQueueQuotaError('Task queue capacity is exhausted');
     return new Promise<T>((resolve, reject) => {
       this.queue.push({
@@ -143,6 +143,20 @@ export class TaskScheduler {
       queued: this.queue.length,
       capacity: this.options.maxConcurrent,
     };
+  }
+
+  /**
+   * Whether a new job for this repository would start synchronously in {@link drain}.
+   *
+   * Only jobs without immediate capacity occupy the queue, so `maxQueued` must bound exactly those:
+   * a job blocked by its repository quota counts against the queue even while global capacity is
+   * free, otherwise per-repository-blocked submissions could grow the queue without limit.
+   */
+  private hasImmediateCapacity(repository: string): boolean {
+    return (
+      this.active < this.options.maxConcurrent &&
+      (this.activeByRepository.get(repository) ?? 0) < this.options.maxConcurrentPerRepository
+    );
   }
 
   private drain(): void {

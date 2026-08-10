@@ -3,9 +3,15 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { redactSecrets } from '@agent-zero/shared';
 import { RPCHandler } from '@orpc/server/node';
 
+import {
+  accessFromEnvironment,
+  authenticate,
+  mayTargetRepository,
+  type ControlPlaneAccess,
+} from './auth.js';
 import { PersistentTaskStore, type TaskStore } from './control-plane.js';
 import { dashboardOverview } from './dashboard.js';
-import { rpcRouter } from './rpc.js';
+import { rpcRouter, type RpcContext } from './rpc.js';
 import { FileKeyValueStorage } from './storage.js';
 
 const RPC_PREFIX = '/rpc';
@@ -16,6 +22,8 @@ export interface ControlPlaneOptions {
   /** Defaults to a filesystem store; Redis, KV, or Nitro storage drop in unchanged. */
   store?: TaskStore;
   dataDirectory?: string;
+  /** Access policy for mutating procedures; defaults to the environment and fails closed when unset. */
+  access?: ControlPlaneAccess;
 }
 
 /**
@@ -31,10 +39,11 @@ export function createControlPlane(options: ControlPlaneOptions = {}): Server {
     new PersistentTaskStore(
       new FileKeyValueStorage(options.dataDirectory ?? DEFAULT_DATA_DIRECTORY),
     );
+  const access = options.access ?? accessFromEnvironment();
   const handler = new RPCHandler(rpcRouter);
 
   return createServer((request, response) => {
-    void route(request, response, handler, store).catch((error: unknown) => {
+    void route(request, response, handler, store, access).catch((error: unknown) => {
       respond(response, 500, { error: redactSecrets(messageOf(error)) });
     });
   });
@@ -53,12 +62,19 @@ export async function startControlPlane(
 async function route(
   request: IncomingMessage,
   response: ServerResponse,
-  handler: RPCHandler<{ store: TaskStore }>,
+  handler: RPCHandler<RpcContext>,
   store: TaskStore,
+  access: ControlPlaneAccess | undefined,
 ): Promise<void> {
+  const principal = authenticate(request.headers.authorization, access);
+  const context: RpcContext = {
+    store,
+    ...(principal ? { principal } : {}),
+    mayTargetRepository: (repository) => mayTargetRepository(repository, access),
+  };
   const { matched } = await handler.handle(request, response, {
     prefix: RPC_PREFIX,
-    context: { store },
+    context,
   });
   if (matched) return;
 

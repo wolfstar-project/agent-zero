@@ -19,6 +19,13 @@ export {
   type WebhookRequest,
 } from './router.js';
 export {
+  accessFromEnvironment,
+  authenticate,
+  mayTargetRepository,
+  type ControlPlaneAccess,
+  type Principal,
+} from './auth.js';
+export {
   MemoryTaskStore,
   PersistentTaskStore,
   TaskQueueQuotaError,

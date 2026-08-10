@@ -107,6 +107,8 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 | `/rpc/**`            | Typed oRPC router: `health`, `tasks.list/get/create`, `approvals.decide`  |
 | `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters |
 
+Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. The approval actor is the authenticated principal's name, never a wire-supplied value.
+
 Clients infer their types from the router rather than redeclaring request and response shapes:
 
 ```ts
@@ -116,11 +118,14 @@ import type { RouterClient } from '@orpc/server';
 import type { RpcRouter } from '@agent-zero/server';
 
 const client: RouterClient<RpcRouter> = createORPCClient(
-  new RPCLink({ url: 'http://localhost:3001/rpc' }),
+  new RPCLink({
+    url: 'http://localhost:3001/rpc',
+    headers: { authorization: `Bearer ${process.env.CONTROL_PLANE_TOKEN}` },
+  }),
 );
 
 const { tasks } = await client.tasks.list();
-await client.approvals.decide({ taskId: tasks[0]!.id, decision: 'approved', actor: 'you' });
+await client.approvals.decide({ taskId: tasks[0]!.id, decision: 'approved' });
 ```
 
 Task history persists through a `KeyValueStorage` contract — a filesystem store by default, with Redis, KV, or Nitro storage dropping in unchanged. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.

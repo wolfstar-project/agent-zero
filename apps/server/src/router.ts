@@ -55,10 +55,10 @@ export const taskInput = z
       context.addIssue({ code: 'custom', path: ['feedback'], message: 'Feedback is required' });
   });
 
+/** The actor is never accepted from the wire; the transport derives it from the authenticated principal. */
 export const approvalInput = z.object({
   taskId: z.string().min(1),
   decision: z.enum(['approved', 'rejected']),
-  actor: z.string().min(1).max(100),
   comment: z.string().max(2_000).optional(),
 });
 

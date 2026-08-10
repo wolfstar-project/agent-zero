@@ -105,4 +105,29 @@ describe('TaskScheduler', () => {
     void scheduler.schedule('two', () => new Promise(() => undefined));
     expect(() => scheduler.schedule('three', async () => 3)).toThrow(TaskQueueQuotaError);
   });
+
+  it('enforces the queue limit for repository-blocked work even with free global capacity', () => {
+    const scheduler = new TaskScheduler({
+      maxConcurrent: 4,
+      maxQueued: 1,
+      maxConcurrentPerRepository: 1,
+    });
+    void scheduler.schedule('acme/app', () => new Promise(() => undefined));
+    void scheduler.schedule('acme/app', () => new Promise(() => undefined));
+    expect(scheduler.snapshot()).toMatchObject({ active: 1, queued: 1 });
+    expect(() => scheduler.schedule('acme/app', async () => 3)).toThrow(TaskQueueQuotaError);
+    expect(scheduler.snapshot()).toMatchObject({ active: 1, queued: 1 });
+  });
+
+  it('still starts immediately runnable work while the queue holds only blocked jobs', async () => {
+    const scheduler = new TaskScheduler({
+      maxConcurrent: 4,
+      maxQueued: 1,
+      maxConcurrentPerRepository: 1,
+    });
+    void scheduler.schedule('acme/app', () => new Promise(() => undefined));
+    void scheduler.schedule('acme/app', () => new Promise(() => undefined));
+    await expect(scheduler.schedule('acme/site', async () => 'ran')).resolves.toBe('ran');
+    expect(scheduler.snapshot()).toMatchObject({ queued: 1 });
+  });
 });
