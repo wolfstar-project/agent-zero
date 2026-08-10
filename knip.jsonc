@@ -10,6 +10,10 @@
     "nano-staged",
   ],
   "workspaces": {
+    "apps/server": {
+      // Nitro discovers route handlers by convention rather than by import.
+      "entry": ["server/routes/**/*.ts"],
+    },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does
       // not scan, and Nuxt auto-imports components, composables, and utils.

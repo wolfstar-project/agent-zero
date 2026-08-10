@@ -1,0 +1,31 @@
+{
+  "name": "@agent-zero/server",
+  "version": "0.3.0",
+  "type": "module",
+  "scripts": {
+    "build": "nitro build && tsdown",
+    "clean": "tsc -b --clean",
+    "dev": "nitro dev",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server nitro.config.ts",
+    "start": "node dist/start.js",
+    "test": "vitest run src --passWithNoTests",
+    "typecheck": "nitro prepare && tsc --project tsconfig.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "@agent-zero/agent": "workspace:*",
+    "@agent-zero/config": "workspace:*",
+    "@agent-zero/github": "workspace:*",
+    "@agent-zero/models": "workspace:*",
+    "@agent-zero/runner": "workspace:*",
+    "@agent-zero/shared": "workspace:*",
+    "nitro": "3.0.260522-beta",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "oxlint": "^1.44.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

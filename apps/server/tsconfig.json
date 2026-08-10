@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    // An application project: nothing consumes declarations, and declaration
+    // emit cannot name the h3 handler types that Nitro route files infer.
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts", "server/**/*.ts", "nitro.config.ts"],
+  "references": [
+    { "path": "../../packages/agent" },
+    { "path": "../../packages/config" },
+    { "path": "../../packages/github" },
+    { "path": "../../packages/models" },
+    { "path": "../../packages/runner" },
+    { "path": "../../packages/shared" }
+  ]
+}

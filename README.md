@@ -56,6 +56,7 @@ Nuxt dashboard ─── frontend-only operational interface
 | [`packages/config`](./packages/config) | Configuration parsing and policy                               |
 | [`packages/shared`](./packages/shared) | Stable cross-package contracts                                 |
 | [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                     |
+| [`apps/server`](./apps/server)         | Nitro control plane: HTTP task API and webhook composition     |
 | [`apps/dashboard`](./apps/dashboard)   | Frontend-only Nuxt operational dashboard                       |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
