@@ -339,7 +339,7 @@ describe('git inspection', () => {
     // would silently drop a patch for a path reviewFiles() still publishes.
     const outputs: Record<string, string> = {
       'ls-files -z --others --exclude-standard': 'src/huge.ts\0src/late.ts\0',
-      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `+${'x'.repeat(150_000)}`,
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `diff --git a/src/huge.ts b/src/huge.ts\n+${'x'.repeat(150_000)}`,
       'diff --no-ext-diff --no-index -- /dev/null src/late.ts': '+const late = true;',
     };
     const process: ProcessRunner = async (program, args) => {
@@ -361,7 +361,7 @@ describe('git inspection', () => {
       'diff --no-ext-diff HEAD --':
         'diff --git a/src/tracked.ts b/src/tracked.ts\n+const tracked = true;',
       'ls-files -z --others --exclude-standard': 'src/huge.ts\0',
-      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `+${'x'.repeat(150_000)}`,
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `diff --git a/src/huge.ts b/src/huge.ts\n+${'x'.repeat(150_000)}`,
     };
     const process: ProcessRunner = async (program, args) => {
       const argv = args.join(' ');
@@ -373,6 +373,32 @@ describe('git inspection', () => {
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('+const tracked = true;');
     expect(context).toContain('[truncated');
+  });
+
+  it('keeps every rendered review patch attributable to its file under allocation pressure', async () => {
+    // With enough long-path patches, a fair split of the diff budget is shorter than one
+    // `diff --git` header line; a partial header could not be associated with any CHANGED FILES
+    // entry, so every rendered patch must keep its complete header and the overflow must be
+    // declared instead of surfacing as anonymous fragments.
+    const patches = Array.from({ length: 2_000 }, (_, index) => {
+      const path = `src/${'directory/'.repeat(12)}file-${String(index)}.ts`;
+      return `diff --git a/${path} b/${path}\n+${'x'.repeat(400)}`;
+    });
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff HEAD --': patches.join('\n'),
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    const context = await new LocalRunner(root, { process }).context();
+    const diff = context.slice(context.indexOf('\nDIFF\n'));
+    const headerLines = diff.split('\n').filter((line) => line.includes('diff --git'));
+    expect(headerLines.length).toBeGreaterThan(0);
+    for (const line of headerLines) expect(line).toMatch(/^diff --git a\/\S+ b\/\S+$/);
+    expect(diff).toContain('[omitted');
+    expect(diff).toContain('file patches beyond the diff budget]');
   });
 
   it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {

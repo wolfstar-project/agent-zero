@@ -454,27 +454,53 @@ function splitFilePatches(diff: string): string[] {
  *
  * A single tail-keeping truncation of the joined diff would let one oversized patch push an
  * earlier file's patch out entirely while the changed-file list still names that file as a review
- * target. Instead the budget is allocated per patch: small patches keep everything, the surplus is
- * shared among the larger ones, and each truncated patch keeps its head (the header naming the
- * file) with an explicit truncation marker.
+ * target. Instead the budget is allocated per patch: small patches keep everything and the
+ * surplus is shared among the larger ones. Every rendered patch keeps at least its complete first
+ * line (the `diff --git` header naming the file), because a fragment shorter than the header
+ * could not be attributed to any changed-file entry; when the budget cannot fit every header, the
+ * trailing patches are dropped whole behind an explicit omission marker rather than surfacing as
+ * anonymous fragments.
  */
 function boundedDiff(patches: readonly string[], budget: number): string {
   if (patches.length === 0) return '';
   const joined = patches.join('\n');
   if (joined.length <= budget) return joined;
-  let remaining = Math.max(budget - (patches.length - 1), 0);
-  let left = patches.length;
-  const allocations = patches.map(() => 0);
-  const bySize = patches
+  const headers = patches.map((patch) => {
+    const end = patch.indexOf('\n');
+    return end === -1 ? patch.length : end;
+  });
+  // Retain the leading patches whose complete header lines all fit within the budget.
+  let reserved = 0;
+  let retained = 0;
+  while (retained < patches.length) {
+    const cost = (headers[retained] ?? 0) + (retained > 0 ? 1 : 0);
+    if (reserved + cost > budget) break;
+    reserved += cost;
+    retained += 1;
+  }
+  const kept = patches.slice(0, retained);
+  let remaining = budget - reserved;
+  let left = retained;
+  const allocations = kept.map((_, index) => headers[index] ?? 0);
+  const bySize = kept
     .map((patch, index) => ({ length: patch.length, index }))
     .toSorted((a, b) => a.length - b.length);
   for (const { length, index } of bySize) {
-    const taken = Math.min(length, Math.floor(remaining / left));
-    allocations[index] = taken;
-    remaining -= taken;
+    const extra = Math.min(
+      Math.max(length - (allocations[index] ?? 0), 0),
+      Math.floor(remaining / left),
+    );
+    allocations[index] = (allocations[index] ?? 0) + extra;
+    remaining -= extra;
     left -= 1;
   }
-  return patches.map((patch, index) => truncateHead(patch, allocations[index] ?? 0)).join('\n');
+  const rendered = kept.map((patch, index) => truncateHead(patch, allocations[index] ?? 0));
+  const omitted = patches.length - retained;
+  if (omitted > 0) {
+    const noun = omitted === 1 ? 'file patch' : 'file patches';
+    rendered.push(`[omitted ${String(omitted)} ${noun} beyond the diff budget]`);
+  }
+  return rendered.join('\n');
 }
 
 function assertInside(root: string, candidate: string, original: string): void {
