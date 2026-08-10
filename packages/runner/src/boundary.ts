@@ -84,6 +84,9 @@ const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
 const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
+// `diff --git` headers only ever start a line at column zero; every content line carries a
+// one-character prefix, so this boundary cannot fire inside a patch body.
+const FILE_PATCH_BOUNDARY = /\n(?=diff --git )/;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -440,15 +443,10 @@ function contextDiffRange(options: RepositoryContextOptions): string[] {
   return [`${baseSha}...${headSha}`];
 }
 
-/**
- * Split a multi-file git diff into one patch per file.
- *
- * `diff --git` headers only ever start a line at column zero; every content line carries a
- * one-character prefix, so the split cannot fire inside a patch body.
- */
+/** Split a multi-file git diff into one patch per file (see {@link FILE_PATCH_BOUNDARY}). */
 function splitFilePatches(diff: string): string[] {
   if (diff.length === 0) return [];
-  return diff.split(/\n(?=diff --git )/).filter((patch) => patch.length > 0);
+  return diff.split(FILE_PATCH_BOUNDARY).filter((patch) => patch.length > 0);
 }
 
 /**
@@ -466,7 +464,7 @@ function boundedDiff(patches: readonly string[], budget: number): string {
   if (joined.length <= budget) return joined;
   let remaining = Math.max(budget - (patches.length - 1), 0);
   let left = patches.length;
-  const allocations = new Array<number>(patches.length);
+  const allocations = patches.map(() => 0);
   const bySize = patches
     .map((patch, index) => ({ length: patch.length, index }))
     .toSorted((a, b) => a.length - b.length);
