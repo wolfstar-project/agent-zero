@@ -1,6 +1,7 @@
 import { redactSecrets } from '@agent-zero/shared';
 import { RPCHandler } from '@orpc/server/fetch';
 import { defineHandler } from 'nitro';
+import type { EventHandlerWithFetch } from 'nitro/h3';
 
 import { accessFromEnvironment, authenticate, mayTargetRepository } from '../../../src/auth.js';
 import { rpcRouter, type RpcContext } from '../../../src/rpc.js';
@@ -18,7 +19,7 @@ const access = accessFromEnvironment();
  * no checkout, so an HTTP client cannot reach a repository except through the procedures in
  * {@link rpcRouter}, which run behind the runner boundary.
  */
-export default defineHandler(async (event) => {
+const route: EventHandlerWithFetch = defineHandler(async (event) => {
   try {
     const principal = authenticate(event.req.headers.get('authorization') ?? undefined, access);
     const context: RpcContext = {
@@ -36,3 +37,5 @@ export default defineHandler(async (event) => {
     return json(500, { error: redactSecrets(messageOf(error)) });
   }
 });
+
+export default route;
