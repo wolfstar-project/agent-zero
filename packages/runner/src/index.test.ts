@@ -276,8 +276,9 @@ describe('git inspection', () => {
       'diff --name-only --cached --',
       'diff --name-only --',
       'ls-files --others --exclude-standard',
-      'diff --no-ext-diff --cached --',
-      'diff --no-ext-diff --',
+      'diff --no-ext-diff HEAD --',
+      'ls-files --others --exclude-standard',
+      'diff --no-ext-diff --no-index -- /dev/null src/user.ts',
     ]);
   });
 
@@ -300,16 +301,49 @@ describe('git inspection', () => {
     ]);
   });
 
-  it('feeds staged content into the range-less review diff', async () => {
+  it('feeds one consolidated final-state patch into the range-less review diff', async () => {
     const outputs: Record<string, string> = {
-      'diff --no-ext-diff --cached --': '+const staged = true;',
-      'diff --no-ext-diff --': '+const unstaged = true;',
+      'diff --no-ext-diff HEAD --': '+const final = true;',
+      // The staged layer of a partially-staged file must never surface as a separate patch.
+      'diff --no-ext-diff --cached --': '+const intermediate = true;',
     };
     const process: ProcessRunner = async (program, args) => ({
       exitCode: 0,
       stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
       stderr: '',
     });
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const final = true;');
+    expect(context).not.toContain('+const intermediate = true;');
+  });
+
+  it('includes a synthetic creation patch for each untracked file in the range-less review diff', async () => {
+    const process: ProcessRunner = async (program, args) => {
+      if (program !== 'git') return { exitCode: 0, stdout: '', stderr: '' };
+      const argv = args.join(' ');
+      if (argv === 'ls-files --others --exclude-standard')
+        return { exitCode: 0, stdout: 'src/untracked.ts\n', stderr: '' };
+      if (argv === 'diff --no-ext-diff --no-index -- /dev/null src/untracked.ts')
+        return { exitCode: 1, stdout: '+const untracked = true;', stderr: '' };
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('src/untracked.ts');
+    expect(context).toContain('+const untracked = true;');
+  });
+
+  it('falls back to the staged and working-tree layers when there is no commit to diff against', async () => {
+    const process: ProcessRunner = async (program, args) => {
+      if (program !== 'git') return { exitCode: 0, stdout: '', stderr: '' };
+      const argv = args.join(' ');
+      if (argv === 'diff --no-ext-diff HEAD --')
+        return { exitCode: 128, stdout: '', stderr: 'unknown revision HEAD' };
+      if (argv === 'diff --no-ext-diff --cached --')
+        return { exitCode: 0, stdout: '+const staged = true;', stderr: '' };
+      if (argv === 'diff --no-ext-diff --')
+        return { exitCode: 0, stdout: '+const unstaged = true;', stderr: '' };
+      return { exitCode: 0, stdout: '', stderr: '' };
+    };
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('+const staged = true;');
     expect(context).toContain('+const unstaged = true;');

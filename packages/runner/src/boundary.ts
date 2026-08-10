@@ -202,15 +202,57 @@ export abstract class RepositoryBoundary implements Runner {
   }
 
   /**
-   * The full pending local diff: staged content first, then working-tree edits.
+   * The full pending local diff, one final-state patch per file.
    *
-   * `git diff` alone reads only the working tree against the index, so index-only changes would
-   * be reviewed as if they did not exist.
+   * A single HEAD-to-working-tree diff covers staged and unstaged edits together; joining the
+   * `--cached` and working-tree layers instead would emit two overlapping patches for a
+   * partially-staged file and expose the intermediate staged value as though it were a separate
+   * edit. Untracked files appear in no git diff at all, so each one gets a synthetic
+   * creation patch (see {@link untrackedPatches}).
    */
   private async pendingDiff(): Promise<string> {
-    const staged = await this.git(['diff', '--no-ext-diff', '--cached', '--']);
-    const unstaged = await this.git(['diff', '--no-ext-diff', '--']);
-    return [staged.stdout, unstaged.stdout].filter((part) => part.length > 0).join('\n');
+    const tracked = await this.git(['diff', '--no-ext-diff', 'HEAD', '--']);
+    const parts =
+      tracked.exitCode === 0
+        ? [tracked.stdout]
+        : // No commit to diff against (unborn HEAD): the index and working tree are the only
+          // layers, so show them directly rather than dropping staged content.
+          [
+            (await this.git(['diff', '--no-ext-diff', '--cached', '--'])).stdout,
+            (await this.git(['diff', '--no-ext-diff', '--'])).stdout,
+          ];
+    parts.push(...(await this.untrackedPatches()));
+    return parts.filter((part) => part.length > 0).join('\n');
+  }
+
+  /**
+   * A synthetic creation patch for each untracked file included in a range-less review.
+   *
+   * {@link reviewFiles} lists untracked paths as review targets, so their content must reach the
+   * reviewer too; `git diff --no-index` against `/dev/null` renders the same new-file patch a
+   * commit would produce. Collection stops once the diff budget is exhausted, since anything
+   * further would be truncated away regardless.
+   */
+  private async untrackedPatches(): Promise<string[]> {
+    const listing = await this.git(['ls-files', '--others', '--exclude-standard']);
+    const patches: string[] = [];
+    let total = 0;
+    for (const line of listing.stdout.split('\n')) {
+      const path = line.trim();
+      if (path.length === 0 || !isRepositoryRelativePath(path)) continue;
+      if (total > MAX_DIFF) break;
+      // `--no-index` exits 1 when the paths differ, which is the expected outcome here; only
+      // larger codes report a real failure, and those degrade to omitting the patch.
+      const outcome = await this.process(
+        'git',
+        ['diff', '--no-ext-diff', '--no-index', '--', '/dev/null', path],
+        { cwd: this.root, timeoutMs: GIT_TIMEOUT_MS, maxOutputBytes: this.maxOutputBytes },
+      );
+      if (outcome.exitCode > 1 || outcome.stdout.length === 0) continue;
+      patches.push(outcome.stdout);
+      total += outcome.stdout.length;
+    }
+    return patches;
   }
 
   async changedFiles(): Promise<string[]> {
