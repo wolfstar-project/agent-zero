@@ -180,20 +180,21 @@ export abstract class RepositoryBoundary implements Runner {
     const diffRange = contextDiffRange(options);
     // A committed pull-request range fixes the reviewed set. Without one, the pending local
     // changes are the review target, and a plain `git diff` alone would silently omit index-only
-    // changes and untracked files.
+    // changes and untracked files. Every listing is NUL-delimited (`-z`): newline-delimited git
+    // output C-quotes names containing characters such as newlines or tabs, and that display
+    // representation is not a filesystem path.
     const listings =
       diffRange.length > 0
-        ? [await this.git(['diff', '--name-only', ...diffRange, '--'])]
+        ? [await this.git(['diff', '--name-only', '-z', ...diffRange, '--'])]
         : [
-            await this.git(['diff', '--name-only', '--cached', '--']),
-            await this.git(['diff', '--name-only', '--']),
-            await this.git(['ls-files', '--others', '--exclude-standard']),
+            await this.git(['diff', '--name-only', '-z', '--cached', '--']),
+            await this.git(['diff', '--name-only', '-z', '--']),
+            await this.git(['ls-files', '-z', '--others', '--exclude-standard']),
           ];
     const seen = new Set<string>();
     const paths: string[] = [];
     for (const listing of listings)
-      for (const line of listing.stdout.split('\n')) {
-        const path = line.trim();
+      for (const path of listing.stdout.split('\0')) {
         if (path.length === 0 || !isRepositoryRelativePath(path) || seen.has(path)) continue;
         seen.add(path);
         paths.push(path);
@@ -237,15 +238,16 @@ export abstract class RepositoryBoundary implements Runner {
    *
    * {@link reviewFiles} lists untracked paths as review targets, so their content must reach the
    * reviewer too; `git diff --no-index` against `/dev/null` renders the same new-file patch a
-   * commit would produce. Collection stops once the diff budget is exhausted, since anything
-   * further would be truncated away regardless.
+   * commit would produce. The listing is NUL-delimited (`-z`) and parsed verbatim: git C-quotes
+   * names containing characters such as newlines or tabs in newline-delimited output, and that
+   * display representation would not open as a filesystem path. Collection stops once the diff
+   * budget is exhausted, since anything further would be truncated away regardless.
    */
   private async untrackedPatches(): Promise<string[]> {
-    const listing = await this.git(['ls-files', '--others', '--exclude-standard']);
+    const listing = await this.git(['ls-files', '-z', '--others', '--exclude-standard']);
     const patches: string[] = [];
     let total = 0;
-    for (const line of listing.stdout.split('\n')) {
-      const path = line.trim();
+    for (const path of listing.stdout.split('\0')) {
       if (path.length === 0 || !isRepositoryRelativePath(path)) continue;
       if (total > MAX_DIFF) break;
       // `--no-index` exits 1 when the paths differ, which is the expected outcome here; only

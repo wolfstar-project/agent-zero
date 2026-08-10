@@ -273,20 +273,20 @@ describe('git inspection', () => {
     expect(context).toContain('DIFF');
     expect(calls.map((call) => call.args.join(' '))).toEqual([
       'ls-files',
-      'diff --name-only --cached --',
-      'diff --name-only --',
-      'ls-files --others --exclude-standard',
+      'diff --name-only -z --cached --',
+      'diff --name-only -z --',
+      'ls-files -z --others --exclude-standard',
       'diff --no-ext-diff HEAD --',
-      'ls-files --others --exclude-standard',
+      'ls-files -z --others --exclude-standard',
       'diff --no-ext-diff --no-index -- /dev/null src/user.ts',
     ]);
   });
 
   it('includes staged and untracked files in a range-less local review', async () => {
     const outputs: Record<string, string> = {
-      'diff --name-only --cached --': 'src/staged.ts\nsrc/both.ts\n',
-      'diff --name-only --': 'src/edited.ts\nsrc/both.ts\n',
-      'ls-files --others --exclude-standard': 'src/untracked.ts\n',
+      'diff --name-only -z --cached --': 'src/staged.ts\0src/both.ts\0',
+      'diff --name-only -z --': 'src/edited.ts\0src/both.ts\0',
+      'ls-files -z --others --exclude-standard': 'src/untracked.ts\0',
     };
     const process: ProcessRunner = async (program, args) => ({
       exitCode: 0,
@@ -319,7 +319,7 @@ describe('git inspection', () => {
 
   it('includes a synthetic creation patch for each untracked file in the range-less review diff', async () => {
     const outputs: Record<string, string> = {
-      'ls-files --others --exclude-standard': 'src/untracked.ts\n',
+      'ls-files -z --others --exclude-standard': 'src/untracked.ts\0',
       'diff --no-ext-diff --no-index -- /dev/null src/untracked.ts': '+const untracked = true;',
     };
     const process: ProcessRunner = async (program, args) => {
@@ -332,6 +332,25 @@ describe('git inspection', () => {
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('src/untracked.ts');
     expect(context).toContain('+const untracked = true;');
+  });
+
+  it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {
+    // Newline-delimited git output would C-quote this name into a non-path display string.
+    const weird = 'src/untracked\nfile.ts';
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': `${weird}\0`,
+      [`diff --no-ext-diff --no-index -- /dev/null ${weird}`]: '+const weird = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const runner = new LocalRunner(root, { process });
+    await expect(runner.reviewFiles()).resolves.toContain(weird);
+    await expect(runner.context()).resolves.toContain('+const weird = true;');
   });
 
   it('consolidates the unborn-repository fallback into one final-state patch per file', async () => {
@@ -362,7 +381,7 @@ describe('git inspection', () => {
     const headSha = 'a'.repeat(40);
     await new LocalRunner(root, { process }).context({ baseSha, headSha });
     const range = `${baseSha}...${headSha}`;
-    expect(calls[1]?.args).toEqual(['diff', '--name-only', range, '--']);
+    expect(calls[1]?.args).toEqual(['diff', '--name-only', '-z', range, '--']);
     expect(calls[2]?.args).toEqual(['diff', '--no-ext-diff', range, '--']);
   });
 
