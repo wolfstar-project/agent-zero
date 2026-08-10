@@ -21,21 +21,21 @@ Choose one primary lane. Server Primitives serve application behavior through Vi
 
 Read only the references whose conditions match, but read them before writing code:
 
-| Task condition | Required reference |
-| --- | --- |
-| New project, uncertain file layout, or cross-feature composition | [Project shapes](references/project-shapes.md) |
-| Released or `pkg.pr.new` installation, upgrade, or package mismatch | [Installed and preview contracts](references/preview-contract.md) |
-| KV, Blob, Database, Env, Email, Queue, Rate Limit, Sandbox, Shell, or another Server Primitive | [Server Primitives](references/server-primitives.md) |
-| Modify an existing framework integration; add Nitro or Nuxt; use generated types; configure a provider; or diagnose a framework-specific failure | [Framework composition](references/framework-composition.md) |
-| Agent Definition, Agent Driver, Agent Invocation, instructions, output, hooks, or Evals | [Agent Definitions and Drivers](references/agent-definitions.md) |
-| Workspace, Source, access scope, mounted files, or write-back | [Workspaces, Sources, and access](references/workspaces-sources-access.md) |
-| Channel, Trigger, webhook, messages, admission, concurrency, or delivery | [Channels and Triggers](references/channels-triggers.md) |
-| Capability, tool, secret, rate limit, telemetry, or other granted authority | [Capabilities and authority](references/capabilities-authority.md) |
-| Schedule, Workflow, orchestration retry, idempotency, or terminal state | [Schedules, Workflows, and Invocations](references/schedules-workflows-invocations.md) |
-| Box, trusted host, isolation, required command, or deployment target | [Boxes and hosts](references/boxes-hosts.md) |
-| A proof has failed, generated state disagrees, or a runtime/host failure needs diagnosis | [Proof and recovery](references/proof-recovery.md) |
-| Looking for a complete public application pattern | [Project patterns](references/project-patterns.md) |
-| Existing `@vitehub/*`, `@vite-hub/vite`, or individual `hubX()` composition | [Migration quarantine](references/migration.md) |
+| Task condition                                                                                                                                   | Required reference                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| New project, uncertain file layout, or cross-feature composition                                                                                 | [Project shapes](references/project-shapes.md)                                         |
+| Released or `pkg.pr.new` installation, upgrade, or package mismatch                                                                              | [Installed and preview contracts](references/preview-contract.md)                      |
+| KV, Blob, Database, Env, Email, Queue, Rate Limit, Sandbox, Shell, or another Server Primitive                                                   | [Server Primitives](references/server-primitives.md)                                   |
+| Modify an existing framework integration; add Nitro or Nuxt; use generated types; configure a provider; or diagnose a framework-specific failure | [Framework composition](references/framework-composition.md)                           |
+| Agent Definition, Agent Driver, Agent Invocation, instructions, output, hooks, or Evals                                                          | [Agent Definitions and Drivers](references/agent-definitions.md)                       |
+| Workspace, Source, access scope, mounted files, or write-back                                                                                    | [Workspaces, Sources, and access](references/workspaces-sources-access.md)             |
+| Channel, Trigger, webhook, messages, admission, concurrency, or delivery                                                                         | [Channels and Triggers](references/channels-triggers.md)                               |
+| Capability, tool, secret, rate limit, telemetry, or other granted authority                                                                      | [Capabilities and authority](references/capabilities-authority.md)                     |
+| Schedule, Workflow, orchestration retry, idempotency, or terminal state                                                                          | [Schedules, Workflows, and Invocations](references/schedules-workflows-invocations.md) |
+| Box, trusted host, isolation, required command, or deployment target                                                                             | [Boxes and hosts](references/boxes-hosts.md)                                           |
+| A proof has failed, generated state disagrees, or a runtime/host failure needs diagnosis                                                         | [Proof and recovery](references/proof-recovery.md)                                     |
+| Looking for a complete public application pattern                                                                                                | [Project patterns](references/project-patterns.md)                                     |
+| Existing `@vitehub/*`, `@vite-hub/vite`, or individual `hubX()` composition                                                                      | [Migration quarantine](references/migration.md)                                        |
 
 Routing is complete when every requested behavior has one primary lane and every matching reference has been read. Do not load the whole library.
 
@@ -52,7 +52,7 @@ Contract inspection is complete when every planned package, import, option, gene
 Before editing, map every requested behavior to:
 
 | Behavior | Package owner | Source file | Runtime path | Authority or persistence | Proof |
-| --- | --- | --- | --- | --- | --- |
+| -------- | ------------- | ----------- | ------------ | ------------------------ | ----- |
 
 Then implement the smallest coherent set: manifest and lockfile, framework integration, discovered Definition where needed, application or orchestration entrypoint, and proof surface. Keep application authority in application code; grant an Agent access only through visible Capabilities, Workspace rules, Sources, Channels, or Box configuration.
 

@@ -18,12 +18,12 @@ Do not add compatibility glue until the installed contract and current docs prov
 
 ## Proof matrix
 
-| Lane | Required observation |
-| --- | --- |
-| Server Primitive | Vite Integration registered, Runtime Helper executed, provider effect observed |
-| Agent | Driver prerequisites met, Agent Invocation executed, output and authority inspected |
-| Channel or Trigger | verified event admitted, invocation observed, delivery or persisted message observed |
-| Schedule or Workflow | due/run identity observed, steps executed, retry/terminal state verified |
-| Host | build emitted documented Provider Output and live limitation or behavior was checked |
+| Lane                 | Required observation                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| Server Primitive     | Vite Integration registered, Runtime Helper executed, provider effect observed       |
+| Agent                | Driver prerequisites met, Agent Invocation executed, output and authority inspected  |
+| Channel or Trigger   | verified event admitted, invocation observed, delivery or persisted message observed |
+| Schedule or Workflow | due/run identity observed, steps executed, retry/terminal state verified             |
+| Host                 | build emitted documented Provider Output and live limitation or behavior was checked |
 
 Completion requires every requested behavior to have an observation or a source-backed unsupported boundary.

@@ -4,12 +4,12 @@ Use this only when the installed application already uses an older composition g
 
 ## Identify the generation
 
-| Installed shape | Meaning | Direction |
-| --- | --- | --- |
-| `vite-hub` with feature subpaths | Current application facade | Keep and inspect installed exports |
+| Installed shape                                         | Meaning                             | Direction                                                                            |
+| ------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `vite-hub` with feature subpaths                        | Current application facade          | Keep and inspect installed exports                                                   |
 | Individual `@vite-hub/*` packages with `hubX()` plugins | Supported owner-package composition | Keep for focused/advanced ownership or migrate application composition to the facade |
-| `@vite-hub/vite` root preset | Former aggregate application preset | Migrate to `vite-hub` when the installed target supports it |
-| `@vitehub/*` | Historical package scope | Do not copy; migrate through current docs and exports |
+| `@vite-hub/vite` root preset                            | Former aggregate application preset | Migrate to `vite-hub` when the installed target supports it                          |
+| `@vitehub/*`                                            | Historical package scope            | Do not copy; migrate through current docs and exports                                |
 
 Read [Migration](https://vitehub.dev/raw/docs/getting-started/migration.md), [Installation](https://vitehub.dev/raw/docs/getting-started/installation.md), and [Import paths](https://vitehub.dev/raw/docs/reference/import-paths.md).
 
