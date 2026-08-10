@@ -26,10 +26,19 @@ export interface ControlPlaneAccess {
 
 const BEARER_PREFIX = 'Bearer ';
 
-const RUN_MODES: readonly RunMode[] = ['observe', 'suggest', 'fix', 'autonomous'];
+const RUN_MODES: ReadonlySet<string> = new Set([
+  'observe',
+  'suggest',
+  'fix',
+  'autonomous',
+] satisfies RunMode[]);
 
 /** Granted when a principal has no explicit mode entry; neither mode can produce a writable runner. */
 const DEFAULT_MODES: readonly RunMode[] = ['observe', 'suggest'];
+
+function isRunMode(value: string): value is RunMode {
+  return RUN_MODES.has(value);
+}
 
 /**
  * Parse the access policy from the environment.
@@ -91,9 +100,9 @@ function parseModeGrants(modes: string | undefined): Map<string, readonly RunMod
     for (const candidate of granted.split('|')) {
       const mode = candidate.trim();
       if (mode === '') continue;
-      if (!RUN_MODES.includes(mode as RunMode))
+      if (!isRunMode(mode))
         throw new Error(`AGENT_ZERO_CONTROL_PLANE_MODES grants an unknown mode: ${mode}`);
-      parsed.push(mode as RunMode);
+      parsed.push(mode);
     }
     if (parsed.length === 0)
       throw new Error('AGENT_ZERO_CONTROL_PLANE_MODES entries must be name:mode|mode pairs');
