@@ -16,6 +16,7 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
+- `apps/server`: oRPC transport, task persistence, scheduling, and the composition root that constructs a runner. See the `orpc-server` skill.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
 
 ## Workflow

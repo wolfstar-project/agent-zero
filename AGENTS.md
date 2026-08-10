@@ -28,6 +28,7 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
+- `apps/server`: oRPC control-plane transport and composition root.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard.
 
 The runtime must remain independent from HTTP, GitHub, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters.

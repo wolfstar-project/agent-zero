@@ -4,8 +4,8 @@ Agent Zero is organized as a dependency-directed monorepo. The core decides what
 
 ```text
 GitHub adapter ─┐
-CLI adapter ────┴──> agent runtime ──> runner boundary ──> isolated checkout
-                         │
+CLI adapter ────┼──> agent runtime ──> runner boundary ──> isolated checkout
+oRPC server ────┘        │
                          ├──> model abstraction ──> provider
                          └──> shared contracts
 
@@ -18,6 +18,7 @@ Nuxt dashboard ───> frontend-only operational interface
 - `config`, `models`, `github`, and `runner` implement focused capabilities around shared contracts.
 - `agent` composes policies and state transitions without knowing HTTP or terminal details.
 - `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
+- `apps/server` is an entry-point adapter and composition root. Like `cli`, it may depend on the runtime; the runtime must not depend on it.
 - `apps/dashboard` is a frontend-only Nuxt interface and does not import runtime packages.
 
 If a change creates a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime.
@@ -41,6 +42,16 @@ Model transports follow the same adapter rule. `packages/models` owns the AI SDK
 ## Dashboard boundary
 
 `apps/dashboard` owns presentation only. It has no custom Nitro server routes, RPC contracts, persistence adapters, scheduler, runtime-package dependencies, shell capability, or target-filesystem capability. Any future live data source must be implemented as a separate adapter with an explicit contract rather than composed into the dashboard.
+
+## Control-plane boundary
+
+`apps/server` is that separate adapter: the transport and composition root the dashboard reads from, kept in its own package so presentation never gains runtime capability.
+
+It exposes one typed oRPC router (`health`, `tasks.list`, `tasks.get`, `tasks.create`, `approvals.decide`) over a plain Node HTTP listener, plus a single aggregate `GET /api/dashboard` for the operational view. Procedures validate at the boundary with Zod and then delegate; they never invoke a shell or touch a checkout, because `runTask` is the only place that resolves policy and constructs a runner. A hosted `RunnerPool` lease is optional and still yields nothing but a `Runner`.
+
+Persistence is a narrow `KeyValueStorage` contract so a filesystem store, Redis, KV, or Nitro storage driver stays interchangeable. Records are redacted on the way in and hold no review input and no checkout path, so task history cannot become a credential or filesystem leak. `TaskScheduler` bounds concurrency globally and per repository, and rejects work once the queue is exhausted rather than growing without limit.
+
+Transport concerns stop here: headers, status mapping, and request objects never reach a runtime package.
 
 ## State transitions
 
