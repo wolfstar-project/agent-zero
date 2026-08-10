@@ -25,6 +25,9 @@ import {
   type ProcessRunner,
 } from './index.js';
 
+/** A complete `diff --git` header line, as rendered for the whitespace-free test paths below. */
+const COMPLETE_PATCH_HEADER = /^diff --git a\/\S+ b\/\S+$/;
+
 /**
  * Reproduces the validate-then-swap race deterministically: validation passes against a real
  * directory, then the directory is replaced with a symlink before the filesystem operation runs.
@@ -396,7 +399,7 @@ describe('git inspection', () => {
     const diff = context.slice(context.indexOf('\nDIFF\n'));
     const headerLines = diff.split('\n').filter((line) => line.includes('diff --git'));
     expect(headerLines.length).toBeGreaterThan(0);
-    for (const line of headerLines) expect(line).toMatch(/^diff --git a\/\S+ b\/\S+$/);
+    for (const line of headerLines) expect(line).toMatch(COMPLETE_PATCH_HEADER);
     expect(diff).toContain('[omitted');
     expect(diff).toContain('file patches beyond the diff budget]');
   });
