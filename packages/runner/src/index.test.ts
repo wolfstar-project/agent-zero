@@ -335,8 +335,8 @@ describe('git inspection', () => {
   });
 
   it('keeps collecting untracked patches after one file exhausts the diff budget', async () => {
-    // The final tail-keeping truncation in context() keeps later content, so stopping the
-    // collection early would silently drop a patch for a path reviewFiles() still publishes.
+    // The diff budget is allocated per file in context(), so stopping the collection early
+    // would silently drop a patch for a path reviewFiles() still publishes.
     const outputs: Record<string, string> = {
       'ls-files -z --others --exclude-standard': 'src/huge.ts\0src/late.ts\0',
       'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `+${'x'.repeat(150_000)}`,
@@ -351,6 +351,28 @@ describe('git inspection', () => {
     };
     const context = await new LocalRunner(root, { process }).context();
     expect(context).toContain('+const late = true;');
+  });
+
+  it('keeps a tracked patch in the review diff when an oversized untracked patch follows it', async () => {
+    // A single tail-keeping truncation of the joined diff would evict the earlier tracked patch
+    // while reviewFiles() still lists the tracked file; the per-file budget instead truncates
+    // only the oversized patch, with an explicit marker.
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff HEAD --':
+        'diff --git a/src/tracked.ts b/src/tracked.ts\n+const tracked = true;',
+      'ls-files -z --others --exclude-standard': 'src/huge.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `+${'x'.repeat(150_000)}`,
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const tracked = true;');
+    expect(context).toContain('[truncated');
   });
 
   it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {

@@ -18,6 +18,7 @@ import {
   isRepositoryRelativePath,
   redactSecrets,
   secretValuesFromEnvironment,
+  truncateHead,
   truncateTail,
   type CheckResult,
   type NetworkPolicy,
@@ -160,10 +161,10 @@ export abstract class RepositoryBoundary implements Runner {
     const diffRange = contextDiffRange(options);
     const files = await this.git(['ls-files']);
     const changedFiles = await this.reviewFiles(options);
-    const diff =
+    const patches =
       diffRange.length > 0
-        ? (await this.git(['diff', '--no-ext-diff', ...diffRange, '--'])).stdout
-        : await this.pendingDiff();
+        ? splitFilePatches((await this.git(['diff', '--no-ext-diff', ...diffRange, '--'])).stdout)
+        : await this.pendingPatches();
     return [
       'FILES',
       truncateTail(files.stdout, MAX_FILE_LIST),
@@ -172,7 +173,7 @@ export abstract class RepositoryBoundary implements Runner {
       truncateTail(changedFiles.join('\n'), MAX_FILE_LIST),
       '',
       'DIFF',
-      truncateTail(diff, MAX_DIFF),
+      boundedDiff(patches, MAX_DIFF),
     ].join('\n');
   }
 
@@ -211,11 +212,13 @@ export abstract class RepositoryBoundary implements Runner {
    * edit. Untracked files appear in no git diff at all, so each one gets a synthetic
    * creation patch (see {@link untrackedPatches}).
    */
-  private async pendingDiff(): Promise<string> {
+  private async pendingPatches(): Promise<string[]> {
     const tracked = await this.git(['diff', '--no-ext-diff', 'HEAD', '--']);
-    const parts = tracked.exitCode === 0 ? [tracked.stdout] : [await this.unbornDiff()];
-    parts.push(...(await this.untrackedPatches()));
-    return parts.filter((part) => part.length > 0).join('\n');
+    const patches = splitFilePatches(
+      tracked.exitCode === 0 ? tracked.stdout : await this.unbornDiff(),
+    );
+    patches.push(...(await this.untrackedPatches()));
+    return patches;
   }
 
   /**
@@ -241,9 +244,9 @@ export abstract class RepositoryBoundary implements Runner {
    * commit would produce. The listing is NUL-delimited (`-z`) and parsed verbatim: git C-quotes
    * names containing characters such as newlines or tabs in newline-delimited output, and that
    * display representation would not open as a filesystem path. Every listed file is collected:
-   * the diff budget is applied once, by {@link context}'s final tail-keeping truncation, so an
-   * early stop here would silently drop later files' patches that the truncation would have kept
-   * while {@link reviewFiles} still publishes their paths as review targets.
+   * the diff budget is allocated per file by {@link boundedDiff}, so an early stop here would
+   * silently drop later files' patches that the allocation would have kept while
+   * {@link reviewFiles} still publishes their paths as review targets.
    */
   private async untrackedPatches(): Promise<string[]> {
     const listing = await this.git(['ls-files', '-z', '--others', '--exclude-standard']);
@@ -435,6 +438,45 @@ function contextDiffRange(options: RepositoryContextOptions): string[] {
   if (!baseSha || !headSha || !COMMIT_SHA.test(baseSha) || !COMMIT_SHA.test(headSha))
     throw new Error('Repository context requires valid base and head commit SHAs');
   return [`${baseSha}...${headSha}`];
+}
+
+/**
+ * Split a multi-file git diff into one patch per file.
+ *
+ * `diff --git` headers only ever start a line at column zero; every content line carries a
+ * one-character prefix, so the split cannot fire inside a patch body.
+ */
+function splitFilePatches(diff: string): string[] {
+  if (diff.length === 0) return [];
+  return diff.split(/\n(?=diff --git )/).filter((patch) => patch.length > 0);
+}
+
+/**
+ * Join per-file patches under a shared budget without letting one file evict another.
+ *
+ * A single tail-keeping truncation of the joined diff would let one oversized patch push an
+ * earlier file's patch out entirely while the changed-file list still names that file as a review
+ * target. Instead the budget is allocated per patch: small patches keep everything, the surplus is
+ * shared among the larger ones, and each truncated patch keeps its head (the header naming the
+ * file) with an explicit truncation marker.
+ */
+function boundedDiff(patches: readonly string[], budget: number): string {
+  if (patches.length === 0) return '';
+  const joined = patches.join('\n');
+  if (joined.length <= budget) return joined;
+  let remaining = Math.max(budget - (patches.length - 1), 0);
+  let left = patches.length;
+  const allocations = new Array<number>(patches.length);
+  const bySize = patches
+    .map((patch, index) => ({ length: patch.length, index }))
+    .toSorted((a, b) => a.length - b.length);
+  for (const { length, index } of bySize) {
+    const taken = Math.min(length, Math.floor(remaining / left));
+    allocations[index] = taken;
+    remaining -= taken;
+    left -= 1;
+  }
+  return patches.map((patch, index) => truncateHead(patch, allocations[index] ?? 0)).join('\n');
 }
 
 function assertInside(root: string, candidate: string, original: string): void {
