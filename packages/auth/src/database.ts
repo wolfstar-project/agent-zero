@@ -3,9 +3,6 @@ import postgres from 'postgres';
 
 import { schema } from './schema.js';
 
-/** Drizzle handle over the Postgres session store. */
-export type AuthDatabase = ReturnType<typeof createAuthDatabase>;
-
 /**
  * Open the session store.
  *
