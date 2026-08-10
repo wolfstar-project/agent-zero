@@ -20,8 +20,13 @@ const DEFAULT_PORT = 3001;
 
 function resolvePort(value: string | undefined): number {
   if (!value) return DEFAULT_PORT;
+  // Validate the complete value as a decimal port string; `Number.parseInt` would silently
+  // truncate malformed configuration such as `39001abc` or `39001.5` to a valid port.
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`invalid AUTH_SERVER_PORT: expected a port number, received ${value}`);
+  }
   const port = Number.parseInt(value, 10);
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+  if (port < 1 || port > 65_535) {
     throw new Error(`invalid AUTH_SERVER_PORT: expected a port number, received ${value}`);
   }
   return port;
