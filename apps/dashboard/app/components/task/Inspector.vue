@@ -17,11 +17,11 @@
       </div>
 
       <dl class="my-4 grid grid-cols-2 border border-line">
-        <div class="border-b border-r border-line p-3">
+        <div class="border-b border-ie border-line p-3">
           <dt class="label-upper">
             {{ $t('dashboard.inspector.created') }}
           </dt>
-          <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
+          <dd class="mb-0 ms-0 mt-1.5 font-mono text-3xs text-ink">
             {{ new Date(task.createdAt).toLocaleString(locale) }}
           </dd>
         </div>
@@ -29,15 +29,15 @@
           <dt class="label-upper">
             {{ $t('dashboard.inspector.attempts') }}
           </dt>
-          <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
+          <dd class="mb-0 ms-0 mt-1.5 font-mono text-3xs text-ink">
             {{ task.result?.attempts ?? '—' }}
           </dd>
         </div>
-        <div class="border-r border-line p-3">
+        <div class="border-ie border-line p-3">
           <dt class="label-upper">
             {{ $t('dashboard.inspector.tokens') }}
           </dt>
-          <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
+          <dd class="mb-0 ms-0 mt-1.5 font-mono text-3xs text-ink">
             {{ task.result?.usage.totalTokens.toLocaleString(locale) ?? '—' }}
           </dd>
         </div>
@@ -46,7 +46,7 @@
             {{ $t('dashboard.inspector.verified') }}
           </dt>
           <dd
-            class="mb-0 ml-0 mt-1.5 font-mono text-[10px]"
+            class="mb-0 ms-0 mt-1.5 font-mono text-3xs"
             :class="task.result?.verified ? 'text-accent' : 'text-muted'"
           >
             {{

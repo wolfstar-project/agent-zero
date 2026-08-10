@@ -9,7 +9,7 @@
         index < 4 ? 'border-b lg:border-b-0 lg:border-r' : '',
       ]"
     >
-      <p class="m-0 text-[9px] text-muted font-700 tracking-[0.16em] uppercase">
+      <p class="m-0 text-4xs text-muted font-700 tracking-[0.16em] uppercase">
         {{ metric.label }}
       </p>
       <p class="m-0 mt-3 font-mono text-2xl font-600 tracking-tight" :class="metric.tone">

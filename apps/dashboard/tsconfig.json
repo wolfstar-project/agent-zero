@@ -6,6 +6,8 @@
     "config/**/*.ts",
     "shared/**/*.ts",
     "i18n/locale-features.json",
+    "uno-preset-a11y.ts",
+    "uno-preset-rtl.ts",
     "uno.config.ts",
     "uno.theme.ts"
   ]

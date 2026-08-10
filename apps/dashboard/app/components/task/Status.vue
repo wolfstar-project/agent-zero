@@ -1,6 +1,6 @@
 <template>
   <span
-    class="inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] font-700 uppercase"
+    class="inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-3xs font-700 uppercase"
     :class="statusClass"
   >
     <span class="h-1.5 w-1.5 rounded-full bg-current" />

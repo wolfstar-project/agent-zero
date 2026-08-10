@@ -18,15 +18,15 @@
         >
           <div
             v-if="index < task.events.length - 1"
-            class="absolute bottom-0 left-[0.218rem] top-3 w-px bg-line"
+            class="absolute bottom-0 inset-is-[0.218rem] top-3 w-px bg-line"
           />
           <span class="relative mt-1.5 h-2 w-2 border border-accent bg-panel" />
           <div>
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="m-0 font-mono text-[10px] text-accent font-700 uppercase">
+              <p class="m-0 font-mono text-3xs text-accent font-700 uppercase">
                 {{ event.state }}
               </p>
-              <time class="font-mono text-[9px] text-muted">{{ event.timestamp }}</time>
+              <time class="font-mono text-4xs text-muted">{{ event.timestamp }}</time>
             </div>
             <p class="mb-0 mt-1 text-xs text-muted leading-relaxed">{{ event.message }}</p>
           </div>

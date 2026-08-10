@@ -13,7 +13,7 @@
     </div>
 
     <div v-if="tasks.length > 0" class="overflow-x-auto">
-      <table class="w-full min-w-160 border-collapse text-left">
+      <table class="w-full min-w-160 border-collapse text-start">
         <thead>
           <tr class="border-b border-line bg-raised/55">
             <th class="px-3.5 py-2.5 label-upper">
@@ -43,12 +43,12 @@
             <td class="px-3.5 py-3 font-mono text-xs text-link">{{ shortId(task.id) }}</td>
             <td class="px-3.5 py-3">
               <p class="m-0 text-xs font-650">{{ repositoryName(task.repository) }}</p>
-              <p class="m-0 mt-1 max-w-72 truncate font-mono text-[10px] text-muted">
+              <p class="m-0 mt-1 max-w-72 truncate font-mono text-3xs text-muted">
                 {{ task.repository }}
               </p>
             </td>
             <td class="px-3.5 py-3"><TaskStatus :status="task.status" /></td>
-            <td class="px-3.5 py-3 font-mono text-[10px] text-muted">
+            <td class="px-3.5 py-3 font-mono text-3xs text-muted">
               {{ new Date(task.updatedAt).toLocaleString(locale) }}
             </td>
           </tr>
