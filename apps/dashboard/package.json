@@ -6,8 +6,7 @@
     "build": "nuxt build",
     "clean": "nuxt cleanup && tsc -b --clean",
     "dev": "nuxt dev",
-    "i18n:status": "lunaria build",
-    "i18n:status:preview": "lunaria preview",
+    "i18n:status": "node scripts/i18n-status.ts",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app shared test",
     "start": "node .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
@@ -25,7 +24,7 @@
     "vue-i18n": "^11.4.8"
   },
   "devDependencies": {
-    "@lunariajs/core": "^0.1.1",
+    "@lunariajs/core": "https://pkg.pr.new/lunariajs/lunaria/@lunariajs/core@904b935",
     "@nuxt/test-utils": "4.1.0",
     "@nuxtjs/color-mode": "4.0.1",
     "@nuxtjs/i18n": "^10.6.0",

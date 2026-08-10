@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { defaultLocale, locales } from '../../config/i18n.js';
-import lunariaConfig from '../../lunaria.config.json' with { type: 'json' };
+import lunariaConfig from '../../lunaria.config.js';
 
 const localesDirectory = join(import.meta.dirname, '../../i18n/locales');
 const sourceLocale: string = defaultLocale;
@@ -49,13 +49,18 @@ describe('translation dictionaries', () => {
 });
 
 describe('lunaria configuration', () => {
-  // Lunaria only reads JSON, so its locale list is a copy of the dashboard configuration rather
-  // than an import of it. This keeps the copy honest.
+  // `lunaria.config.ts` derives its locales from `config/i18n.ts`; these assertions guard the
+  // derivation (source excluded from targets, labels preserved) rather than a manual copy.
   it('tracks the same source locale as the dashboard', () => {
-    expect(lunariaConfig.defaultLocale).toEqual(sourceEntry);
+    expect(lunariaConfig.sourceLocale).toEqual({
+      label: sourceEntry?.label,
+      lang: sourceEntry?.lang,
+    });
   });
 
   it('tracks every non-source locale the dashboard ships', () => {
-    expect(lunariaConfig.locales).toEqual(targetLocales);
+    expect(lunariaConfig.locales).toEqual(
+      targetLocales.map((entry) => ({ label: entry.label, lang: entry.lang })),
+    );
   });
 });
