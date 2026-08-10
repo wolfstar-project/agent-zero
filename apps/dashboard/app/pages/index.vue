@@ -1,51 +1,3 @@
-<script setup lang="ts">
-import type { DashboardOverview } from '~/types/dashboard';
-
-const emptyOverview = (): DashboardOverview => ({
-  tasks: [],
-  active: 0,
-  queued: 0,
-  awaitingApproval: 0,
-  totalTokens: 0,
-  costUsd: 0,
-});
-
-const overview = ref<DashboardOverview>(emptyOverview());
-const selectedId = ref<string>();
-const now = ref(new Date());
-
-const selectedTask = computed(() =>
-  overview.value.tasks.find((task) => task.id === selectedId.value),
-);
-
-watch(
-  () => overview.value.tasks,
-  (tasks) => {
-    if (tasks.length === 0) selectedId.value = undefined;
-    else if (!tasks.some((task) => task.id === selectedId.value)) selectedId.value = tasks[0]?.id;
-  },
-  { immediate: true },
-);
-
-let clockTimer: ReturnType<typeof setInterval> | undefined;
-
-onMounted(() => {
-  clockTimer = setInterval(() => {
-    now.value = new Date();
-  }, 1_000);
-});
-
-onBeforeUnmount(() => {
-  if (clockTimer) clearInterval(clockTimer);
-});
-
-function refreshDashboard(): void {
-  overview.value = emptyOverview();
-  selectedId.value = undefined;
-  now.value = new Date();
-}
-</script>
-
 <template>
   <header
     class="h-16 flex items-center justify-between border-b border-line bg-canvas/92 px-4 backdrop-blur md:px-6"
@@ -106,3 +58,51 @@ function refreshDashboard(): void {
     </section>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { DashboardOverview } from '~/types/dashboard';
+
+const emptyOverview = (): DashboardOverview => ({
+  tasks: [],
+  active: 0,
+  queued: 0,
+  awaitingApproval: 0,
+  totalTokens: 0,
+  costUsd: 0,
+});
+
+const overview = ref<DashboardOverview>(emptyOverview());
+const selectedId = ref<string>();
+const now = ref(new Date());
+
+const selectedTask = computed(() =>
+  overview.value.tasks.find((task) => task.id === selectedId.value),
+);
+
+watch(
+  () => overview.value.tasks,
+  (tasks) => {
+    if (tasks.length === 0) selectedId.value = undefined;
+    else if (!tasks.some((task) => task.id === selectedId.value)) selectedId.value = tasks[0]?.id;
+  },
+  { immediate: true },
+);
+
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  clockTimer = setInterval(() => {
+    now.value = new Date();
+  }, 1_000);
+});
+
+onBeforeUnmount(() => {
+  if (clockTimer) clearInterval(clockTimer);
+});
+
+function refreshDashboard(): void {
+  overview.value = emptyOverview();
+  selectedId.value = undefined;
+  now.value = new Date();
+}
+</script>

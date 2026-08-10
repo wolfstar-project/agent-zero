@@ -1,11 +1,3 @@
-<script setup lang="ts">
-import type { DashboardTask } from '~/types/dashboard';
-
-defineProps<{ task?: DashboardTask }>();
-
-const { locale } = useI18n();
-</script>
-
 <template>
   <aside class="az-panel min-h-120 overflow-hidden xl:sticky xl:top-20 xl:h-fit">
     <div class="az-section-title">
@@ -92,3 +84,11 @@ const { locale } = useI18n();
     </div>
   </aside>
 </template>
+
+<script setup lang="ts">
+import type { DashboardTask } from '~/types/dashboard';
+
+defineProps<{ task?: DashboardTask }>();
+
+const { locale } = useI18n();
+</script>

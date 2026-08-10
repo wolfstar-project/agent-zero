@@ -3,11 +3,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { config, locales } from '../../config/index.js';
+import { defaultLocale, locales } from '../../config/i18n.js';
 import lunariaConfig from '../../lunaria.config.json' with { type: 'json' };
 
 const localesDirectory = join(import.meta.dirname, '../../i18n/locales');
-const sourceLocale: string = config.i18n.defaultLocale;
+const sourceLocale: string = defaultLocale;
 
 const localeEntries = Object.entries(locales).map(([lang, definition]) => ({
   lang,

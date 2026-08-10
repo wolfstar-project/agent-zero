@@ -1,3 +1,13 @@
+<template>
+  <span
+    class="inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] font-700 uppercase"
+    :class="statusClass"
+  >
+    <span class="h-1.5 w-1.5 rounded-full bg-current" />
+    {{ $t(`dashboard.status.${status}`) }}
+  </span>
+</template>
+
 <script setup lang="ts">
 import type { DashboardTaskStatus } from '~/types/dashboard';
 
@@ -11,13 +21,3 @@ const statusClass = computed(() => {
   return 'border-line bg-raised text-muted';
 });
 </script>
-
-<template>
-  <span
-    class="inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] font-700 uppercase"
-    :class="statusClass"
-  >
-    <span class="h-1.5 w-1.5 rounded-full bg-current" />
-    {{ $t(`dashboard.status.${status}`) }}
-  </span>
-</template>

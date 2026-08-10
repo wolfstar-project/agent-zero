@@ -1,12 +1,3 @@
-<script setup lang="ts">
-const navItems = [
-  { key: 'control', active: true },
-  { key: 'tasks', active: false },
-  { key: 'runners', active: false },
-  { key: 'policies', active: false },
-] as const;
-</script>
-
 <template>
   <aside
     class="fixed inset-y-0 left-0 z-20 hidden w-48 flex-col border-r border-line bg-panel md:flex"
@@ -65,3 +56,12 @@ const navItems = [
     </div>
   </aside>
 </template>
+
+<script setup lang="ts">
+const navItems = [
+  { key: 'control', active: true },
+  { key: 'tasks', active: false },
+  { key: 'runners', active: false },
+  { key: 'policies', active: false },
+] as const;
+</script>

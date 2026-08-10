@@ -1,7 +1,3 @@
-<script setup lang="ts">
-const { user, loggedIn, ready, signOut } = useUserSession();
-</script>
-
 <template>
   <div v-if="ready && loggedIn" class="border-t border-line p-4">
     <p class="m-0 text-[9px] text-muted font-700 tracking-wider uppercase">
@@ -19,3 +15,7 @@ const { user, loggedIn, ready, signOut } = useUserSession();
     </button>
   </div>
 </template>
+
+<script setup lang="ts">
+const { user, loggedIn, ready, signOut } = useUserSession();
+</script>

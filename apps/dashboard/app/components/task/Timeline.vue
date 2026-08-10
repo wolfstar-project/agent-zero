@@ -1,9 +1,3 @@
-<script setup lang="ts">
-import type { DashboardTask } from '~/types/dashboard';
-
-defineProps<{ task?: DashboardTask }>();
-</script>
-
 <template>
   <section class="az-panel">
     <div class="az-section-title">
@@ -45,3 +39,9 @@ defineProps<{ task?: DashboardTask }>();
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+import type { DashboardTask } from '~/types/dashboard';
+
+defineProps<{ task?: DashboardTask }>();
+</script>

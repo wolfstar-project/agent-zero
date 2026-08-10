@@ -1,48 +1,3 @@
-<script setup lang="ts">
-definePageMeta({ layout: 'auth' });
-
-const appConfig = useAppConfig();
-const { localizeAuthError } = useAuthErrorMessage();
-
-const signInEmail = useSignIn('email');
-const signInSocial = useSignIn('social');
-const signUpEmail = useSignUp('email');
-
-const canSignUp = appConfig.auth.enableSignup;
-const canUseGithub = appConfig.auth.enableGithubOauth;
-
-const isSigningUp = ref(false);
-const email = ref('');
-const password = ref('');
-const name = ref('');
-
-const action = computed(() => (isSigningUp.value ? signUpEmail : signInEmail));
-const isPending = computed(
-  () => action.value.status.value === 'pending' || signInSocial.status.value === 'pending',
-);
-const errorMessage = computed(() => {
-  const error = action.value.error.value ?? signInSocial.error.value;
-  return error ? localizeAuthError(error) : undefined;
-});
-
-async function onSubmit(): Promise<void> {
-  if (isSigningUp.value) {
-    await signUpEmail.execute({ email: email.value, password: password.value, name: name.value });
-    return;
-  }
-  await signInEmail.execute({ email: email.value, password: password.value });
-}
-
-async function onGithub(): Promise<void> {
-  await signInSocial.execute({ provider: 'github' });
-}
-
-function toggleMode(): void {
-  isSigningUp.value = !isSigningUp.value;
-  password.value = '';
-}
-</script>
-
 <template>
   <section class="az-panel w-full max-w-88 p-6">
     <h1 class="m-0 text-lg font-650 tracking-tight">{{ $t('auth.login.title') }}</h1>
@@ -134,3 +89,48 @@ function toggleMode(): void {
     </button>
   </section>
 </template>
+
+<script setup lang="ts">
+definePageMeta({ layout: 'auth' });
+
+const appConfig = useAppConfig();
+const { localizeAuthError } = useAuthErrorMessage();
+
+const signInEmail = useSignIn('email');
+const signInSocial = useSignIn('social');
+const signUpEmail = useSignUp('email');
+
+const canSignUp = appConfig.auth.enableSignup;
+const canUseGithub = appConfig.auth.enableGithubOauth;
+
+const isSigningUp = ref(false);
+const email = ref('');
+const password = ref('');
+const name = ref('');
+
+const action = computed(() => (isSigningUp.value ? signUpEmail : signInEmail));
+const isPending = computed(
+  () => action.value.status.value === 'pending' || signInSocial.status.value === 'pending',
+);
+const errorMessage = computed(() => {
+  const error = action.value.error.value ?? signInSocial.error.value;
+  return error ? localizeAuthError(error) : undefined;
+});
+
+async function onSubmit(): Promise<void> {
+  if (isSigningUp.value) {
+    await signUpEmail.execute({ email: email.value, password: password.value, name: name.value });
+    return;
+  }
+  await signInEmail.execute({ email: email.value, password: password.value });
+}
+
+async function onGithub(): Promise<void> {
+  await signInSocial.execute({ provider: 'github' });
+}
+
+function toggleMode(): void {
+  isSigningUp.value = !isSigningUp.value;
+  password.value = '';
+}
+</script>

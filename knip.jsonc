@@ -34,10 +34,12 @@
         "app/plugins/**/*.ts",
         "app/utils/**/*.ts",
       ],
-      // Nuxt resolves ~ to the app/ source directory and ~~ to the project root.
+      // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
+      // and #shared to the shared/ directory.
       "paths": {
         "~/*": ["app/*"],
         "~~/*": ["*"],
+        "#shared/*": ["shared/*"],
       },
     },
   },

@@ -1,21 +1,3 @@
-<script setup lang="ts">
-import type { DashboardTask } from '~/types/dashboard';
-
-defineProps<{ tasks: DashboardTask[]; selectedId?: string }>();
-defineEmits<{ select: [id: string] }>();
-
-const { locale } = useI18n();
-
-function shortId(id: string): string {
-  return id.length > 12 ? `${id.slice(0, 8)}…` : id;
-}
-
-function repositoryName(repository: string): string {
-  const normalized = repository.replaceAll('\\', '/');
-  return normalized.split('/').findLast((segment) => segment.length > 0) ?? repository;
-}
-</script>
-
 <template>
   <section class="az-panel overflow-hidden">
     <div class="az-section-title">
@@ -87,3 +69,21 @@ function repositoryName(repository: string): string {
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+import type { DashboardTask } from '~/types/dashboard';
+
+defineProps<{ tasks: DashboardTask[]; selectedId?: string }>();
+defineEmits<{ select: [id: string] }>();
+
+const { locale } = useI18n();
+
+function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 8)}…` : id;
+}
+
+function repositoryName(repository: string): string {
+  const normalized = repository.replaceAll('\\', '/');
+  return normalized.split('/').findLast((segment) => segment.length > 0) ?? repository;
+}
+</script>

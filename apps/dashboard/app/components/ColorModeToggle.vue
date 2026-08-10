@@ -1,16 +1,3 @@
-<script setup lang="ts">
-const { t } = useI18n();
-const colorMode = useColorMode();
-const isDark = computed(() => colorMode.value === 'dark');
-const label = computed(() =>
-  isDark.value ? t('common.theme.switchToLight') : t('common.theme.switchToDark'),
-);
-
-function toggleColorMode(): void {
-  colorMode.preference = isDark.value ? 'light' : 'dark';
-}
-</script>
-
 <template>
   <button
     class="az-focus h-9 w-9 grid place-items-center border border-line bg-raised text-ink transition hover:border-muted"
@@ -38,3 +25,16 @@ function toggleColorMode(): void {
     </svg>
   </button>
 </template>
+
+<script setup lang="ts">
+const { t } = useI18n();
+const colorMode = useColorMode();
+const isDark = computed(() => colorMode.value === 'dark');
+const label = computed(() =>
+  isDark.value ? t('common.theme.switchToLight') : t('common.theme.switchToDark'),
+);
+
+function toggleColorMode(): void {
+  colorMode.preference = isDark.value ? 'light' : 'dark';
+}
+</script>

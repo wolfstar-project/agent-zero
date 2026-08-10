@@ -1,5 +1,7 @@
 {
   "common": {
+    "error": "Error",
+    "retry": "Retry",
     "brand": {
       "subtitle": "Dashboard"
     },

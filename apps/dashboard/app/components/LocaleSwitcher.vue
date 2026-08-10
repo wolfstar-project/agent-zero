@@ -1,6 +1,19 @@
+<template>
+  <select
+    v-model="selected"
+    class="az-focus h-9 border border-line bg-raised px-2 text-xs text-ink font-650 transition hover:border-muted"
+    :aria-label="t('common.locale.label')"
+    :title="t('common.locale.label')"
+  >
+    <option v-for="option in options" :key="option.code" :value="option.code">
+      {{ option.label }}
+    </option>
+  </select>
+</template>
+
 <script setup lang="ts">
-import { locales } from '~~/config/index.js';
-import type { LocaleCode } from '~~/config/index.js';
+import { locales } from '~~/config/i18n.js';
+import type { LocaleCode } from '~~/config/i18n.js';
 
 const { t, locale, setLocale } = useI18n();
 
@@ -21,16 +34,3 @@ watch(selected, async (value) => {
   if (value !== locale.value) await setLocale(value);
 });
 </script>
-
-<template>
-  <select
-    v-model="selected"
-    class="az-focus h-9 border border-line bg-raised px-2 text-xs text-ink font-650 transition hover:border-muted"
-    :aria-label="t('common.locale.label')"
-    :title="t('common.locale.label')"
-  >
-    <option v-for="option in options" :key="option.code" :value="option.code">
-      {{ option.label }}
-    </option>
-  </select>
-</template>

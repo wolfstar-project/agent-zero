@@ -1,6 +1,15 @@
+<template>
+  <NuxtRouteAnnouncer />
+  <NuxtLoadingIndicator color="var(--az-accent)" />
+  <NuxtLayout>
+    <NuxtPage />
+  </NuxtLayout>
+</template>
+
 <script setup lang="ts">
-import { config, locales } from '~~/config/index.js';
-import type { LocaleCode } from '~~/config/index.js';
+import { app } from '~~/config/app.js';
+import { locales } from '~~/config/i18n.js';
+import type { LocaleCode } from '~~/config/i18n.js';
 
 const { locale } = useI18n();
 
@@ -10,20 +19,12 @@ useHead(() => ({
 }));
 
 useSeoMeta({
-  title: config.app.title,
-  description: config.app.description,
-  ogTitle: config.app.title,
-  ogDescription: config.app.description,
+  title: app.title,
+  description: app.description,
+  ogTitle: app.title,
+  ogDescription: app.description,
   ogType: 'website',
   // An internal operations console has nothing to gain from being indexed.
   robots: 'noindex, nofollow',
 });
 </script>
-
-<template>
-  <NuxtRouteAnnouncer />
-  <NuxtLoadingIndicator color="var(--az-accent)" />
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
-</template>
