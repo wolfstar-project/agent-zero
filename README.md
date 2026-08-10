@@ -128,7 +128,9 @@ const { tasks } = await client.tasks.list();
 await client.approvals.decide({ taskId: tasks[0]!.id, decision: 'approved' });
 ```
 
-Task history persists through a `KeyValueStorage` contract — a filesystem store by default, with Redis, KV, or Nitro storage dropping in unchanged. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
+The transport is a Nitro v3 server composed as a Vite app with [ViteHub](https://vitehub.dev): routes live in `apps/server/server/`, and `vite build` emits a self-contained `.output/` bundle started with `node .output/server/index.mjs`.
+
+Task history persists through a `KeyValueStorage` contract backed by the ViteHub KV Runtime Helper: filesystem-backed `fs-lite` by default, with Cloudflare KV, Deno KV, or Upstash dropping in as driver configuration without touching application code. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
 
 ---
 
