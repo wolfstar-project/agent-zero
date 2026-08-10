@@ -25,6 +25,13 @@ const baseConfig = {
 const packageConfig = {
   ...baseConfig,
   format: ['esm', 'cjs'],
+  checks: {
+    ...baseConfig.checks,
+    // Packages intentionally dual-publish ESM and CJS. With a node24.2 target
+    // (which supports require(esm)), tsdown escalates its legacy-CJS
+    // recommendation to an error under failOnWarn, so opt out of that check.
+    legacyCjs: false,
+  },
   outExtensions: (context: OutExtensionContext) => ({
     js: context.format === 'es' ? '.mjs' : '.cjs',
     dts: context.format === 'es' ? '.d.mts' : '.d.cts',
