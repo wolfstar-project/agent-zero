@@ -3,11 +3,11 @@
   "version": "0.3.0",
   "type": "module",
   "scripts": {
-    "build": "tsdown",
+    "build": "vite build",
     "clean": "tsc -b --clean",
-    "dev": "node --import tsx src/index.ts",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src shared",
-    "start": "node dist/index.js",
+    "dev": "vite dev",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server shared",
+    "start": "node .output/server/index.mjs",
     "test": "vitest run src",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },
@@ -19,14 +19,15 @@
     "@agent-zero/runner": "workspace:*",
     "@agent-zero/shared": "workspace:*",
     "@orpc/server": "2.0.0-beta.26",
+    "nitro": "^3.0.260610-beta",
+    "vite-hub": "^0.0.3",
     "zod": "^4.1.5"
   },
   "devDependencies": {
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
-    "tsdown": "^0.22.14",
-    "tsx": "^4.20.5",
     "typescript": "^5.9.2",
+    "vite": "^8.2.1",
     "vitest": "^3.2.4"
   }
 }
