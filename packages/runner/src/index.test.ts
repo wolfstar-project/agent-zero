@@ -334,8 +334,13 @@ describe('git inspection', () => {
     expect(context).toContain('+const untracked = true;');
   });
 
-  it('falls back to the staged and working-tree layers when there is no commit to diff against', async () => {
+  it('consolidates the unborn-repository fallback into one final-state patch per file', async () => {
+    const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
     const outputs: Record<string, string> = {
+      'hash-object -t tree /dev/null': `${emptyTree}\n`,
+      [`diff --no-ext-diff ${emptyTree} --`]: '+const final = true;',
+      // The staged layer of a partially-staged file must never surface as a separate
+      // overlapping patch that exposes its intermediate value.
       'diff --no-ext-diff --cached --': '+const staged = true;',
       'diff --no-ext-diff --': '+const unstaged = true;',
     };
@@ -346,8 +351,9 @@ describe('git inspection', () => {
       return { exitCode: 0, stdout: program === 'git' ? (outputs[argv] ?? '') : '', stderr: '' };
     };
     const context = await new LocalRunner(root, { process }).context();
-    expect(context).toContain('+const staged = true;');
-    expect(context).toContain('+const unstaged = true;');
+    expect(context).toContain('+const final = true;');
+    expect(context).not.toContain('+const staged = true;');
+    expect(context).not.toContain('+const unstaged = true;');
   });
 
   it('collects a committed pull-request diff from the fixed merge-base range', async () => {

@@ -212,17 +212,24 @@ export abstract class RepositoryBoundary implements Runner {
    */
   private async pendingDiff(): Promise<string> {
     const tracked = await this.git(['diff', '--no-ext-diff', 'HEAD', '--']);
-    const parts =
-      tracked.exitCode === 0
-        ? [tracked.stdout]
-        : // No commit to diff against (unborn HEAD): the index and working tree are the only
-          // layers, so show them directly rather than dropping staged content.
-          [
-            (await this.git(['diff', '--no-ext-diff', '--cached', '--'])).stdout,
-            (await this.git(['diff', '--no-ext-diff', '--'])).stdout,
-          ];
+    const parts = tracked.exitCode === 0 ? [tracked.stdout] : [await this.unbornDiff()];
     parts.push(...(await this.untrackedPatches()));
     return parts.filter((part) => part.length > 0).join('\n');
+  }
+
+  /**
+   * The pending diff of a repository whose HEAD is unborn (no commit to diff against).
+   *
+   * Joining the `--cached` and working-tree layers here would emit two overlapping patches for a
+   * partially-staged file and expose the staged intermediate value as though it were a separate
+   * edit. Diffing the empty tree against the working tree instead renders one final-state
+   * creation patch per tracked file. The empty-tree id is computed rather than hardcoded so the
+   * fallback also holds in SHA-256 repositories.
+   */
+  private async unbornDiff(): Promise<string> {
+    const emptyTree = await this.git(['hash-object', '-t', 'tree', '/dev/null']);
+    if (emptyTree.exitCode !== 0) return '';
+    return (await this.git(['diff', '--no-ext-diff', emptyTree.stdout.trim(), '--'])).stdout;
   }
 
   /**
