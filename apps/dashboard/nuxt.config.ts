@@ -1,6 +1,10 @@
 import { defineNuxtConfig } from 'nuxt/config';
 
-import { config, defaultAuthConfig, locales } from './config/index.js';
+import { authConfigFromEnvironment, config, locales } from './config/index.js';
+
+// Resolved once at config evaluation so the dashboard publishes the same sign-in policy the auth
+// server derives from the shared environment (AUTH_ENABLE_SIGNUP, GitHub OAuth credentials).
+const authPolicy = authConfigFromEnvironment();
 
 /**
  * `@nuxtjs/i18n` wants a flat array, while the dashboard configuration keeps locales keyed by code
@@ -72,8 +76,8 @@ export default defineNuxtConfig({
       // In client-only mode the module reads this as the Better Auth client base URL, so it points
       // at the auth adapter rather than at the dashboard. Override with NUXT_PUBLIC_SITE_URL.
       siteUrl: config.auth.defaultServerUrl,
-      authEnableSignup: defaultAuthConfig.enableSignup,
-      authEnableGithubOauth: defaultAuthConfig.enableGithubOauth,
+      authEnableSignup: authPolicy.enableSignup,
+      authEnableGithubOauth: authPolicy.enableGithubOauth,
     },
   },
   app: {

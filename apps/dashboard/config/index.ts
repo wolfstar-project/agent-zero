@@ -62,7 +62,9 @@ export const config = {
  *
  * Imported from `@agent-zero/auth/config` rather than restated here, so the dashboard and the auth
  * server cannot drift. The subpath carries policy only, with none of the server's database
- * dependencies. A deployment overrides these through `NUXT_PUBLIC_AUTH_*`; in the usual
- * single-host setup both processes read the same environment.
+ * dependencies. Resolving through `authConfigFromEnvironment` keeps the published capabilities in
+ * step with the auth server's policy (`AUTH_ENABLE_SIGNUP`, GitHub OAuth credentials); in the
+ * usual single-host setup both processes read the same environment. A deployment can still
+ * override the published values through `NUXT_PUBLIC_AUTH_*`.
  */
-export { defaultAuthConfig } from '@agent-zero/auth/config';
+export { authConfigFromEnvironment } from '@agent-zero/auth/config';
