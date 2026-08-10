@@ -18,6 +18,7 @@ import {
   isRepositoryRelativePath,
   redactSecrets,
   secretValuesFromEnvironment,
+  truncateHead,
   truncateTail,
   type CheckResult,
   type NetworkPolicy,
@@ -83,6 +84,11 @@ const MAX_FILE_LIST = 30_000;
 const MAX_DIFF = 100_000;
 const GIT_TIMEOUT_MS = 30_000;
 const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
+// `diff --git` headers only ever start a line at column zero; every content line carries a
+// one-character prefix, so this boundary cannot fire inside a patch body.
+const FILE_PATCH_BOUNDARY = /\n(?=diff --git )/;
+// Characters that would break a synthetic single-line `diff --git` header (see unavailablePatch).
+const HEADER_UNSAFE = /[\n\r\t"\\]/;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -160,7 +166,10 @@ export abstract class RepositoryBoundary implements Runner {
     const diffRange = contextDiffRange(options);
     const files = await this.git(['ls-files']);
     const changedFiles = await this.reviewFiles(options);
-    const diff = await this.git(['diff', '--no-ext-diff', ...diffRange, '--']);
+    const patches =
+      diffRange.length > 0
+        ? splitFilePatches((await this.git(['diff', '--no-ext-diff', ...diffRange, '--'])).stdout)
+        : await this.pendingPatches();
     return [
       'FILES',
       truncateTail(files.stdout, MAX_FILE_LIST),
@@ -169,17 +178,101 @@ export abstract class RepositoryBoundary implements Runner {
       truncateTail(changedFiles.join('\n'), MAX_FILE_LIST),
       '',
       'DIFF',
-      truncateTail(diff.stdout, MAX_DIFF),
+      boundedDiff(patches, MAX_DIFF),
     ].join('\n');
   }
 
   async reviewFiles(options: RepositoryContextOptions = {}): Promise<string[]> {
     const diffRange = contextDiffRange(options);
-    const outcome = await this.git(['diff', '--name-only', ...diffRange, '--']);
-    return outcome.stdout
-      .split('\n')
-      .map((path) => path.trim())
-      .filter((path) => path.length > 0 && isRepositoryRelativePath(path));
+    // A committed pull-request range fixes the reviewed set. Without one, the pending local
+    // changes are the review target, and a plain `git diff` alone would silently omit index-only
+    // changes and untracked files. Every listing is NUL-delimited (`-z`): newline-delimited git
+    // output C-quotes names containing characters such as newlines or tabs, and that display
+    // representation is not a filesystem path.
+    const listings =
+      diffRange.length > 0
+        ? [await this.git(['diff', '--name-only', '-z', ...diffRange, '--'])]
+        : [
+            await this.git(['diff', '--name-only', '-z', '--cached', '--']),
+            await this.git(['diff', '--name-only', '-z', '--']),
+            await this.git(['ls-files', '-z', '--others', '--exclude-standard']),
+          ];
+    const seen = new Set<string>();
+    const paths: string[] = [];
+    for (const listing of listings)
+      for (const path of listing.stdout.split('\0')) {
+        if (path.length === 0 || !isRepositoryRelativePath(path) || seen.has(path)) continue;
+        seen.add(path);
+        paths.push(path);
+      }
+    return paths;
+  }
+
+  /**
+   * The full pending local diff, one final-state patch per file.
+   *
+   * A single HEAD-to-working-tree diff covers staged and unstaged edits together; joining the
+   * `--cached` and working-tree layers instead would emit two overlapping patches for a
+   * partially-staged file and expose the intermediate staged value as though it were a separate
+   * edit. Untracked files appear in no git diff at all, so each one gets a synthetic
+   * creation patch (see {@link untrackedPatches}).
+   */
+  private async pendingPatches(): Promise<string[]> {
+    const tracked = await this.git(['diff', '--no-ext-diff', 'HEAD', '--']);
+    const patches = splitFilePatches(
+      tracked.exitCode === 0 ? tracked.stdout : await this.unbornDiff(),
+    );
+    patches.push(...(await this.untrackedPatches()));
+    return patches;
+  }
+
+  /**
+   * The pending diff of a repository whose HEAD is unborn (no commit to diff against).
+   *
+   * Joining the `--cached` and working-tree layers here would emit two overlapping patches for a
+   * partially-staged file and expose the staged intermediate value as though it were a separate
+   * edit. Diffing the empty tree against the working tree instead renders one final-state
+   * creation patch per tracked file. The empty-tree id is computed rather than hardcoded so the
+   * fallback also holds in SHA-256 repositories.
+   */
+  private async unbornDiff(): Promise<string> {
+    const emptyTree = await this.git(['hash-object', '-t', 'tree', '/dev/null']);
+    if (emptyTree.exitCode !== 0) return '';
+    return (await this.git(['diff', '--no-ext-diff', emptyTree.stdout.trim(), '--'])).stdout;
+  }
+
+  /**
+   * A synthetic creation patch for each untracked file included in a range-less review.
+   *
+   * {@link reviewFiles} lists untracked paths as review targets, so their content must reach the
+   * reviewer too; `git diff --no-index` against `/dev/null` renders the same new-file patch a
+   * commit would produce. The listing is NUL-delimited (`-z`) and parsed verbatim: git C-quotes
+   * names containing characters such as newlines or tabs in newline-delimited output, and that
+   * display representation would not open as a filesystem path. Every listed file is collected:
+   * the diff budget is allocated per file by {@link boundedDiff}, so an early stop here would
+   * silently drop later files' patches that the allocation would have kept while
+   * {@link reviewFiles} still publishes their paths as review targets. For the same reason a
+   * file whose diff fails or renders nothing gets an explicit stand-in patch (see
+   * {@link unavailablePatch}) rather than a silent omission.
+   */
+  private async untrackedPatches(): Promise<string[]> {
+    const listing = await this.git(['ls-files', '-z', '--others', '--exclude-standard']);
+    const patches: string[] = [];
+    for (const path of listing.stdout.split('\0')) {
+      if (path.length === 0 || !isRepositoryRelativePath(path)) continue;
+      // `--no-index` exits 1 when the paths differ, which is the expected outcome here; only
+      // larger codes report a real failure.
+      const outcome = await this.process(
+        'git',
+        ['diff', '--no-ext-diff', '--no-index', '--', '/dev/null', path],
+        { cwd: this.root, timeoutMs: GIT_TIMEOUT_MS, maxOutputBytes: this.maxOutputBytes },
+      );
+      if (outcome.exitCode > 1) patches.push(unavailablePatch(path, 'git diff --no-index failed'));
+      else if (outcome.stdout.length === 0)
+        patches.push(unavailablePatch(path, 'git diff --no-index rendered no patch'));
+      else patches.push(outcome.stdout);
+    }
+    return patches;
   }
 
   async changedFiles(): Promise<string[]> {
@@ -265,18 +358,19 @@ export abstract class RepositoryBoundary implements Runner {
    * atomic rename, and both names resolve through the held descriptor (`/proc/self/fd` on Linux),
    * never through re-walked path components. The target inode itself is never written, so a
    * concurrent rename carrying it outside the checkout after validation moves nothing but the
-   * previous content.
+   * previous content. Platforms that cannot anchor the rename to the descriptor refuse the write
+   * (see {@link directoryAnchor}).
    *
    * Protected so that tests can interleave an adversarial rename at exactly this point.
    */
   protected async replaceInside(
     directory: FileHandle,
-    fallbackParent: string,
+    parent: string,
     targetName: string,
     content: string,
     original: string,
   ): Promise<void> {
-    const anchor = await directoryAnchor(directory, fallbackParent, original);
+    const anchor = await directoryAnchor(directory, original);
     const temporaryName = `.agent-zero-${randomUUID()}.tmp`;
     const temporary = join(anchor, temporaryName);
     const target = join(anchor, targetName);
@@ -355,6 +449,82 @@ function contextDiffRange(options: RepositoryContextOptions): string[] {
   return [`${baseSha}...${headSha}`];
 }
 
+/** Split a multi-file git diff into one patch per file (see {@link FILE_PATCH_BOUNDARY}). */
+function splitFilePatches(diff: string): string[] {
+  if (diff.length === 0) return [];
+  return diff.split(FILE_PATCH_BOUNDARY).filter((patch) => patch.length > 0);
+}
+
+/**
+ * Join per-file patches under a shared budget without letting one file evict another.
+ *
+ * A single tail-keeping truncation of the joined diff would let one oversized patch push an
+ * earlier file's patch out entirely while the changed-file list still names that file as a review
+ * target. Instead the budget is allocated per patch: small patches keep everything and the
+ * surplus is shared among the larger ones. Every rendered patch keeps at least its complete first
+ * line (the `diff --git` header naming the file), because a fragment shorter than the header
+ * could not be attributed to any changed-file entry. When the budget cannot fit every header, the
+ * trailing patches lose their bodies but never their identity: each one still renders its
+ * complete header line over an explicit omission marker, so every path the changed-file list
+ * names stays attributable in the diff. That overrun is deliberate and bounded by the same
+ * per-file header data the changed-file list already carries.
+ */
+function boundedDiff(patches: readonly string[], budget: number): string {
+  if (patches.length === 0) return '';
+  const joined = patches.join('\n');
+  if (joined.length <= budget) return joined;
+  const headers = patches.map((patch) => {
+    const end = patch.indexOf('\n');
+    return end === -1 ? patch.length : end;
+  });
+  // Retain the leading patches whose complete header lines all fit within the budget.
+  let reserved = 0;
+  let retained = 0;
+  while (retained < patches.length) {
+    const cost = (headers[retained] ?? 0) + (retained > 0 ? 1 : 0);
+    if (reserved + cost > budget) break;
+    reserved += cost;
+    retained += 1;
+  }
+  const kept = patches.slice(0, retained);
+  let remaining = budget - reserved;
+  let left = retained;
+  const allocations = kept.map((_, index) => headers[index] ?? 0);
+  const bySize = kept
+    .map((patch, index) => ({ length: patch.length, index }))
+    .toSorted((a, b) => a.length - b.length);
+  for (const { length, index } of bySize) {
+    const extra = Math.min(
+      Math.max(length - (allocations[index] ?? 0), 0),
+      Math.floor(remaining / left),
+    );
+    allocations[index] = (allocations[index] ?? 0) + extra;
+    remaining -= extra;
+    left -= 1;
+  }
+  const rendered = kept.map((patch, index) => truncateHead(patch, allocations[index] ?? 0));
+  for (let index = retained; index < patches.length; index += 1) {
+    const header = (patches[index] ?? '').slice(0, headers[index] ?? 0);
+    rendered.push(`${header}\n[file patch omitted beyond the diff budget]`);
+  }
+  return rendered.join('\n');
+}
+
+/**
+ * An explicit stand-in patch for an untracked file whose synthetic diff could not be produced.
+ *
+ * {@link reviewFiles} publishes every untracked path as a review target, so silently skipping a
+ * failed or empty `git diff --no-index` would leave a target selectable without any reviewable
+ * content behind it. The stand-in keeps the `diff --git` header shape that {@link boundedDiff}
+ * preserves for attribution and declares the omission instead of hiding it. A name containing
+ * characters such as newlines is rendered in its quoted display form so the header stays a
+ * single attributable line.
+ */
+function unavailablePatch(path: string, reason: string): string {
+  const name = HEADER_UNSAFE.test(path) ? JSON.stringify(path) : path;
+  return `diff --git a/${name} b/${name}\n[untracked file patch unavailable: ${reason}]`;
+}
+
 function assertInside(root: string, candidate: string, original: string): void {
   const rel = relative(root, candidate);
   if (rel.length > 0 && (isAbsolute(rel) || rel.replaceAll('\\', '/').split('/').includes('..')))
@@ -390,24 +560,22 @@ async function descriptorPath(
 /**
  * Resolve a stable path through the directory handle itself. Linux exposes descriptors under
  * `/proc/self/fd`, so renaming the directory cannot redirect the mutation through a different path.
- * On platforms without that facility we re-resolve the fallback immediately before use and verify
- * that it is still the same directory inode held by the descriptor.
+ *
+ * Platforms without that facility get no fallback: any pathname alternative re-walks mutable
+ * components, so a concurrent task could swap the verified directory for a symlink between the
+ * inode comparison and the rename and redirect the write outside the checkout. Node exposes no
+ * descriptor-relative create or rename, so the write fails closed instead.
  */
-async function directoryAnchor(
-  directory: FileHandle,
-  fallback: string,
-  original: string,
-): Promise<string> {
+async function directoryAnchor(directory: FileHandle, original: string): Promise<string> {
   const descriptor = `/proc/self/fd/${directory.fd}`;
   try {
     await lstat(descriptor);
     return descriptor;
   } catch {
-    const real = await realpath(fallback);
-    const [expected, current] = await Promise.all([directory.stat(), stat(real)]);
-    if (expected.dev !== current.dev || expected.ino !== current.ino)
-      throw new PathEscapeError(original, 'parent replaced while writing');
-    return real;
+    throw new RunnerWriteDeniedError(
+      original,
+      'descriptor-anchored writes are not supported on this platform',
+    );
   }
 }
 

@@ -25,6 +25,9 @@ import {
   type ProcessRunner,
 } from './index.js';
 
+/** A complete `diff --git` header line, as rendered for the whitespace-free test paths below. */
+const COMPLETE_PATCH_HEADER = /^diff --git a\/\S+ b\/\S+$/;
+
 /**
  * Reproduces the validate-then-swap race deterministically: validation passes against a real
  * directory, then the directory is replaced with a symlink before the filesystem operation runs.
@@ -68,6 +71,24 @@ class TargetRenamingRunner extends LocalRunner {
   ): Promise<void> {
     await rename(join(fallbackParent, targetName), this.victim);
     return super.replaceInside(directory, fallbackParent, targetName, content, original);
+  }
+}
+
+/**
+ * Simulates a platform without `/proc/self/fd` by anchoring the mutation to a dead descriptor:
+ * closing the held handle first leaves it with `fd` -1, so the kernel cannot report where it
+ * points, exactly as on systems that lack the facility.
+ */
+class ProclessRunner extends LocalRunner {
+  protected override async replaceInside(
+    directory: FileHandle,
+    parent: string,
+    targetName: string,
+    content: string,
+    original: string,
+  ): Promise<void> {
+    await directory.close();
+    return super.replaceInside(directory, parent, targetName, content, original);
   }
 }
 
@@ -161,6 +182,15 @@ describe('path boundary', () => {
     await expect(access(join(outside, 'escape.txt'))).rejects.toThrow('ENOENT');
   });
 
+  it('fails closed instead of renaming through a mutable path when descriptor anchoring is unavailable', async () => {
+    const runner = new ProclessRunner(root, { writable: true });
+    await expect(runner.write('src/user.ts', 'payload')).rejects.toThrow(
+      'descriptor-anchored writes are not supported on this platform',
+    );
+    // The refused write must leave the target untouched.
+    await expect(runner.read('src/user.ts')).resolves.toContain('export const user');
+  });
+
   it('keeps a write contained when the validated target inode is renamed outside before it lands', async () => {
     const outside = await mkdtemp(join(tmpdir(), 'agent-zero-outside-'));
     const victim = join(outside, 'victim.txt');
@@ -236,7 +266,7 @@ describe('command execution', () => {
 });
 
 describe('git inspection', () => {
-  it('collects the file list and diff through fixed arguments', async () => {
+  it('collects the file list and every pending local change through fixed arguments', async () => {
     const { runner: process, calls } = recordingProcess({
       git: { exitCode: 0, stdout: 'src/user.ts', stderr: '' },
     });
@@ -244,7 +274,198 @@ describe('git inspection', () => {
     expect(context).toContain('FILES');
     expect(context).toContain('CHANGED FILES');
     expect(context).toContain('DIFF');
-    expect(calls.map((call) => call.args[0])).toEqual(['ls-files', 'diff', 'diff']);
+    expect(calls.map((call) => call.args.join(' '))).toEqual([
+      'ls-files',
+      'diff --name-only -z --cached --',
+      'diff --name-only -z --',
+      'ls-files -z --others --exclude-standard',
+      'diff --no-ext-diff HEAD --',
+      'ls-files -z --others --exclude-standard',
+      'diff --no-ext-diff --no-index -- /dev/null src/user.ts',
+    ]);
+  });
+
+  it('includes staged and untracked files in a range-less local review', async () => {
+    const outputs: Record<string, string> = {
+      'diff --name-only -z --cached --': 'src/staged.ts\0src/both.ts\0',
+      'diff --name-only -z --': 'src/edited.ts\0src/both.ts\0',
+      'ls-files -z --others --exclude-standard': 'src/untracked.ts\0',
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    await expect(new LocalRunner(root, { process }).reviewFiles()).resolves.toEqual([
+      'src/staged.ts',
+      'src/both.ts',
+      'src/edited.ts',
+      'src/untracked.ts',
+    ]);
+  });
+
+  it('feeds one consolidated final-state patch into the range-less review diff', async () => {
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff HEAD --': '+const final = true;',
+      // The staged layer of a partially-staged file must never surface as a separate patch.
+      'diff --no-ext-diff --cached --': '+const intermediate = true;',
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const final = true;');
+    expect(context).not.toContain('+const intermediate = true;');
+  });
+
+  it('includes a synthetic creation patch for each untracked file in the range-less review diff', async () => {
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': 'src/untracked.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/untracked.ts': '+const untracked = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('src/untracked.ts');
+    expect(context).toContain('+const untracked = true;');
+  });
+
+  it('keeps collecting untracked patches after one file exhausts the diff budget', async () => {
+    // The diff budget is allocated per file in context(), so stopping the collection early
+    // would silently drop a patch for a path reviewFiles() still publishes.
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': 'src/huge.ts\0src/late.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `diff --git a/src/huge.ts b/src/huge.ts\n+${'x'.repeat(150_000)}`,
+      'diff --no-ext-diff --no-index -- /dev/null src/late.ts': '+const late = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const late = true;');
+  });
+
+  it('keeps a tracked patch in the review diff when an oversized untracked patch follows it', async () => {
+    // A single tail-keeping truncation of the joined diff would evict the earlier tracked patch
+    // while reviewFiles() still lists the tracked file; the per-file budget instead truncates
+    // only the oversized patch, with an explicit marker.
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff HEAD --':
+        'diff --git a/src/tracked.ts b/src/tracked.ts\n+const tracked = true;',
+      'ls-files -z --others --exclude-standard': 'src/huge.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `diff --git a/src/huge.ts b/src/huge.ts\n+${'x'.repeat(150_000)}`,
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const tracked = true;');
+    expect(context).toContain('[truncated');
+  });
+
+  it('keeps every rendered review patch attributable to its file under allocation pressure', async () => {
+    // With enough long-path patches, a fair split of the diff budget is shorter than one
+    // `diff --git` header line; a partial header could not be associated with any CHANGED FILES
+    // entry, so every patch must render its complete header even when its body is omitted, and
+    // each omission must be declared instead of surfacing as an anonymous fragment or a bare
+    // count that leaves reviewers unable to tell which named files lack diff content.
+    const patches = Array.from({ length: 2_000 }, (_, index) => {
+      const path = `src/${'directory/'.repeat(12)}file-${String(index)}.ts`;
+      return `diff --git a/${path} b/${path}\n+${'x'.repeat(400)}`;
+    });
+    const outputs: Record<string, string> = {
+      'diff --no-ext-diff HEAD --': patches.join('\n'),
+    };
+    const process: ProcessRunner = async (program, args) => ({
+      exitCode: 0,
+      stdout: program === 'git' ? (outputs[args.join(' ')] ?? '') : '',
+      stderr: '',
+    });
+    const context = await new LocalRunner(root, { process }).context();
+    const diff = context.slice(context.indexOf('\nDIFF\n'));
+    const headerLines = diff.split('\n').filter((line) => line.includes('diff --git'));
+    expect(headerLines.length).toBe(patches.length);
+    for (const line of headerLines) expect(line).toMatch(COMPLETE_PATCH_HEADER);
+    expect(diff).toContain('[file patch omitted beyond the diff budget]');
+  });
+
+  it('marks an untracked file whose synthetic patch could not be produced instead of dropping it', async () => {
+    // reviewFiles() publishes both paths as review targets, so a failed or empty `--no-index`
+    // diff must surface an explicit marker rather than leaving a listed target without any
+    // reviewable content in DIFF.
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': 'src/failed.ts\0src/empty.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/empty.ts': '',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      if (argv === 'diff --no-ext-diff --no-index -- /dev/null src/failed.ts')
+        return { exitCode: 2, stdout: '', stderr: 'boom' };
+      return { exitCode: 0, stdout: program === 'git' ? (outputs[argv] ?? '') : '', stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain(
+      'diff --git a/src/failed.ts b/src/failed.ts\n[untracked file patch unavailable: git diff --no-index failed]',
+    );
+    expect(context).toContain(
+      'diff --git a/src/empty.ts b/src/empty.ts\n[untracked file patch unavailable: git diff --no-index rendered no patch]',
+    );
+  });
+
+  it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {
+    // Newline-delimited git output would C-quote this name into a non-path display string.
+    const weird = 'src/untracked\nfile.ts';
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': `${weird}\0`,
+      [`diff --no-ext-diff --no-index -- /dev/null ${weird}`]: '+const weird = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const runner = new LocalRunner(root, { process });
+    await expect(runner.reviewFiles()).resolves.toContain(weird);
+    await expect(runner.context()).resolves.toContain('+const weird = true;');
+  });
+
+  it('consolidates the unborn-repository fallback into one final-state patch per file', async () => {
+    const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+    const outputs: Record<string, string> = {
+      'hash-object -t tree /dev/null': `${emptyTree}\n`,
+      [`diff --no-ext-diff ${emptyTree} --`]: '+const final = true;',
+      // The staged layer of a partially-staged file must never surface as a separate
+      // overlapping patch that exposes its intermediate value.
+      'diff --no-ext-diff --cached --': '+const staged = true;',
+      'diff --no-ext-diff --': '+const unstaged = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      if (argv === 'diff --no-ext-diff HEAD --')
+        return { exitCode: 128, stdout: '', stderr: 'unknown revision HEAD' };
+      return { exitCode: 0, stdout: program === 'git' ? (outputs[argv] ?? '') : '', stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const final = true;');
+    expect(context).not.toContain('+const staged = true;');
+    expect(context).not.toContain('+const unstaged = true;');
   });
 
   it('collects a committed pull-request diff from the fixed merge-base range', async () => {
@@ -253,7 +474,7 @@ describe('git inspection', () => {
     const headSha = 'a'.repeat(40);
     await new LocalRunner(root, { process }).context({ baseSha, headSha });
     const range = `${baseSha}...${headSha}`;
-    expect(calls[1]?.args).toEqual(['diff', '--name-only', range, '--']);
+    expect(calls[1]?.args).toEqual(['diff', '--name-only', '-z', range, '--']);
     expect(calls[2]?.args).toEqual(['diff', '--no-ext-diff', range, '--']);
   });
 
