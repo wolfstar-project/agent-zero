@@ -10,7 +10,7 @@ Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), and proj
 
 Requirements:
 
-- Node.js 22.18 or newer
+- Node.js 24.2 or newer
 - [aube](https://aube.jdx.dev), the pinned package manager
 - Git
 

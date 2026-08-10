@@ -64,7 +64,7 @@ Adapters depend on the runtime; the runtime never depends on adapters. See [docs
 
 ## Quick start
 
-Requirements: Node.js 22.18+ and [aube](https://aube.jdx.dev), the package manager pinned in `package.json`. Both are pinned in `mise.toml`, so [mise](https://mise.jdx.dev) can install them together. Generated Node.js bundles target Node.js 20.11+.
+Requirements: Node.js 24.2+ and [aube](https://aube.jdx.dev), the package manager pinned in `package.json`. Both are pinned in `mise.toml`, so [mise](https://mise.jdx.dev) can install them together. Generated Node.js bundles target Node.js 24.2+.
 
 ```bash
 mise install            # or: npm install -g --ignore-scripts=false @endevco/aube

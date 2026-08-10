@@ -4,7 +4,7 @@ import { defineConfig, type OutExtensionContext, type UserConfig } from 'tsdown'
 const baseConfig = {
   entry: ['src/index.ts'],
   platform: 'node',
-  target: 'node20.11',
+  target: 'node24.2',
   outDir: 'dist',
   clean: true,
   sourcemap: true,
