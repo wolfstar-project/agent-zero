@@ -1,42 +1,30 @@
 <template>
-  <section class="az-panel w-full max-w-88 p-6">
+  <section class="panel w-full max-w-88 p-6">
     <h1 class="m-0 text-lg font-650 tracking-tight">{{ $t('auth.login.title') }}</h1>
     <p class="mb-6 mt-1 text-xs text-muted">{{ $t('auth.login.subtitle') }}</p>
 
     <form class="flex flex-col gap-3" @submit.prevent="onSubmit">
       <label v-if="isSigningUp" class="flex flex-col gap-1.5">
-        <span class="text-[9px] text-muted font-700 tracking-wider uppercase">
+        <span class="label-upper">
           {{ $t('auth.login.name') }}
         </span>
-        <input
-          v-model="name"
-          class="az-focus h-9 border border-line bg-raised px-2.5 text-xs text-ink"
-          autocomplete="name"
-          required
-          type="text"
-        />
+        <input v-model="name" class="input-field" autocomplete="name" required type="text" />
       </label>
 
       <label class="flex flex-col gap-1.5">
-        <span class="text-[9px] text-muted font-700 tracking-wider uppercase">
+        <span class="label-upper">
           {{ $t('auth.login.email') }}
         </span>
-        <input
-          v-model="email"
-          class="az-focus h-9 border border-line bg-raised px-2.5 text-xs text-ink"
-          autocomplete="email"
-          required
-          type="email"
-        />
+        <input v-model="email" class="input-field" autocomplete="email" required type="email" />
       </label>
 
       <label class="flex flex-col gap-1.5">
-        <span class="text-[9px] text-muted font-700 tracking-wider uppercase">
+        <span class="label-upper">
           {{ $t('auth.login.password') }}
         </span>
         <input
           v-model="password"
-          class="az-focus h-9 border border-line bg-raised px-2.5 text-xs text-ink"
+          class="input-field"
           :autocomplete="isSigningUp ? 'new-password' : 'current-password'"
           required
           type="password"
@@ -51,11 +39,7 @@
         {{ errorMessage }}
       </p>
 
-      <button
-        class="az-focus h-9 flex items-center justify-center border border-accent/45 bg-accent/8 text-xs text-ink font-650 transition hover:border-accent disabled:cursor-wait disabled:opacity-60"
-        :disabled="isPending"
-        type="submit"
-      >
+      <button class="btn-accent" :disabled="isPending" type="submit">
         <template v-if="isSigningUp">
           {{ isPending ? $t('auth.login.signUpPending') : $t('auth.login.signUp') }}
         </template>
@@ -66,25 +50,15 @@
     </form>
 
     <template v-if="canUseGithub">
-      <p class="my-4 text-center text-[9px] text-muted font-700 tracking-wider uppercase">
+      <p class="my-4 text-center label-upper">
         {{ $t('auth.login.separator') }}
       </p>
-      <button
-        class="az-focus h-9 w-full flex items-center justify-center border border-line bg-raised text-xs text-ink font-650 transition hover:border-muted disabled:cursor-wait disabled:opacity-60"
-        :disabled="isPending"
-        type="button"
-        @click="onGithub"
-      >
+      <button class="btn-subtle w-full" :disabled="isPending" type="button" @click="onGithub">
         {{ $t('auth.login.github') }}
       </button>
     </template>
 
-    <button
-      v-if="canSignUp"
-      class="az-focus mt-5 w-full text-xs text-link"
-      type="button"
-      @click="toggleMode"
-    >
+    <button v-if="canSignUp" class="btn-link mt-5 w-full" type="button" @click="toggleMode">
       {{ isSigningUp ? $t('auth.login.toSignIn') : $t('auth.login.toSignUp') }}
     </button>
   </section>

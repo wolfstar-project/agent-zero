@@ -13,15 +13,35 @@ export default defineConfig({
   transformers: [transformerDirectives({ enforce: 'pre' }), transformerVariantGroup()],
   theme,
   shortcuts: [
-    ['az-panel', 'border border-line bg-panel'],
+    // Layout
+    ['panel', 'border border-line bg-panel'],
     [
-      'az-section-title',
+      'section-title',
       'h-11 flex items-center justify-between border-b border-line px-3.5 font-650',
     ],
-    ['az-mono', 'font-mono text-xs'],
+
+    // Typography
+    ['mono', 'font-mono text-xs'],
+    ['label-upper', 'text-[9px] text-muted font-700 tracking-wider uppercase'],
+
+    // Focus states - subtle but accessible
     [
-      'az-focus',
+      'focus-ring',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
     ],
+
+    // Controls
+    [
+      'btn',
+      'focus-ring h-9 flex items-center justify-center border text-xs text-ink font-650 transition disabled:cursor-wait disabled:opacity-60',
+    ],
+    ['btn-subtle', 'btn border-line bg-raised hover:border-muted'],
+    ['btn-accent', 'btn border-accent/45 bg-accent/8 hover:border-accent'],
+    [
+      'btn-icon',
+      'focus-ring h-9 w-9 grid place-items-center border border-line bg-raised text-ink transition hover:border-muted',
+    ],
+    ['btn-link', 'focus-ring text-xs text-link'],
+    ['input-field', 'focus-ring h-9 border border-line bg-raised px-2.5 text-xs text-ink'],
   ],
 });

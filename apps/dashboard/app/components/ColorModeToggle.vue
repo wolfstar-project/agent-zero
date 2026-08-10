@@ -1,6 +1,6 @@
 <template>
   <button
-    class="az-focus h-9 w-9 grid place-items-center border border-line bg-raised text-ink transition hover:border-muted"
+    class="btn-icon"
     type="button"
     :aria-label="label"
     :title="label"

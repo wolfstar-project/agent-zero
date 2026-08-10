@@ -21,7 +21,7 @@
       <button
         v-for="item in navItems"
         :key="item.key"
-        class="az-focus mb-1 h-9 w-full flex items-center border-l-2 px-3 text-left text-xs font-600 transition"
+        class="focus-ring mb-1 h-9 w-full flex items-center border-l-2 px-3 text-left text-xs font-600 transition"
         :class="
           item.active
             ? 'border-accent bg-accent/8 text-ink'
@@ -43,7 +43,7 @@
     </ClientOnly>
 
     <div class="border-t border-line p-4">
-      <div class="flex items-center justify-between az-mono">
+      <div class="flex items-center justify-between mono">
         <span class="text-muted">{{ $t('common.system.label') }}</span>
         <span class="flex items-center gap-1.5 text-accent">
           <span class="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--az-accent-glow)]" />

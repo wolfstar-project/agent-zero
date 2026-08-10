@@ -1,6 +1,6 @@
 <template>
-  <aside class="az-panel min-h-120 overflow-hidden xl:sticky xl:top-20 xl:h-fit">
-    <div class="az-section-title">
+  <aside class="panel min-h-120 overflow-hidden xl:sticky xl:top-20 xl:h-fit">
+    <div class="section-title">
       <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
         {{ $t('dashboard.inspector.title') }}
       </h2>
@@ -10,7 +10,7 @@
     <div v-if="task" class="p-4">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <p class="m-0 az-mono text-link">{{ task.id }}</p>
+          <p class="m-0 mono text-link">{{ task.id }}</p>
           <p class="m-0 mt-1 truncate text-xs text-muted">{{ task.repository }}</p>
         </div>
         <TaskStatus :status="task.status" />
@@ -18,7 +18,7 @@
 
       <dl class="my-4 grid grid-cols-2 border border-line">
         <div class="border-b border-r border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+          <dt class="label-upper">
             {{ $t('dashboard.inspector.created') }}
           </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
@@ -26,7 +26,7 @@
           </dd>
         </div>
         <div class="border-b border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+          <dt class="label-upper">
             {{ $t('dashboard.inspector.attempts') }}
           </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
@@ -34,7 +34,7 @@
           </dd>
         </div>
         <div class="border-r border-line p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+          <dt class="label-upper">
             {{ $t('dashboard.inspector.tokens') }}
           </dt>
           <dd class="mb-0 ml-0 mt-1.5 font-mono text-[10px] text-ink">
@@ -42,7 +42,7 @@
           </dd>
         </div>
         <div class="p-3">
-          <dt class="text-[9px] text-muted font-700 tracking-wider uppercase">
+          <dt class="label-upper">
             {{ $t('dashboard.inspector.verified') }}
           </dt>
           <dd
@@ -61,7 +61,7 @@
       </dl>
 
       <div v-if="task.result" class="border border-line bg-raised/45 p-3">
-        <p class="m-0 text-[9px] text-muted font-700 tracking-wider uppercase">
+        <p class="m-0 label-upper">
           {{ $t('dashboard.inspector.summary') }}
         </p>
         <p class="mb-0 mt-2 text-xs text-ink leading-relaxed">{{ task.result.summary }}</p>

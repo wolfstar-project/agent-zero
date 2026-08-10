@@ -11,7 +11,7 @@
 
     <div class="flex items-center gap-3">
       <div class="hidden text-end sm:block">
-        <p class="m-0 az-mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
+        <p class="m-0 mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
         <p class="m-0 mt-0.5 text-3xs text-accent font-700 tracking-wider uppercase">
           {{ $t('dashboard.header.mode') }}
         </p>
@@ -23,11 +23,7 @@
           <span class="h-9 w-9 border border-line bg-raised" aria-hidden="true" />
         </template>
       </ClientOnly>
-      <button
-        class="az-focus h-9 flex items-center gap-2 border border-line bg-raised px-3 text-xs text-ink font-650 transition hover:border-muted disabled:cursor-wait disabled:opacity-60"
-        type="button"
-        @click="refreshDashboard"
-      >
+      <button class="btn-subtle gap-2 px-3" type="button" @click="refreshDashboard">
         <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
           <path d="M20 7v5h-5M4 17v-5h5" stroke="currentColor" stroke-width="1.8" />
           <path

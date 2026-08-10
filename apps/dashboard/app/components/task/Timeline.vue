@@ -1,10 +1,10 @@
 <template>
-  <section class="az-panel">
-    <div class="az-section-title">
+  <section class="panel">
+    <div class="section-title">
       <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
         {{ $t('dashboard.timeline.title') }}
       </h2>
-      <span class="az-mono text-muted">
+      <span class="mono text-muted">
         {{ $t('dashboard.timeline.events', { count: task?.events.length ?? 0 }) }}
       </span>
     </div>

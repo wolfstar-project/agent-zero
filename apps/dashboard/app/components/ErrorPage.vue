@@ -1,29 +1,20 @@
 <template>
-  <section class="az-panel w-full max-w-88 p-6" aria-labelledby="error-page-title">
-    <p class="m-0 az-mono text-muted">
+  <section class="panel w-full max-w-88 p-6" aria-labelledby="error-page-title">
+    <p class="m-0 mono text-muted">
       <span class="sr-only">{{ t('common.error') }}&nbsp;</span>{{ status }}
     </p>
     <h1 id="error-page-title" class="m-0 mt-2 text-lg font-650 tracking-tight">{{ title }}</h1>
     <p class="mb-6 mt-1 text-xs text-muted">{{ description }}</p>
 
-    <p v-if="detail" class="mb-6 az-mono break-all border border-line bg-raised p-2.5 text-muted">
+    <p v-if="detail" class="mb-6 mono break-all border border-line bg-raised p-2.5 text-muted">
       {{ detail }}
     </p>
 
     <div class="flex flex-col gap-3">
-      <button
-        v-if="!isNotFound"
-        class="az-focus h-9 flex items-center justify-center border border-accent/45 bg-accent/8 text-xs text-ink font-650 transition hover:border-accent"
-        type="button"
-        @click="retry"
-      >
+      <button v-if="!isNotFound" class="btn-accent" type="button" @click="retry">
         {{ t('common.retry') }}
       </button>
-      <button
-        class="az-focus h-9 flex items-center justify-center border border-line bg-raised text-xs text-ink font-650 transition hover:border-muted"
-        type="button"
-        @click="goHome"
-      >
+      <button class="btn-subtle" type="button" @click="goHome">
         {{ t('errors.back_to_home') }}
       </button>
     </div>

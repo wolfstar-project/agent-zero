@@ -1,8 +1,5 @@
 <template>
-  <section
-    :aria-label="$t('dashboard.metrics.aria')"
-    class="az-panel grid grid-cols-2 lg:grid-cols-5"
-  >
+  <section :aria-label="$t('dashboard.metrics.aria')" class="panel grid grid-cols-2 lg:grid-cols-5">
     <div
       v-for="(metric, index) in metrics"
       :key="metric.label"

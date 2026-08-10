@@ -1,31 +1,31 @@
 <template>
-  <section class="az-panel overflow-hidden">
-    <div class="az-section-title">
+  <section class="panel overflow-hidden">
+    <div class="section-title">
       <div class="flex items-center gap-2">
         <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
           {{ $t('dashboard.queue.title') }}
         </h2>
-        <span class="border border-line bg-raised px-1.5 py-0.5 az-mono text-muted">
+        <span class="border border-line bg-raised px-1.5 py-0.5 mono text-muted">
           {{ tasks.length }}
         </span>
       </div>
-      <span class="az-mono text-muted">{{ $t('dashboard.queue.order') }}</span>
+      <span class="mono text-muted">{{ $t('dashboard.queue.order') }}</span>
     </div>
 
     <div v-if="tasks.length > 0" class="overflow-x-auto">
       <table class="w-full min-w-160 border-collapse text-left">
         <thead>
           <tr class="border-b border-line bg-raised/55">
-            <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
+            <th class="px-3.5 py-2.5 label-upper">
               {{ $t('dashboard.queue.columns.id') }}
             </th>
-            <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
+            <th class="px-3.5 py-2.5 label-upper">
               {{ $t('dashboard.queue.columns.repository') }}
             </th>
-            <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
+            <th class="px-3.5 py-2.5 label-upper">
               {{ $t('dashboard.queue.columns.status') }}
             </th>
-            <th class="px-3.5 py-2.5 text-[9px] text-muted font-700 tracking-wider uppercase">
+            <th class="px-3.5 py-2.5 label-upper">
               {{ $t('dashboard.queue.columns.updated') }}
             </th>
           </tr>

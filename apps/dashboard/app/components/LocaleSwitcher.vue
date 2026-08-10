@@ -1,7 +1,7 @@
 <template>
   <select
     v-model="selected"
-    class="az-focus h-9 border border-line bg-raised px-2 text-xs text-ink font-650 transition hover:border-muted"
+    class="input-field font-650 transition hover:border-muted"
     :aria-label="t('common.locale.label')"
     :title="t('common.locale.label')"
   >
