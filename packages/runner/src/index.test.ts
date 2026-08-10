@@ -404,6 +404,29 @@ describe('git inspection', () => {
     expect(diff).toContain('file patches beyond the diff budget]');
   });
 
+  it('marks an untracked file whose synthetic patch could not be produced instead of dropping it', async () => {
+    // reviewFiles() publishes both paths as review targets, so a failed or empty `--no-index`
+    // diff must surface an explicit marker rather than leaving a listed target without any
+    // reviewable content in DIFF.
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': 'src/failed.ts\0src/empty.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/empty.ts': '',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      if (argv === 'diff --no-ext-diff --no-index -- /dev/null src/failed.ts')
+        return { exitCode: 2, stdout: '', stderr: 'boom' };
+      return { exitCode: 0, stdout: program === 'git' ? (outputs[argv] ?? '') : '', stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain(
+      'diff --git a/src/failed.ts b/src/failed.ts\n[untracked file patch unavailable: git diff --no-index failed]',
+    );
+    expect(context).toContain(
+      'diff --git a/src/empty.ts b/src/empty.ts\n[untracked file patch unavailable: git diff --no-index rendered no patch]',
+    );
+  });
+
   it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {
     // Newline-delimited git output would C-quote this name into a non-path display string.
     const weird = 'src/untracked\nfile.ts';

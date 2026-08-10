@@ -87,6 +87,8 @@ const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
 // `diff --git` headers only ever start a line at column zero; every content line carries a
 // one-character prefix, so this boundary cannot fire inside a patch body.
 const FILE_PATCH_BOUNDARY = /\n(?=diff --git )/;
+// Characters that would break a synthetic single-line `diff --git` header (see unavailablePatch).
+const HEADER_UNSAFE = /[\n\r\t"\\]/;
 // Not defined on every platform; opening still works there, the descriptor re-check remains.
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 const O_DIRECTORY = constants.O_DIRECTORY ?? 0;
@@ -249,7 +251,9 @@ export abstract class RepositoryBoundary implements Runner {
    * display representation would not open as a filesystem path. Every listed file is collected:
    * the diff budget is allocated per file by {@link boundedDiff}, so an early stop here would
    * silently drop later files' patches that the allocation would have kept while
-   * {@link reviewFiles} still publishes their paths as review targets.
+   * {@link reviewFiles} still publishes their paths as review targets. For the same reason a
+   * file whose diff fails or renders nothing gets an explicit stand-in patch (see
+   * {@link unavailablePatch}) rather than a silent omission.
    */
   private async untrackedPatches(): Promise<string[]> {
     const listing = await this.git(['ls-files', '-z', '--others', '--exclude-standard']);
@@ -257,14 +261,16 @@ export abstract class RepositoryBoundary implements Runner {
     for (const path of listing.stdout.split('\0')) {
       if (path.length === 0 || !isRepositoryRelativePath(path)) continue;
       // `--no-index` exits 1 when the paths differ, which is the expected outcome here; only
-      // larger codes report a real failure, and those degrade to omitting the patch.
+      // larger codes report a real failure.
       const outcome = await this.process(
         'git',
         ['diff', '--no-ext-diff', '--no-index', '--', '/dev/null', path],
         { cwd: this.root, timeoutMs: GIT_TIMEOUT_MS, maxOutputBytes: this.maxOutputBytes },
       );
-      if (outcome.exitCode > 1 || outcome.stdout.length === 0) continue;
-      patches.push(outcome.stdout);
+      if (outcome.exitCode > 1) patches.push(unavailablePatch(path, 'git diff --no-index failed'));
+      else if (outcome.stdout.length === 0)
+        patches.push(unavailablePatch(path, 'git diff --no-index rendered no patch'));
+      else patches.push(outcome.stdout);
     }
     return patches;
   }
@@ -501,6 +507,21 @@ function boundedDiff(patches: readonly string[], budget: number): string {
     rendered.push(`[omitted ${String(omitted)} ${noun} beyond the diff budget]`);
   }
   return rendered.join('\n');
+}
+
+/**
+ * An explicit stand-in patch for an untracked file whose synthetic diff could not be produced.
+ *
+ * {@link reviewFiles} publishes every untracked path as a review target, so silently skipping a
+ * failed or empty `git diff --no-index` would leave a target selectable without any reviewable
+ * content behind it. The stand-in keeps the `diff --git` header shape that {@link boundedDiff}
+ * preserves for attribution and declares the omission instead of hiding it. A name containing
+ * characters such as newlines is rendered in its quoted display form so the header stays a
+ * single attributable line.
+ */
+function unavailablePatch(path: string, reason: string): string {
+  const name = HEADER_UNSAFE.test(path) ? JSON.stringify(path) : path;
+  return `diff --git a/${name} b/${name}\n[untracked file patch unavailable: ${reason}]`;
 }
 
 function assertInside(root: string, candidate: string, original: string): void {
