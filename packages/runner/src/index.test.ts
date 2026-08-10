@@ -334,6 +334,25 @@ describe('git inspection', () => {
     expect(context).toContain('+const untracked = true;');
   });
 
+  it('keeps collecting untracked patches after one file exhausts the diff budget', async () => {
+    // The final tail-keeping truncation in context() keeps later content, so stopping the
+    // collection early would silently drop a patch for a path reviewFiles() still publishes.
+    const outputs: Record<string, string> = {
+      'ls-files -z --others --exclude-standard': 'src/huge.ts\0src/late.ts\0',
+      'diff --no-ext-diff --no-index -- /dev/null src/huge.ts': `+${'x'.repeat(150_000)}`,
+      'diff --no-ext-diff --no-index -- /dev/null src/late.ts': '+const late = true;',
+    };
+    const process: ProcessRunner = async (program, args) => {
+      const argv = args.join(' ');
+      const stdout = program === 'git' ? (outputs[argv] ?? '') : '';
+      // `--no-index` reports "the paths differ" with exit code 1, like real git.
+      const exitCode = argv.includes('--no-index') && stdout.length > 0 ? 1 : 0;
+      return { exitCode, stdout, stderr: '' };
+    };
+    const context = await new LocalRunner(root, { process }).context();
+    expect(context).toContain('+const late = true;');
+  });
+
   it('keeps an untracked filename with special characters usable through NUL-delimited listings', async () => {
     // Newline-delimited git output would C-quote this name into a non-path display string.
     const weird = 'src/untracked\nfile.ts';

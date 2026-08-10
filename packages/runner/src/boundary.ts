@@ -240,16 +240,16 @@ export abstract class RepositoryBoundary implements Runner {
    * reviewer too; `git diff --no-index` against `/dev/null` renders the same new-file patch a
    * commit would produce. The listing is NUL-delimited (`-z`) and parsed verbatim: git C-quotes
    * names containing characters such as newlines or tabs in newline-delimited output, and that
-   * display representation would not open as a filesystem path. Collection stops once the diff
-   * budget is exhausted, since anything further would be truncated away regardless.
+   * display representation would not open as a filesystem path. Every listed file is collected:
+   * the diff budget is applied once, by {@link context}'s final tail-keeping truncation, so an
+   * early stop here would silently drop later files' patches that the truncation would have kept
+   * while {@link reviewFiles} still publishes their paths as review targets.
    */
   private async untrackedPatches(): Promise<string[]> {
     const listing = await this.git(['ls-files', '-z', '--others', '--exclude-standard']);
     const patches: string[] = [];
-    let total = 0;
     for (const path of listing.stdout.split('\0')) {
       if (path.length === 0 || !isRepositoryRelativePath(path)) continue;
-      if (total > MAX_DIFF) break;
       // `--no-index` exits 1 when the paths differ, which is the expected outcome here; only
       // larger codes report a real failure, and those degrade to omitting the patch.
       const outcome = await this.process(
@@ -259,7 +259,6 @@ export abstract class RepositoryBoundary implements Runner {
       );
       if (outcome.exitCode > 1 || outcome.stdout.length === 0) continue;
       patches.push(outcome.stdout);
-      total += outcome.stdout.length;
     }
     return patches;
   }
