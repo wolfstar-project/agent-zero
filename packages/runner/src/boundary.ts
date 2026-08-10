@@ -463,9 +463,11 @@ function splitFilePatches(diff: string): string[] {
  * target. Instead the budget is allocated per patch: small patches keep everything and the
  * surplus is shared among the larger ones. Every rendered patch keeps at least its complete first
  * line (the `diff --git` header naming the file), because a fragment shorter than the header
- * could not be attributed to any changed-file entry; when the budget cannot fit every header, the
- * trailing patches are dropped whole behind an explicit omission marker rather than surfacing as
- * anonymous fragments.
+ * could not be attributed to any changed-file entry. When the budget cannot fit every header, the
+ * trailing patches lose their bodies but never their identity: each one still renders its
+ * complete header line over an explicit omission marker, so every path the changed-file list
+ * names stays attributable in the diff. That overrun is deliberate and bounded by the same
+ * per-file header data the changed-file list already carries.
  */
 function boundedDiff(patches: readonly string[], budget: number): string {
   if (patches.length === 0) return '';
@@ -501,10 +503,9 @@ function boundedDiff(patches: readonly string[], budget: number): string {
     left -= 1;
   }
   const rendered = kept.map((patch, index) => truncateHead(patch, allocations[index] ?? 0));
-  const omitted = patches.length - retained;
-  if (omitted > 0) {
-    const noun = omitted === 1 ? 'file patch' : 'file patches';
-    rendered.push(`[omitted ${String(omitted)} ${noun} beyond the diff budget]`);
+  for (let index = retained; index < patches.length; index += 1) {
+    const header = (patches[index] ?? '').slice(0, headers[index] ?? 0);
+    rendered.push(`${header}\n[file patch omitted beyond the diff budget]`);
   }
   return rendered.join('\n');
 }
