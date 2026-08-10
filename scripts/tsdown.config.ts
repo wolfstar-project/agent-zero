@@ -4,7 +4,7 @@ import { defineConfig, type OutExtensionContext, type UserConfig } from 'tsdown'
 const baseConfig = {
   entry: ['src/index.ts'],
   platform: 'node',
-  target: 'node20.11',
+  target: 'node24.2',
   outDir: 'dist',
   clean: true,
   sourcemap: true,
@@ -25,6 +25,13 @@ const baseConfig = {
 const packageConfig = {
   ...baseConfig,
   format: ['esm', 'cjs'],
+  checks: {
+    ...baseConfig.checks,
+    // Packages intentionally dual-publish ESM and CJS. With a node24.2 target
+    // (which supports require(esm)), tsdown escalates its legacy-CJS
+    // recommendation to an error under failOnWarn, so opt out of that check.
+    legacyCjs: false,
+  },
   outExtensions: (context: OutExtensionContext) => ({
     js: context.format === 'es' ? '.mjs' : '.cjs',
     dts: context.format === 'es' ? '.d.mts' : '.d.cts',
