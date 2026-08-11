@@ -2,7 +2,7 @@
 export const loginPath = '/login';
 
 /** Fallback for `NUXT_PUBLIC_SITE_URL`, matching the auth server's default port. */
-export const defaultAuthServerUrl = 'http://localhost:3001';
+export const defaultAuthServerUrl = 'http://localhost:3002';
 
 /**
  * Sign-in capabilities the login page renders.

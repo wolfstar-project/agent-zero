@@ -139,7 +139,8 @@ Task history persists through a `KeyValueStorage` contract backed by the ViteHub
 ## Dashboard
 
 `aube run dev` starts the Nuxt dashboard on `http://localhost:3000` and the authentication adapter
-on `http://localhost:3001`. The dashboard remains an operational interface shell: it does not
+on `http://localhost:3002` (3001 belongs to the control plane). The dashboard remains an
+operational interface shell: it does not
 expose API or RPC routes, persist data, import runtime packages, or execute repository work. It
 renders as a single-page app, because the session cookie belongs to the adapter's origin and a
 server render could never observe it.
@@ -166,12 +167,12 @@ until you turn them on, so a fresh deployment cannot be signed up for by a stran
 | `BETTER_AUTH_URL`                           | yes      | –       | Public origin of the auth adapter           |
 | `AUTH_DASHBOARD_ORIGIN`                     | yes      | –       | The one origin allowed credentialed access  |
 | `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                  |
-| `AUTH_SERVER_PORT`                          | no       | `3001`  | Port the adapter listens on                 |
+| `AUTH_SERVER_PORT`                          | no       | `3002`  | Port the adapter listens on                 |
 | `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration    |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set |
 
 The dashboard needs to know where the adapter lives: `NUXT_PUBLIC_SITE_URL` (default
-`http://localhost:3001`). The sign-in methods it offers are derived at build time from the same
+`http://localhost:3002`). The sign-in methods it offers are derived at build time from the same
 policy variables the adapter reads (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
 `GITHUB_CLIENT_SECRET`), and no runtime override can change them. The flip side of that build-time
 capture is a deployment contract: whenever you change those policy variables, rebuild the dashboard

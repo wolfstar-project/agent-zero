@@ -16,7 +16,9 @@ import { cors } from 'hono/cors';
  * It deliberately serves nothing but the Better Auth handler.
  */
 
-const DEFAULT_PORT = 3001;
+// 3000 belongs to the Nuxt dashboard and 3001 to the control plane (`apps/server`), so
+// `aube run dev` can start all three without a port collision.
+const DEFAULT_PORT = 3002;
 
 // Validate the complete value as a decimal port string; `Number.parseInt` would silently
 // truncate malformed configuration such as `39001abc` or `39001.5` to a valid port.
