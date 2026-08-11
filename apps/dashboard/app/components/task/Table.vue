@@ -59,7 +59,7 @@
     <div v-else class="min-h-52 grid place-items-center px-5 py-10 text-center">
       <div>
         <div class="mx-auto h-9 w-9 grid place-items-center border border-line bg-raised">
-          <span class="h-2 w-2 border border-muted" />
+          <Icon aria-hidden="true" class="h-4 w-4 text-muted" name="lucide:inbox" />
         </div>
         <h3 class="mb-0 mt-4 text-sm font-650">{{ $t('dashboard.queue.emptyTitle') }}</h3>
         <p class="mx-auto mb-0 mt-2 max-w-80 text-xs text-muted leading-relaxed">

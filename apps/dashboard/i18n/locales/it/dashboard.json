@@ -3,17 +3,24 @@
   "dashboard": {
     "header": {
       "eyebrow": "Agent Zero / Operazioni",
-      "title": "Dashboard",
+      "title": "Piano di controllo",
       "mode": "Interfaccia locale"
     },
     "nav": {
       "aria": "Primaria",
-      "group": "Operazioni",
-      "control": "Controllo",
+      "control": "Piano di controllo",
       "tasks": "Task",
-      "runners": "Runner",
-      "policies": "Criteri",
-      "footnote": "Interfaccia frontend"
+      "runners": "Pool runner",
+      "models": "Modelli e utilizzo",
+      "approvals": "Approvazioni",
+      "findings": "Rilevazioni",
+      "repositories": "Repository",
+      "policies": "Regole e criteri",
+      "integrations": "Integrazioni",
+      "audit": "Registro di audit",
+      "settings": "Impostazioni",
+      "collapse": "Comprimi",
+      "expand": "Espandi"
     },
     "metrics": {
       "aria": "Metriche runner",

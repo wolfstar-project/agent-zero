@@ -10,11 +10,12 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <div class="hidden text-end sm:block">
-        <p class="m-0 mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
-        <p class="m-0 mt-0.5 text-3xs text-accent font-700 tracking-wider uppercase">
-          {{ $t('dashboard.header.mode') }}
-        </p>
+      <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 lg:flex">
+        <span class="label-upper">{{ $t('dashboard.header.mode') }}</span>
+      </div>
+      <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 sm:flex">
+        <Icon aria-hidden="true" class="h-3.5 w-3.5 text-muted" name="lucide:clock-3" />
+        <span class="mono text-ink">{{ now.toISOString().slice(0, 19) }}Z</span>
       </div>
       <LocaleSwitcher />
       <ClientOnly>
@@ -24,16 +25,15 @@
         </template>
       </ClientOnly>
       <button class="btn-subtle gap-2 px-3" type="button" @click="refreshDashboard">
-        <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-          <path d="M20 7v5h-5M4 17v-5h5" stroke="currentColor" stroke-width="1.8" />
-          <path
-            d="M18.2 9A7 7 0 0 0 6.1 6.6L4 9m2 6a7 7 0 0 0 12.1 2.4L20 15"
-            stroke="currentColor"
-            stroke-width="1.8"
-          />
-        </svg>
+        <Icon aria-hidden="true" class="h-3.5 w-3.5" name="lucide:refresh-cw" />
         {{ $t('common.actions.refresh') }}
       </button>
+      <div
+        aria-hidden="true"
+        class="h-9 w-9 hidden place-items-center border border-accent/45 bg-accent/8 font-mono text-xs text-accent font-700 sm:grid"
+      >
+        AZ
+      </div>
     </div>
   </header>
 

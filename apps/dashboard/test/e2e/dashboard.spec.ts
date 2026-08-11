@@ -15,7 +15,7 @@ test.describe('Dashboard', () => {
 
     expect(response).not.toBeNull();
     expect(response?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Control Plane', level: 1 })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No tasks recorded', level: 3 })).toBeVisible();
     expect(hydrationErrors).toHaveLength(0);
     expect(consoleErrors).toHaveLength(0);

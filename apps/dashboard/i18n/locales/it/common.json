@@ -17,8 +17,11 @@
       "label": "Lingua"
     },
     "system": {
-      "label": "SISTEMA",
-      "ready": "PRONTO"
+      "label": "Stato del sistema",
+      "healthy": "Operativo"
+    },
+    "version": {
+      "label": "Versione"
     }
   }
 }

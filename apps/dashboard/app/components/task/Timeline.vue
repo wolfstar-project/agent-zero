@@ -18,9 +18,13 @@
         >
           <div
             v-if="index < task.events.length - 1"
-            class="absolute bottom-0 inset-is-[0.218rem] top-3 w-px bg-line"
+            class="absolute bottom-0 inset-is-[0.44rem] top-5 w-px bg-line"
           />
-          <span class="relative mt-1.5 h-2 w-2 border border-accent bg-panel" />
+          <Icon
+            aria-hidden="true"
+            class="relative mt-0.5 h-4 w-4 shrink-0 text-accent"
+            name="lucide:circle-check"
+          />
           <div>
             <div class="flex flex-wrap items-center justify-between gap-2">
               <p class="m-0 font-mono text-3xs text-accent font-700 uppercase">

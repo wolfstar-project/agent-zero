@@ -71,10 +71,7 @@
     <div v-else class="min-h-120 grid place-items-center px-6 text-center">
       <div>
         <div class="mx-auto h-10 w-10 grid place-items-center border border-line bg-raised">
-          <svg aria-hidden="true" class="h-4 w-4 text-muted" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="6" stroke="currentColor" stroke-width="1.5" />
-            <path d="m16 16 4 4" stroke="currentColor" stroke-width="1.5" />
-          </svg>
+          <Icon aria-hidden="true" class="h-4 w-4 text-muted" name="lucide:search" />
         </div>
         <h3 class="mb-0 mt-4 text-sm font-650">{{ $t('dashboard.inspector.emptyTitle') }}</h3>
         <p class="mb-0 mt-2 text-xs text-muted leading-relaxed">

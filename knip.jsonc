@@ -35,8 +35,10 @@
         "app/utils/**/*.ts",
       ],
       // The `nuxt` Vitest environment resolves to vitest-environment-nuxt,
-      // which `@nuxt/test-utils` ships as its own dependency.
-      "ignoreDependencies": ["vitest-environment-nuxt"],
+      // which `@nuxt/test-utils` ships as its own dependency. @nuxt/icon
+      // loads the lucide collection by name at build time, so no source file
+      // imports @iconify-json/lucide directly.
+      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
       // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
       // and #shared to the shared/ directory.
       "paths": {

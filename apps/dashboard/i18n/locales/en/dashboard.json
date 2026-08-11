@@ -3,17 +3,24 @@
   "dashboard": {
     "header": {
       "eyebrow": "Agent Zero / Operations",
-      "title": "Dashboard",
+      "title": "Control Plane",
       "mode": "Local interface"
     },
     "nav": {
       "aria": "Primary",
-      "group": "Operations",
-      "control": "Control",
+      "control": "Control Plane",
       "tasks": "Tasks",
-      "runners": "Runners",
-      "policies": "Policies",
-      "footnote": "Frontend interface"
+      "runners": "Runner Pool",
+      "models": "Models & Usage",
+      "approvals": "Approvals",
+      "findings": "Findings",
+      "repositories": "Repositories",
+      "policies": "Rules & Policies",
+      "integrations": "Integrations",
+      "audit": "Audit Log",
+      "settings": "Settings",
+      "collapse": "Collapse",
+      "expand": "Expand"
     },
     "metrics": {
       "aria": "Runner metrics",

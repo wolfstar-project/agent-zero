@@ -31,7 +31,9 @@
     "vue-i18n": "^11.4.8"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.123",
     "@lunariajs/core": "https://pkg.pr.new/lunariajs/lunaria/@lunariajs/core@904b935",
+    "@nuxt/icon": "^2.5.0",
     "@nuxt/test-utils": "4.1.0",
     "@nuxtjs/color-mode": "4.0.1",
     "@nuxtjs/i18n": "^10.6.0",

@@ -19,7 +19,7 @@ test.describe('Authentication', () => {
     await goto('/login', { waitUntil: 'networkidle' });
 
     await expect(page).toHaveURL(DASHBOARD_URL);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Control Plane', level: 1 })).toBeVisible();
   });
 
   test('shows the signed-in operator and a sign-out control', async ({ page, goto }) => {

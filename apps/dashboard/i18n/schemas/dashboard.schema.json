@@ -28,9 +28,6 @@
             "aria": {
               "type": "string"
             },
-            "group": {
-              "type": "string"
-            },
             "control": {
               "type": "string"
             },
@@ -40,10 +37,34 @@
             "runners": {
               "type": "string"
             },
+            "models": {
+              "type": "string"
+            },
+            "approvals": {
+              "type": "string"
+            },
+            "findings": {
+              "type": "string"
+            },
+            "repositories": {
+              "type": "string"
+            },
             "policies": {
               "type": "string"
             },
-            "footnote": {
+            "integrations": {
+              "type": "string"
+            },
+            "audit": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "string"
+            },
+            "collapse": {
+              "type": "string"
+            },
+            "expand": {
               "type": "string"
             }
           },

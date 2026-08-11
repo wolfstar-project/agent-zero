@@ -58,7 +58,16 @@
             "label": {
               "type": "string"
             },
-            "ready": {
+            "healthy": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "version": {
+          "type": "object",
+          "properties": {
+            "label": {
               "type": "string"
             }
           },

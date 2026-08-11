@@ -26,6 +26,7 @@ export default defineNuxtConfig({
   },
   modules: [
     '@unocss/nuxt',
+    '@nuxt/icon',
     '@nuxtjs/i18n',
     '@onmax/nuxt-better-auth',
     [
@@ -39,6 +40,16 @@ export default defineNuxtConfig({
     ],
   ],
   css: ['~/assets/css/main.css'],
+  icon: {
+    // The dashboard owns no Nitro routes and its e2e suite asserts that nothing hits a local
+    // /api/** path, so the icon component may never fall back to a server endpoint or the
+    // Iconify API. Every icon is scanned from the templates at build time and compiled into the
+    // client bundle from the locally installed lucide collection.
+    provider: 'none',
+    serverBundle: false,
+    fallbackToApi: false,
+    clientBundle: { scan: true },
+  },
   vite: {
     // Untranslated keys are stored as empty strings; drop them from the bundle so vue-i18n falls
     // back to the default locale instead of rendering "".

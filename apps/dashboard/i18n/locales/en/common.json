@@ -17,8 +17,11 @@
       "label": "Language"
     },
     "system": {
-      "label": "SYSTEM",
-      "ready": "READY"
+      "label": "System status",
+      "healthy": "Healthy"
+    },
+    "version": {
+      "label": "Version"
     }
   }
 }
