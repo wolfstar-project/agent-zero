@@ -2,7 +2,16 @@ skills:
   tsdown:
     packageName: tsdown
     version: 0.22.14
+    packages: "tsdown@0.22.14"
     repo: antfu/skills
     source: registry
     syncedAt: 2026-08-09
     generator: curator+repository-review
+  harlan-zw-harlan-agent-kit-skilld:
+    packageName: harlan-zw-harlan-agent-kit
+    version: main
+    packages: "harlan-zw-harlan-agent-kit@main"
+    repo: harlan-zw/harlan-agent-kit
+    source: "https://github.com/harlan-zw/harlan-agent-kit/tree/main/docs"
+    syncedAt: 2026-08-10
+    generator: skilld

@@ -45,20 +45,22 @@ GitHub adapter / CLI
  Runner boundary ─── repository commands and file operations
 
 oRPC control plane ─── typed task API, persistence, and scheduling
-Nuxt dashboard ─── frontend-only operational interface
+Nuxt dashboard ─── frontend-only operational interface ─── auth adapter ─── session store
 ```
 
-| Package                                | Responsibility                                                 |
-| -------------------------------------- | -------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)   | Orchestration and state transitions                            |
-| [`packages/runner`](./packages/runner) | The only boundary that executes commands or mutates a checkout |
-| [`packages/models`](./packages/models) | Model-provider abstractions                                    |
-| [`packages/github`](./packages/github) | GitHub event and API adapters                                  |
-| [`packages/config`](./packages/config) | Configuration parsing and policy                               |
-| [`packages/shared`](./packages/shared) | Stable cross-package contracts                                 |
-| [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                     |
-| [`apps/server`](./apps/server)         | oRPC control-plane transport and composition root              |
-| [`apps/dashboard`](./apps/dashboard)   | Frontend-only Nuxt operational dashboard                       |
+| Package                                  | Responsibility                                                  |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| [`packages/agent`](./packages/agent)     | Orchestration and state transitions                             |
+| [`packages/runner`](./packages/runner)   | The only boundary that executes commands or mutates a checkout  |
+| [`packages/models`](./packages/models)   | Model-provider abstractions                                     |
+| [`packages/github`](./packages/github)   | GitHub event and API adapters                                   |
+| [`packages/config`](./packages/config)   | Configuration parsing and policy                                |
+| [`packages/shared`](./packages/shared)   | Stable cross-package contracts                                  |
+| [`packages/cli`](./packages/cli)         | Argument parsing and terminal presentation                      |
+| [`packages/auth`](./packages/auth)       | Authentication policy and the Better Auth instance              |
+| [`apps/server`](./apps/server)           | oRPC control-plane transport and composition root               |
+| [`apps/auth-server`](./apps/auth-server) | Standalone auth adapter; the only component with a database     |
+| [`apps/dashboard`](./apps/dashboard)     | Nuxt operational dashboard, authenticated client of the adapter |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -136,9 +138,56 @@ Task history persists through a `KeyValueStorage` contract backed by the ViteHub
 
 ## Dashboard
 
-`aube run dev` starts the frontend-only Nuxt dashboard on `http://localhost:3000`. It is an operational interface shell: it does not expose API or RPC routes, persist task data, import runtime packages, or execute repository work.
+`aube run dev` starts the Nuxt dashboard on `http://localhost:3000` and the authentication adapter
+on `http://localhost:3002` (3001 belongs to the control plane). The dashboard remains an
+operational interface shell: it does not
+expose API or RPC routes, persist data, import runtime packages, or execute repository work. It
+renders as a single-page app, because the session cookie belongs to the adapter's origin and a
+server render could never observe it.
 
-`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the Playwright smoke suite. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
+Authentication runs in `apps/auth-server`, a standalone Hono process that mounts the Better Auth
+handler and owns the only database in the repository: Postgres, accessed through
+[Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session
+store's schema lives in this repository as reviewable, checked-in SQL. The dashboard consumes the
+adapter through [`@onmax/nuxt-better-auth`](https://better-auth.nuxt.dev) in `clientOnly` mode.
+
+Point `AUTH_DATABASE_URL` at a Postgres database, then apply the schema once before the first run
+(`db:generate` only needs to run again after editing `packages/auth/src/schema.ts`):
+
+```bash
+aube --filter @agent-zero/auth run db:migrate
+```
+
+The adapter reads its configuration from the environment. Registration and GitHub OAuth are off
+until you turn them on, so a fresh deployment cannot be signed up for by a stranger:
+
+| Variable                                    | Required | Default | Purpose                                     |
+| ------------------------------------------- | -------- | ------- | ------------------------------------------- |
+| `BETTER_AUTH_SECRET`                        | yes      | –       | Session signing secret                      |
+| `BETTER_AUTH_URL`                           | yes      | –       | Public origin of the auth adapter           |
+| `AUTH_DASHBOARD_ORIGIN`                     | yes      | –       | The one origin allowed credentialed access  |
+| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                  |
+| `AUTH_SERVER_PORT`                          | no       | `3002`  | Port the adapter listens on                 |
+| `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration    |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set |
+
+The dashboard needs to know where the adapter lives: `NUXT_PUBLIC_SITE_URL` (default
+`http://localhost:3002`). The sign-in methods it offers are derived at build time from the same
+policy variables the adapter reads (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
+`GITHUB_CLIENT_SECRET`), and no runtime override can change them. The flip side of that build-time
+capture is a deployment contract: whenever you change those policy variables, rebuild the dashboard
+in the same environment the adapter runs with, or the login page will keep advertising the old
+capabilities (the adapter still enforces its own policy either way).
+
+The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
+`apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
+[Lunaria](https://lunaria.dev) report showing which translations went stale relative to the English
+source; it reads git history, so it needs the dictionaries committed.
+
+`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the
+Playwright suite. The auth adapter is not started for e2e: its origin is intercepted so the run
+stays deterministic. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI
+mode.
 
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 

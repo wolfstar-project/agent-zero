@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Zero dashboard i18n locale file (common.json)",
+  "description": "Schema for common.json. Generated from en/common.json — do not edit manually.",
+  "type": "object",
+  "properties": {
+    "common": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "retry": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "object",
+          "properties": {
+            "subtitle": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "actions": {
+          "type": "object",
+          "properties": {
+            "refresh": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "switchToLight": {
+              "type": "string"
+            },
+            "switchToDark": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "locale": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "system": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "healthy": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "version": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

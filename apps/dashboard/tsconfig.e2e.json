@@ -5,7 +5,12 @@
     "declaration": false,
     "declarationMap": false,
     "noEmit": true,
-    "rootDir": "."
+    "rootDir": ".",
+    // Mirror the Nuxt source aliases for the specs under test/nuxt.
+    "paths": {
+      "~/*": ["./app/*"],
+      "~~/*": ["./*"]
+    }
   },
   "include": ["playwright.config.ts", "test/**/*.ts"]
 }

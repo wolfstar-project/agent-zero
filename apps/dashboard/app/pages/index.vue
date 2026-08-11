@@ -1,3 +1,60 @@
+<template>
+  <header
+    class="h-16 flex items-center justify-between border-b border-line bg-canvas/92 px-4 backdrop-blur md:px-6"
+  >
+    <div>
+      <p class="m-0 text-3xs text-muted font-700 tracking-[0.18em] uppercase">
+        {{ $t('dashboard.header.eyebrow') }}
+      </p>
+      <h1 class="m-0 mt-1 text-lg font-650 tracking-tight">{{ $t('dashboard.header.title') }}</h1>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 lg:flex">
+        <span class="label-upper">{{ $t('dashboard.header.mode') }}</span>
+      </div>
+      <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 sm:flex">
+        <Icon aria-hidden="true" class="h-3.5 w-3.5 text-muted" name="lucide:clock-3" />
+        <span class="mono text-ink">{{ now.toISOString().slice(0, 19) }}Z</span>
+      </div>
+      <LocaleSwitcher />
+      <ClientOnly>
+        <ColorModeToggle />
+        <template #fallback>
+          <span class="h-9 w-9 border border-line bg-raised" aria-hidden="true" />
+        </template>
+      </ClientOnly>
+      <button class="btn-subtle gap-2 px-3" type="button" @click="refreshDashboard">
+        <Icon aria-hidden="true" class="h-3.5 w-3.5" name="lucide:refresh-cw" />
+        {{ $t('common.actions.refresh') }}
+      </button>
+      <div
+        aria-hidden="true"
+        class="h-9 w-9 hidden place-items-center border border-accent/45 bg-accent/8 font-mono text-xs text-accent font-700 sm:grid"
+      >
+        AZ
+      </div>
+    </div>
+  </header>
+
+  <div class="p-3 sm:p-4 md:p-5">
+    <RunnerMetrics :overview="overview" />
+
+    <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div class="min-w-0 space-y-4">
+        <TaskTable
+          :tasks="overview.tasks"
+          :selected-id="selectedId"
+          @select="selectedId = $event"
+        />
+        <TaskTimeline :task="selectedTask" />
+      </div>
+
+      <TaskInspector :task="selectedTask" />
+    </section>
+  </div>
+</template>
+
 <script setup lang="ts">
 import type { DashboardOverview } from '~/types/dashboard';
 
@@ -45,63 +102,3 @@ function refreshDashboard(): void {
   now.value = new Date();
 }
 </script>
-
-<template>
-  <header
-    class="h-16 flex items-center justify-between border-b border-line bg-canvas/92 px-4 backdrop-blur md:px-6"
-  >
-    <div>
-      <p class="m-0 text-3xs text-muted font-700 tracking-[0.18em] uppercase">
-        Agent Zero / Operations
-      </p>
-      <h1 class="m-0 mt-1 text-lg font-650 tracking-tight">Dashboard</h1>
-    </div>
-
-    <div class="flex items-center gap-3">
-      <div class="hidden text-end sm:block">
-        <p class="m-0 az-mono text-muted">{{ now.toISOString().slice(0, 19) }}Z</p>
-        <p class="m-0 mt-0.5 text-3xs text-accent font-700 tracking-wider uppercase">
-          Local interface
-        </p>
-      </div>
-      <ClientOnly>
-        <ColorModeToggle />
-        <template #fallback>
-          <span class="h-9 w-9 border border-line bg-raised" aria-hidden="true" />
-        </template>
-      </ClientOnly>
-      <button
-        class="az-focus h-9 flex items-center gap-2 border border-line bg-raised px-3 text-xs text-ink font-650 transition hover:border-muted disabled:cursor-wait disabled:opacity-60"
-        type="button"
-        @click="refreshDashboard"
-      >
-        <svg aria-hidden="true" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-          <path d="M20 7v5h-5M4 17v-5h5" stroke="currentColor" stroke-width="1.8" />
-          <path
-            d="M18.2 9A7 7 0 0 0 6.1 6.6L4 9m2 6a7 7 0 0 0 12.1 2.4L20 15"
-            stroke="currentColor"
-            stroke-width="1.8"
-          />
-        </svg>
-        Refresh
-      </button>
-    </div>
-  </header>
-
-  <div class="p-3 sm:p-4 md:p-5">
-    <RunnerMetrics :overview="overview" />
-
-    <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <div class="min-w-0 space-y-4">
-        <TaskTable
-          :tasks="overview.tasks"
-          :selected-id="selectedId"
-          @select="selectedId = $event"
-        />
-        <TaskTimeline :task="selectedTask" />
-      </div>
-
-      <TaskInspector :task="selectedTask" />
-    </section>
-  </div>
-</template>

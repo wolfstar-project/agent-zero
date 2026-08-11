@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schemas/errors.schema.json",
+  "errors": {
+    "not_found_title": "Page not found",
+    "not_found_description": "The page you are looking for doesn't exist or may have been moved. Check the link or head back home.",
+    "server_error_title": "Server error",
+    "server_error": "Something went wrong on our end. Please try again later.",
+    "generic_title": "Unexpected error",
+    "generic_description": "Something didn't go as planned. You can try again or head back home.",
+    "back_to_home": "Back to home"
+  }
+}

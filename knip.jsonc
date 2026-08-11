@@ -1,5 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  // Agent skill collections ship standalone scripts that nothing in the
+  // project imports; they are tooling for coding agents, not project code.
+  "ignore": [".agents/**"],
   // aube is provided by the packageManager field rather than a dependency.
   "ignoreBinaries": ["aube"],
   "ignoreDependencies": [
@@ -20,6 +23,8 @@
       // not scan, and Nuxt auto-imports components, composables, and utils.
       "entry": [
         "app/app.vue",
+        // Loaded by `@onmax/nuxt-better-auth` from its configured `clientConfig` path.
+        "app/auth.config.ts",
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",
@@ -29,9 +34,17 @@
         "app/plugins/**/*.ts",
         "app/utils/**/*.ts",
       ],
-      // Nuxt resolves ~ to the app/ source directory.
+      // The `nuxt` Vitest environment resolves to vitest-environment-nuxt,
+      // which `@nuxt/test-utils` ships as its own dependency. @nuxt/icon
+      // loads the lucide collection by name at build time, so no source file
+      // imports @iconify-json/lucide directly.
+      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
+      // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
+      // and #shared to the shared/ directory.
       "paths": {
         "~/*": ["app/*"],
+        "~~/*": ["*"],
+        "#shared/*": ["shared/*"],
       },
     },
   },

@@ -1,0 +1,27 @@
+{
+  "$schema": "../../schemas/common.schema.json",
+  "common": {
+    "error": "Error",
+    "retry": "Retry",
+    "brand": {
+      "subtitle": "Dashboard"
+    },
+    "actions": {
+      "refresh": "Refresh"
+    },
+    "theme": {
+      "switchToLight": "Switch to light mode",
+      "switchToDark": "Switch to dark mode"
+    },
+    "locale": {
+      "label": "Language"
+    },
+    "system": {
+      "label": "System status",
+      "healthy": "Healthy"
+    },
+    "version": {
+      "label": "Version"
+    }
+  }
+}

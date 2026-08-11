@@ -1,0 +1,27 @@
+{
+  "$schema": "../../schemas/common.schema.json",
+  "common": {
+    "error": "Errore",
+    "retry": "Riprova",
+    "brand": {
+      "subtitle": "Dashboard"
+    },
+    "actions": {
+      "refresh": "Aggiorna"
+    },
+    "theme": {
+      "switchToLight": "Passa al tema chiaro",
+      "switchToDark": "Passa al tema scuro"
+    },
+    "locale": {
+      "label": "Lingua"
+    },
+    "system": {
+      "label": "Stato del sistema",
+      "healthy": "Operativo"
+    },
+    "version": {
+      "label": "Versione"
+    }
+  }
+}
