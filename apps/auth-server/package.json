@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@agent-zero/auth": "workspace:*",
+    "@agent-zero/mail": "workspace:*",
     "@agent-zero/shared": "workspace:*",
     "@hono/node-server": "^1.19.17",
     "hono": "^4.13.1"

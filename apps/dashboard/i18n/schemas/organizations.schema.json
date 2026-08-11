@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Zero dashboard i18n locale file (organizations.json)",
+  "description": "Schema for organizations.json. Generated from en/organizations.json — do not edit manually.",
+  "type": "object",
+  "properties": {
+    "organizations": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "noneSelected": {
+          "type": "string"
+        },
+        "switcher": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "roles": {
+          "type": "object",
+          "properties": {
+            "member": {
+              "type": "string"
+            },
+            "admin": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "members": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "empty": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            },
+            "actions": {
+              "type": "string"
+            },
+            "remove": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "invite": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "string"
+            },
+            "submitPending": {
+              "type": "string"
+            },
+            "sent": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "accept": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "pending": {
+              "type": "string"
+            },
+            "accepted": {
+              "type": "string"
+            },
+            "failed": {
+              "type": "string"
+            },
+            "continue": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "errors": {
+          "type": "object",
+          "properties": {
+            "generic": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

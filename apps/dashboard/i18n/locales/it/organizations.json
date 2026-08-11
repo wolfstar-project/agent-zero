@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schemas/organizations.schema.json",
+  "organizations": {
+    "title": "Organizzazioni",
+    "subtitle": "Membri e inviti dell'organizzazione selezionata.",
+    "noneSelected": "Seleziona un'organizzazione per gestirne i membri.",
+    "switcher": {
+      "label": "Organizzazione"
+    },
+    "roles": {
+      "member": "Membro",
+      "admin": "Amministratore",
+      "owner": "Proprietario"
+    },
+    "members": {
+      "title": "Membri",
+      "empty": "Questa organizzazione non ha ancora membri.",
+      "name": "Nome",
+      "email": "Email",
+      "role": "Ruolo",
+      "actions": "Azioni",
+      "remove": "Rimuovi"
+    },
+    "invite": {
+      "title": "Invita un membro",
+      "email": "Email",
+      "role": "Ruolo",
+      "submit": "Invia invito",
+      "submitPending": "Invio in corso…",
+      "sent": "Invito inviato a {email}."
+    },
+    "accept": {
+      "title": "Invito all'organizzazione",
+      "pending": "Accettazione dell'invito in corso…",
+      "accepted": "Sei entrato nell'organizzazione.",
+      "failed": "Questo invito non è più valido. Potrebbe essere scaduto o già stato usato.",
+      "continue": "Vai alla dashboard"
+    },
+    "errors": {
+      "generic": "Non è stato possibile completare l'operazione sull'organizzazione."
+    }
+  }
+}

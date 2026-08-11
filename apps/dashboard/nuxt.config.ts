@@ -49,11 +49,18 @@ export default defineNuxtConfig({
     { path: '~/modules/shared/components' },
     { path: '~/modules/auth/components' },
     { path: '~/modules/dashboard/components' },
+    // Prefixed so the module's generic names (Switcher, MemberList, InviteForm) cannot collide
+    // with another module's component of the same name.
+    { path: '~/modules/organizations/components', prefix: 'Organizations' },
   ],
   imports: {
     // Composables also moved out of `app/composables`; Nuxt auto-imports by exported symbol name,
     // so call sites (useAuthErrorMessage(), useSidebarCollapsed()) are unaffected.
-    dirs: ['modules/auth/composables', 'modules/shared/composables'],
+    dirs: [
+      'modules/auth/composables',
+      'modules/shared/composables',
+      'modules/organizations/composables',
+    ],
   },
   icon: {
     // The dashboard owns no Nitro routes and its e2e suite asserts that nothing hits a local
@@ -111,6 +118,7 @@ export default defineNuxtConfig({
     auth: {
       enableSignup: authPolicy.enableSignup,
       enableGithubOauth: authPolicy.enableGithubOauth,
+      enableOrganizations: authPolicy.enableOrganizations,
     },
   },
   app: {
@@ -122,6 +130,10 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { appLayout: 'default', auth: { only: 'user' } },
     [loginPath]: { auth: { only: 'guest' } },
+    '/organizations': { appLayout: 'default', auth: { only: 'user' } },
+    // Reached from an invitation email, so the visitor is frequently signed out at that moment:
+    // requiring a session sends them through /login and back, rather than rejecting the link.
+    '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },
   },
   typescript: {
     strict: true,

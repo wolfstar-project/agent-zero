@@ -1,6 +1,7 @@
 import process from 'node:process';
 
 import { authOptionsFromEnvironment, createAuth } from '@agent-zero/auth';
+import { createMailer } from '@agent-zero/mail';
 import { redactSecrets, secretValuesFromEnvironment } from '@agent-zero/shared';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -37,7 +38,21 @@ function resolvePort(value: string | undefined): number {
 }
 
 const options = authOptionsFromEnvironment();
-const auth = createAuth(options);
+
+// This process is the composition root for authentication, so it is where the mail transport is
+// bound and injected. `packages/auth` declares the delivery contract structurally and never
+// imports `@agent-zero/mail`, which keeps one capability package from depending on another.
+const sendMail = createMailer();
+
+const auth = createAuth({
+  ...options,
+  sendInvitationEmail: ({ to, organizationName, inviterName, acceptUrl }) =>
+    sendMail({
+      to,
+      templateId: 'organizationInvitation',
+      context: { organizationName, inviterName, acceptUrl },
+    }),
+});
 
 const app = new Hono();
 

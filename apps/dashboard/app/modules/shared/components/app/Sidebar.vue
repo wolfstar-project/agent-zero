@@ -45,6 +45,9 @@
     </nav>
 
     <ClientOnly>
+      <!-- Only rendered where the deployment actually enables organizations; the auth server
+           enforces the same policy regardless, so a stale build can only hide the switcher. -->
+      <OrganizationsSwitcher v-if="!collapsed && enableOrganizations" />
       <UserMenu v-if="!collapsed" />
     </ClientOnly>
 
@@ -97,6 +100,9 @@
 import { version } from '~~/package.json';
 
 const collapsed = useSidebarCollapsed();
+
+const appConfig = useAppConfig();
+const enableOrganizations = appConfig.auth.enableOrganizations;
 
 const navItems = [
   {

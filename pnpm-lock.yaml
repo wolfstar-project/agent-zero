@@ -105,6 +105,9 @@ importers:
       '@agent-zero/auth':
         specifier: workspace:*
         version: 0.3.0
+      '@agent-zero/mail':
+        specifier: workspace:*
+        version: 0.3.0
       '@agent-zero/shared':
         specifier: workspace:*
         version: 0.3.0
