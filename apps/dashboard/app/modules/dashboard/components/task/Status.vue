@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardTaskStatus } from '~/types/dashboard';
+import type { DashboardTaskStatus } from '~/modules/dashboard/types/dashboard';
 
 const props = defineProps<{ status: DashboardTaskStatus }>();
 

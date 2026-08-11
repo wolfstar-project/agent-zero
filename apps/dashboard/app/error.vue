@@ -12,7 +12,7 @@ import {
   isNotFoundStatus,
   isServerErrorStatus,
   resolveErrorStatus,
-} from '#shared/utils/error-status';
+} from '~/modules/shared/utils/error-status';
 
 const { error } = defineProps<{
   error: NuxtError;

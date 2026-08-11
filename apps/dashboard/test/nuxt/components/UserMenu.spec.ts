@@ -2,7 +2,7 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
-import UserMenu from '~/components/UserMenu.vue';
+import UserMenu from '~/modules/auth/components/UserMenu.vue';
 
 interface MockUser {
   name: string;

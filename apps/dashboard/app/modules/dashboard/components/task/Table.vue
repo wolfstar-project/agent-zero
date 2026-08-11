@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardTask } from '~/types/dashboard';
+import type { DashboardTask } from '~/modules/dashboard/types/dashboard';
 
 defineProps<{ tasks: DashboardTask[]; selectedId?: string }>();
 defineEmits<{ select: [id: string] }>();

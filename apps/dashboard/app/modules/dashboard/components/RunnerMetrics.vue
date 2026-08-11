@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardOverview } from '~/types/dashboard';
+import type { DashboardOverview } from '~/modules/dashboard/types/dashboard';
 
 const props = defineProps<{ overview: DashboardOverview }>();
 

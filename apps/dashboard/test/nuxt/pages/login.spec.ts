@@ -2,7 +2,7 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import type { VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import LoginPage from '~/pages/login.vue';
+import LoginPage from '~/pages/(auth)/login.vue';
 
 /**
  * The login page renders whatever sign-in capabilities `appConfig.auth` publishes, which

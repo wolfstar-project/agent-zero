@@ -40,6 +40,21 @@ export default defineNuxtConfig({
     ],
   ],
   css: ['~/assets/css/main.css'],
+  // Components live under per-module roots instead of the default `app/components`, matching
+  // supastarter's modules/<feature> layout (with `shared` as its own module), so each root is
+  // registered explicitly. Nesting under each root still derives the auto-import prefix from the
+  // relative sub-path exactly like the default scanner did, so tag names (e.g. <TaskTable>,
+  // <AppSidebar>) are unchanged.
+  components: [
+    { path: '~/modules/shared/components' },
+    { path: '~/modules/auth/components' },
+    { path: '~/modules/dashboard/components' },
+  ],
+  imports: {
+    // Composables also moved out of `app/composables`; Nuxt auto-imports by exported symbol name,
+    // so call sites (useAuthErrorMessage(), useSidebarCollapsed()) are unaffected.
+    dirs: ['modules/auth/composables', 'modules/shared/composables'],
+  },
   icon: {
     // The dashboard owns no Nitro routes and its e2e suite asserts that nothing hits a local
     // /api/** path, so the icon component may never fall back to a server endpoint or the

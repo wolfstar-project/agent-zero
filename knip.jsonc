@@ -28,10 +28,11 @@
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",
-        "app/components/**/*.vue",
-        "app/composables/**/*.ts",
+        "app/modules/**/*.vue",
+        "app/modules/**/*.ts",
         "app/middleware/**/*.ts",
         "app/plugins/**/*.ts",
+        "app/types/**/*.ts",
         "app/utils/**/*.ts",
       ],
       // The `nuxt` Vitest environment resolves to vitest-environment-nuxt,
@@ -39,12 +40,10 @@
       // loads the lucide collection by name at build time, so no source file
       // imports @iconify-json/lucide directly.
       "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
-      // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
-      // and #shared to the shared/ directory.
+      // Nuxt resolves ~ to the app/ source directory and ~~ to the project root.
       "paths": {
         "~/*": ["app/*"],
         "~~/*": ["*"],
-        "#shared/*": ["shared/*"],
       },
     },
   },
