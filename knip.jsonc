@@ -34,6 +34,9 @@
         "app/plugins/**/*.ts",
         "app/utils/**/*.ts",
       ],
+      // The `nuxt` Vitest environment resolves to vitest-environment-nuxt,
+      // which `@nuxt/test-utils` ships as its own dependency.
+      "ignoreDependencies": ["vitest-environment-nuxt"],
       // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
       // and #shared to the shared/ directory.
       "paths": {

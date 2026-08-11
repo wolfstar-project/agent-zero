@@ -15,10 +15,12 @@
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app shared test",
     "start": "node .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
-    "test": "vitest run app shared test/unit --passWithNoTests",
+    "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:update": "playwright test --update-snapshots",
+    "test:nuxt": "vitest run --project nuxt",
+    "test:unit": "vitest run --project unit",
     "typecheck": "nuxt prepare && vue-tsc -b --noEmit && tsc --project tsconfig.json --pretty false --noEmit && tsc --project tsconfig.e2e.json --pretty false --noEmit"
   },
   "dependencies": {
@@ -36,11 +38,13 @@
     "@playwright/test": "^1.62.0",
     "@unocss/nuxt": "^66.7.5",
     "@unocss/preset-wind4": "^66.7.5",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.0.11",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^5.9.2",
     "unocss": "^66.7.5",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.10",
     "vue-i18n-extract": "2.0.7",
     "vue-tsc": "^3.1.2"
   }
