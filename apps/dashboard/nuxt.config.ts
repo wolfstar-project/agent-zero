@@ -7,6 +7,10 @@ import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 
 // Resolved once at config evaluation so the dashboard publishes the same sign-in policy the auth
 // server derives from the shared environment (AUTH_ENABLE_SIGNUP, GitHub OAuth credentials).
+// Build-time capture is deliberate: the deployment contract (documented in README and
+// .env.example) is that the dashboard is rebuilt whenever those policy variables change. The
+// auth server enforces its own policy regardless, so a stale build can only mislabel the login
+// page, never open a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
 
 export default defineNuxtConfig({

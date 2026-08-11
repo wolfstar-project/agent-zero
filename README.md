@@ -173,7 +173,10 @@ until you turn them on, so a fresh deployment cannot be signed up for by a stran
 The dashboard needs to know where the adapter lives: `NUXT_PUBLIC_SITE_URL` (default
 `http://localhost:3001`). The sign-in methods it offers are derived at build time from the same
 policy variables the adapter reads (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
-`GITHUB_CLIENT_SECRET`), so the published capabilities cannot diverge from the server's policy.
+`GITHUB_CLIENT_SECRET`), and no runtime override can change them. The flip side of that build-time
+capture is a deployment contract: whenever you change those policy variables, rebuild the dashboard
+in the same environment the adapter runs with, or the login page will keep advertising the old
+capabilities (the adapter still enforces its own policy either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
 `apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
