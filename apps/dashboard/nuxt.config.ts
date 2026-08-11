@@ -2,6 +2,7 @@ import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
 import { authConfigFromEnvironment, defaultAuthServerUrl, loginPath } from './config/auth.js';
+import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 
 // Resolved once at config evaluation so the dashboard publishes the same sign-in policy the auth
@@ -34,6 +35,11 @@ export default defineNuxtConfig({
     ],
   ],
   css: ['~/assets/css/main.css'],
+  vite: {
+    // Untranslated keys are stored as empty strings; drop them from the bundle so vue-i18n falls
+    // back to the default locale instead of rendering "".
+    plugins: [stripEmptyI18nMessagesPlugin()],
+  },
   i18n: {
     locales: i18nLocales,
     defaultLocale,

@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/errors.schema.json",
   "errors": {
     "not_found_title": "Pagina non trovata",
     "not_found_description": "La pagina che stai cercando non esiste o potrebbe essere stata spostata. Controlla il link o torna alla home.",

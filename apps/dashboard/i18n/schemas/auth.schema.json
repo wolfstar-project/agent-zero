@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Zero dashboard i18n locale file (auth.json)",
+  "description": "Schema for auth.json. Generated from en/auth.json — do not edit manually.",
+  "type": "object",
+  "properties": {
+    "auth": {
+      "type": "object",
+      "properties": {
+        "login": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "string"
+            },
+            "submitPending": {
+              "type": "string"
+            },
+            "signUp": {
+              "type": "string"
+            },
+            "signUpPending": {
+              "type": "string"
+            },
+            "github": {
+              "type": "string"
+            },
+            "separator": {
+              "type": "string"
+            },
+            "toSignUp": {
+              "type": "string"
+            },
+            "toSignIn": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "session": {
+          "type": "object",
+          "properties": {
+            "signedInAs": {
+              "type": "string"
+            },
+            "signOut": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "errors": {
+          "type": "object",
+          "properties": {
+            "GENERIC": {
+              "type": "string"
+            },
+            "INVALID_EMAIL_OR_PASSWORD": {
+              "type": "string"
+            },
+            "INVALID_EMAIL": {
+              "type": "string"
+            },
+            "PASSWORD_TOO_SHORT": {
+              "type": "string"
+            },
+            "USER_ALREADY_EXISTS": {
+              "type": "string"
+            },
+            "USER_NOT_FOUND": {
+              "type": "string"
+            },
+            "EMAIL_PASSWORD_SIGN_UP_DISABLED": {
+              "type": "string"
+            },
+            "UNREACHABLE": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

@@ -6,6 +6,11 @@
     "build": "nuxt build",
     "clean": "nuxt cleanup && tsc -b --clean",
     "dev": "nuxt dev",
+    "i18n:check": "node scripts/compare-translations.ts",
+    "i18n:check:fix": "node scripts/compare-translations.ts --fix",
+    "i18n:report": "node scripts/find-invalid-translations.ts",
+    "i18n:report:fix": "node scripts/remove-unused-translations.ts",
+    "i18n:schema": "node scripts/generate-i18n-schema.ts",
     "i18n:status": "node scripts/i18n-status.ts",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app shared test",
     "start": "node .output/server/index.mjs",
@@ -36,6 +41,7 @@
     "typescript": "^5.9.2",
     "unocss": "^66.7.5",
     "vitest": "^3.2.4",
+    "vue-i18n-extract": "2.0.7",
     "vue-tsc": "^3.1.2"
   }
 }

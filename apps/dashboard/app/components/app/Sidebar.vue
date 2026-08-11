@@ -34,7 +34,7 @@
           class="me-2.5 h-1.5 w-1.5"
           :class="item.active ? 'bg-accent' : 'border border-muted'"
         />
-        {{ $t(`dashboard.nav.${item.key}`) }}
+        {{ $t(item.labelKey) }}
       </button>
     </nav>
 
@@ -59,9 +59,9 @@
 
 <script setup lang="ts">
 const navItems = [
-  { key: 'control', active: true },
-  { key: 'tasks', active: false },
-  { key: 'runners', active: false },
-  { key: 'policies', active: false },
+  { key: 'control', labelKey: 'dashboard.nav.control', active: true },
+  { key: 'tasks', labelKey: 'dashboard.nav.tasks', active: false },
+  { key: 'runners', labelKey: 'dashboard.nav.runners', active: false },
+  { key: 'policies', labelKey: 'dashboard.nav.policies', active: false },
 ] as const;
 </script>

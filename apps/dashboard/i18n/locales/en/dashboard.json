@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/dashboard.schema.json",
   "dashboard": {
     "header": {
       "eyebrow": "Agent Zero / Operations",

@@ -30,6 +30,14 @@
       "cache": false,
       "outputs": []
     },
+    "i18n:check": {
+      "cache": false,
+      "outputs": []
+    },
+    "i18n:report": {
+      "cache": false,
+      "outputs": []
+    },
     "i18n:status": {
       "cache": false,
       "outputs": []

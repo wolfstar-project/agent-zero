@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/common.schema.json",
   "common": {
     "error": "Error",
     "retry": "Retry",
