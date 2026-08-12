@@ -84,9 +84,7 @@ export function useOrganizations() {
       return;
     }
     await run(async (authClient) => {
-      const data = unwrap(
-        await authClient.organization.listMembers({ query: { organizationId } }),
-      );
+      const data = unwrap(await authClient.organization.listMembers({ query: { organizationId } }));
       members.value = data?.members ?? [];
     });
   }
