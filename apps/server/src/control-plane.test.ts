@@ -80,6 +80,36 @@ class RacingStorage extends RecordingStorage {
   }
 }
 
+/**
+ * Parks the first delivery-marker write until released: the parked contender has already observed
+ * the delivery absent, and it resumes (overwriting the winner's marker and reading back) only
+ * after another contender claimed end to end. `parked` resolves once the contender is stalled.
+ */
+class ParkedWriteStorage extends RecordingStorage {
+  private resolveParked!: () => void;
+  readonly parked = new Promise<void>((resolve) => {
+    this.resolveParked = resolve;
+  });
+  private releaseGate!: () => void;
+  private readonly gate = new Promise<void>((resolve) => {
+    this.releaseGate = resolve;
+  });
+  private held = false;
+
+  release(): void {
+    this.releaseGate();
+  }
+
+  override async setItem(key: string, value: unknown): Promise<void> {
+    if (!this.held && key.startsWith('deliveries:') && !key.endsWith(':contender')) {
+      this.held = true;
+      this.resolveParked();
+      await this.gate;
+    }
+    await super.setItem(key, value);
+  }
+}
+
 describe('task persistence', () => {
   it('round-trips structured history through a provider-neutral store', async () => {
     const storage = new RecordingStorage();
@@ -111,7 +141,7 @@ describe('task persistence', () => {
 describe('PersistentDeliveryClaimStore', () => {
   for (const [driver, storage] of [
     ['a conditional-write driver', () => new AtomicRecordingStorage()],
-    ['the token-arbitrated fallback', () => new RecordingStorage()],
+    ['the splitter fallback', () => new RecordingStorage()],
   ] as const) {
     it(`grants a claim exactly once and replays the completed outcome via ${driver}`, async () => {
       const store = new PersistentDeliveryClaimStore(storage(), []);
@@ -131,13 +161,27 @@ describe('PersistentDeliveryClaimStore', () => {
 
   it('grants exactly one claim when concurrent contenders both observe the key absent', async () => {
     // Two instances race the fallback: both absence checks return null before either write lands.
-    // Token arbitration must elect a single owner instead of granting the delivery to both.
+    // The splitter must grant at most one of them the delivery, never both.
     const store = new PersistentDeliveryClaimStore(new RacingStorage(2), []);
     const outcomes = await Promise.all([
       store.claim('delivery:guid-race'),
       store.claim('delivery:guid-race'),
     ]);
     expect(outcomes.filter((outcome) => outcome.claimed)).toHaveLength(1);
+  });
+
+  it('refuses the contender whose marker write lands after the winner already claimed', async () => {
+    // The schedule write-then-read arbitration resolved by granting BOTH contenders: one
+    // contender observes the delivery absent and stalls before its marker write, the winner
+    // claims end to end, and only then does the stalled contender overwrite the winner's marker
+    // and read back. The splitter's contender register makes the late writer lose instead.
+    const storage = new ParkedWriteStorage();
+    const store = new PersistentDeliveryClaimStore(storage, []);
+    const late = store.claim('delivery:guid-race');
+    await storage.parked;
+    await expect(store.claim('delivery:guid-race')).resolves.toEqual({ claimed: true });
+    storage.release();
+    await expect(late).resolves.toEqual({ claimed: false, outcome: null });
   });
 
   it('keeps distinct deliveries independent', async () => {

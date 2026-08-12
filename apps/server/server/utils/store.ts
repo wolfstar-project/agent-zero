@@ -48,7 +48,7 @@ export const taskStore: TaskStore = new PersistentTaskStore(storage);
  * because the claims live in the shared KV backend rather than a process-local map, a
  * redelivered issue event observes the recorded outcome across restarts and across server
  * instances instead of starting a duplicate run. The KV facade has no conditional write, so
- * the claim uses the store's token-arbitrated fallback, which elects a single owner among
+ * the claim uses the store's splitter fallback, which grants at most one owner among
  * contenders that all saw the key absent; the router's in-memory registry still serializes
  * concurrent deliveries within one process.
  */

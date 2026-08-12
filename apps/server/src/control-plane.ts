@@ -113,8 +113,6 @@ const DELIVERY_PREFIX = 'deliveries:';
 interface DeliveryClaimRecord {
   claimedAt: string;
   outcome: unknown;
-  /** Random arbitration token; only the contender whose token survives the read-back owns the claim. */
-  token?: string;
 }
 
 /**
@@ -122,10 +120,15 @@ interface DeliveryClaimRecord {
  *
  * The claim marker is written before the work it guards. Drivers that expose
  * {@link KeyValueStorage.setItemIfAbsent} make the claim an atomic conditional create across
- * instances. Drivers without one never get a bare read-then-write: the claim is arbitrated
- * instead — every contender writes a marker carrying a random token and then reads the key back,
- * and only the contender whose token survived owns the delivery. Two instances that both saw the
- * key absent therefore resolve to exactly one owner instead of both claiming.
+ * instances. Drivers without one never get a bare write-then-read (which is last-writer-wins, so
+ * a later writer would read back its own token and claim alongside the earlier winner): the claim
+ * runs a splitter instead. Each contender first records itself in a contender register, then
+ * treats an existing marker as a closed door, writes the marker, and owns the delivery only when
+ * the register still holds its own token. Any interleaving that could have produced a second
+ * owner is instead observed as a closed door or an overwritten register, so at most one contender
+ * ever claims; under a pathological interleaving every contender may lose, which reports the
+ * standing (unfinished) claim — the same safe refusal as a claim lost mid-run — rather than
+ * starting duplicate work.
  */
 export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
   constructor(
@@ -135,20 +138,25 @@ export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
 
   async claim(key: string): Promise<DeliveryClaim> {
     const storageKey = deliveryStorageKey(key);
-    const marker: DeliveryClaimRecord = { claimedAt: now(), outcome: null, token: randomUUID() };
+    const marker: DeliveryClaimRecord = { claimedAt: now(), outcome: null };
     if (this.storage.setItemIfAbsent) {
       if (await this.storage.setItemIfAbsent(storageKey, marker)) return { claimed: true };
       return { claimed: false, outcome: await this.recordedOutcome(storageKey) };
     }
+    // Splitter arbitration for drivers without a conditional create. Order is load-bearing:
+    // register first, then check the door, then close it, then read the register back. A winner's
+    // read-back proves no other contender registered after it; any such contender must have
+    // registered before the winner closed the door and would therefore have lost the read-back
+    // itself, or registered after and seen the door closed. Two contenders can never both win.
+    const token = randomUUID();
+    const contenderKey = contenderStorageKey(storageKey);
+    await this.storage.setItem(contenderKey, token);
     const existing = await this.storage.getItem(storageKey);
     if (isDeliveryClaimRecord(existing)) return { claimed: false, outcome: existing.outcome };
-    // Token arbitration for drivers without a conditional create: the write is last-writer-wins,
-    // so the read-back elects a single owner among contenders that all observed the key absent.
-    // A losing contender reports the standing claim rather than starting duplicate work.
     await this.storage.setItem(storageKey, marker);
-    const written = await this.storage.getItem(storageKey);
-    if (isDeliveryClaimRecord(written) && written.token === marker.token) return { claimed: true };
-    return { claimed: false, outcome: isDeliveryClaimRecord(written) ? written.outcome : null };
+    const lastContender = await this.storage.getItem(contenderKey);
+    if (lastContender === token) return { claimed: true };
+    return { claimed: false, outcome: await this.recordedOutcome(storageKey) };
   }
 
   async complete(key: string, outcome: unknown): Promise<void> {
@@ -160,7 +168,10 @@ export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
   }
 
   async release(key: string): Promise<void> {
-    await this.storage.removeItem?.(deliveryStorageKey(key));
+    const storageKey = deliveryStorageKey(key);
+    // The contender register goes first so a retry never reads a stale token as its own loss.
+    await this.storage.removeItem?.(contenderStorageKey(storageKey));
+    await this.storage.removeItem?.(storageKey);
   }
 
   private async recordedOutcome(storageKey: string): Promise<unknown> {
@@ -172,6 +183,11 @@ export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
 /** Delivery keys embed caller-supplied identifiers; hashing keeps every byte storage-safe. */
 function deliveryStorageKey(key: string): string {
   return `${DELIVERY_PREFIX}${createHash('sha256').update(key).digest('hex')}`;
+}
+
+/** The splitter's contender register for one delivery; the hex digest cannot collide with it. */
+function contenderStorageKey(storageKey: string): string {
+  return `${storageKey}:contender`;
 }
 
 function isDeliveryClaimRecord(value: unknown): value is DeliveryClaimRecord {
