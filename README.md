@@ -33,7 +33,7 @@ Feedback is never treated as truth merely because it came from a human or an AI 
 ## Architecture
 
 ```text
-GitHub adapter / CLI
+Source-control adapters (GitHub, GitLab, Bitbucket, Gitea) / CLI
         │
         ▼
    Agent state machine
@@ -48,19 +48,19 @@ oRPC control plane ─── typed task API, persistence, and scheduling
 Nuxt dashboard ─── frontend-only operational interface ─── auth adapter ─── session store
 ```
 
-| Package                                  | Responsibility                                                  |
-| ---------------------------------------- | --------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)     | Orchestration and state transitions                             |
-| [`packages/runner`](./packages/runner)   | The only boundary that executes commands or mutates a checkout  |
-| [`packages/models`](./packages/models)   | Model-provider abstractions                                     |
-| [`packages/github`](./packages/github)   | GitHub event and API adapters                                   |
-| [`packages/config`](./packages/config)   | Configuration parsing and policy                                |
-| [`packages/shared`](./packages/shared)   | Stable cross-package contracts                                  |
-| [`packages/cli`](./packages/cli)         | Argument parsing and terminal presentation                      |
-| [`packages/auth`](./packages/auth)       | Authentication policy and the Better Auth instance              |
-| [`apps/server`](./apps/server)           | oRPC control-plane transport and composition root               |
-| [`apps/auth-server`](./apps/auth-server) | Standalone auth adapter; the only component with a database     |
-| [`apps/dashboard`](./apps/dashboard)     | Nuxt operational dashboard, authenticated client of the adapter |
+| Package                                                | Responsibility                                                                            |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                       |
+| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                            |
+| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                               |
+| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea) |
+| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                          |
+| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                            |
+| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                |
+| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth instance                                        |
+| [`apps/server`](./apps/server)                         | oRPC control-plane transport and composition root                                         |
+| [`apps/auth-server`](./apps/auth-server)               | Standalone auth adapter; the only component with a database                               |
+| [`apps/dashboard`](./apps/dashboard)                   | Nuxt operational dashboard, authenticated client of the adapter                           |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 

@@ -284,9 +284,6 @@ importers:
       '@agent-zero/config':
         specifier: workspace:*
         version: 0.3.0
-      '@agent-zero/github':
-        specifier: workspace:*
-        version: 0.3.0
       '@agent-zero/models':
         specifier: workspace:*
         version: 0.3.0
@@ -294,6 +291,9 @@ importers:
         specifier: workspace:*
         version: 0.3.0
       '@agent-zero/shared':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/source-control':
         specifier: workspace:*
         version: 0.3.0
       '@orpc/server':
@@ -611,46 +611,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
 
-  packages/github:
-    dependencies:
-      '@agent-zero/shared':
-        specifier: workspace:*
-        version: 0.3.0
-      '@arethetypeswrong/core':
-        specifier: ^0.18.1
-        version: 0.18.5
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.13
-      '@types/node':
-        specifier: ^18.0.0 || ^20.0.0 || >=22.0.0
-        version: 24.13.3
-      happy-dom:
-        specifier: '*'
-        version: 20.11.2
-      publint:
-        specifier: ^0.3.8
-        version: 0.3.23
-      tsx:
-        specifier: '*'
-        version: 4.23.11
-    devDependencies:
-      oxlint:
-        specifier: ^1.44.0
-        version: 1.77.0(oxlint-tsgolint@7.0.2001)
-      oxlint-tsgolint:
-        specifier: ^7.0.2001
-        version: 7.0.2001
-      tsdown:
-        specifier: ^0.22.14
-        version: 0.22.14(@arethetypeswrong/core@0.18.5)(publint@0.3.23)(tsx@4.23.11)
-      typescript:
-        specifier: ^5.9.2
-        version: typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
-
   packages/models:
     dependencies:
       '@agent-zero/shared':
@@ -757,6 +717,46 @@ importers:
 
   packages/shared:
     dependencies:
+      '@arethetypeswrong/core':
+        specifier: ^0.18.1
+        version: 0.18.5
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.13
+      '@types/node':
+        specifier: ^18.0.0 || ^20.0.0 || >=22.0.0
+        version: 24.13.3
+      happy-dom:
+        specifier: '*'
+        version: 20.11.2
+      publint:
+        specifier: ^0.3.8
+        version: 0.3.23
+      tsx:
+        specifier: '*'
+        version: 4.23.11
+    devDependencies:
+      oxlint:
+        specifier: ^1.44.0
+        version: 1.77.0(oxlint-tsgolint@7.0.2001)
+      oxlint-tsgolint:
+        specifier: ^7.0.2001
+        version: 7.0.2001
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@arethetypeswrong/core@0.18.5)(publint@0.3.23)(tsx@4.23.11)
+      typescript:
+        specifier: ^5.9.2
+        version: typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
+
+  packages/source-control:
+    dependencies:
+      '@agent-zero/shared':
+        specifier: workspace:*
+        version: 0.3.0
       '@arethetypeswrong/core':
         specifier: ^0.18.1
         version: 0.18.5

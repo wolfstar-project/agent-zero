@@ -11,7 +11,7 @@
   "references": [
     { "path": "../../packages/agent" },
     { "path": "../../packages/config" },
-    { "path": "../../packages/github" },
+    { "path": "../../packages/source-control" },
     { "path": "../../packages/models" },
     { "path": "../../packages/runner" },
     { "path": "../../packages/shared" }

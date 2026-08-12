@@ -1,11 +1,5 @@
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
-import {
-  GitHubChecks,
-  parseReviewEvent,
-  reviewInputFromEvent,
-  verifyWebhook,
-} from '@agent-zero/github';
 import { modelFromEnvironment } from '@agent-zero/models';
 import { createRunner, runnerOptionsFromPolicy, type RunnerPool } from '@agent-zero/runner';
 import {
@@ -15,10 +9,17 @@ import {
   renderEvidenceMarkdown,
   secretValuesFromEnvironment,
   taskId,
-  type PullRequestRef,
   type ReviewInput,
   type TaskResult,
 } from '@agent-zero/shared';
+import {
+  createProvider,
+  providerForDelivery,
+  reviewInputFromEvent,
+  type ChangeRequestRef,
+  type ProviderKind,
+  type WebhookHeaders,
+} from '@agent-zero/source-control';
 import { z } from 'zod';
 
 import {
@@ -225,13 +226,20 @@ export async function decideApproval(
 }
 
 export interface WebhookRequest {
-  event: string;
+  /** The raw request body, exactly as received; signatures verify these bytes. */
   body: string;
-  signature: string | undefined;
+  headers: WebhookHeaders;
+}
+
+/** One source-control provider a deployment accepts webhooks from, with its own secret. */
+export interface ProviderWebhookConfig {
+  kind: ProviderKind;
+  secret: string;
 }
 
 export interface WebhookOptions {
-  secret: string;
+  /** Providers this deployment listens to. One deployment may connect several. */
+  providers: readonly ProviderWebhookConfig[];
   checkoutPath: string;
   ignoreAuthors?: readonly string[];
   store?: TaskStore;
@@ -241,14 +249,28 @@ export interface WebhookOptions {
 export type WebhookOutcome =
   | { status: 'rejected'; reason: string }
   | { status: 'ignored'; reason: string }
-  | { status: 'accepted'; result: TaskResult; pullRequest: PullRequestRef };
+  | {
+      status: 'accepted';
+      result: TaskResult;
+      provider: ProviderKind;
+      changeRequest: ChangeRequestRef;
+    };
 
 export async function ingestWebhook(
   request: WebhookRequest,
   options: WebhookOptions,
 ): Promise<WebhookOutcome> {
-  if (!verifyWebhook(request.body, request.signature, options.secret))
+  const kinds = options.providers.map((provider) => provider.kind);
+  const provider = providerForDelivery(request.headers, kinds);
+  if (!provider)
+    return { status: 'rejected', reason: 'No configured provider recognizes this delivery' };
+  const secret = options.providers.find((entry) => entry.kind === provider.kind)?.secret ?? '';
+
+  if (!provider.verifyWebhook({ body: request.body, headers: request.headers }, secret))
     return { status: 'rejected', reason: 'Invalid webhook signature' };
+
+  const eventName = provider.eventName(request.headers);
+  if (eventName === undefined) return { status: 'ignored', reason: 'The delivery names no event' };
 
   let payload: unknown;
   try {
@@ -257,8 +279,8 @@ export async function ingestWebhook(
     return { status: 'rejected', reason: 'Webhook body is not valid JSON' };
   }
 
-  const event = parseReviewEvent(
-    request.event,
+  const event = provider.parseReviewEvent(
+    eventName,
     payload,
     options.ignoreAuthors ? { ignoreAuthors: options.ignoreAuthors } : {},
   );
@@ -280,32 +302,58 @@ export async function ingestWebhook(
     reviewInputFromEvent(event, { checkoutPath: options.checkoutPath, mode }),
     runOptions,
   );
-  return { status: 'accepted', result, pullRequest: event.pullRequest };
+  return {
+    status: 'accepted',
+    result,
+    provider: provider.kind,
+    changeRequest: event.changeRequest,
+  };
 }
 
 export interface PublishOptions {
   token: string | undefined;
+  /** API base URL, required for self-hosted providers. */
+  baseUrl?: string;
   fetch?: typeof globalThis.fetch;
   store?: TaskStore;
 }
 
+const statusTokenVariables: Record<ProviderKind, string> = {
+  github: 'GITHUB_TOKEN',
+  gitlab: 'GITLAB_TOKEN',
+  'bitbucket-cloud': 'BITBUCKET_TOKEN',
+  'bitbucket-data-center': 'BITBUCKET_TOKEN',
+  gitea: 'GITEA_TOKEN',
+};
+
+/** The status credential for one provider, from its fixed environment variable. */
+export function statusTokenFromEnvironment(kind: ProviderKind): string | undefined {
+  return process.env[statusTokenVariables[kind]];
+}
+
 export function githubTokenFromEnvironment(): string | undefined {
-  return process.env.GITHUB_TOKEN;
+  return statusTokenFromEnvironment('github');
 }
 
 export async function publishEvidence(
-  target: PullRequestRef,
+  target: ChangeRequestRef,
   taskIdentifier: string,
   options: PublishOptions,
 ): Promise<{ published: boolean; reason?: string }> {
-  if (!options.token) return { published: false, reason: 'GITHUB_TOKEN is not configured' };
+  if (!options.token)
+    return {
+      published: false,
+      reason: `${statusTokenVariables[target.provider]} is not configured`,
+    };
   const task = await (options.store ?? defaultStore).get(taskIdentifier);
   if (!task?.evidence) return { published: false, reason: `Unknown task: ${taskIdentifier}` };
-  await new GitHubChecks({
+  const publisher = createProvider(target.provider).statusPublisher({
     token: options.token,
+    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(options.fetch ? { fetch: options.fetch } : {}),
-  }).publish(target, task.evidence);
-  return { published: true };
+  });
+  const publication = await publisher.publish(target, task.evidence);
+  return { published: true, ...(publication.degraded ? { reason: publication.degraded } : {}) };
 }
 
 function repositoryLabel(input: ReviewInput): string {

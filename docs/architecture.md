@@ -3,9 +3,9 @@
 Agent Zero is organized as a dependency-directed monorepo. The core decides what should happen; adapters decide how external systems communicate with it; the runner controls what is allowed to happen to a checkout.
 
 ```text
-GitHub adapter ─┐
-CLI adapter ────┼──> agent runtime ──> runner boundary ──> isolated checkout
-oRPC server ────┘        │
+Source-control adapters ─┐
+CLI adapter ─────────────┼──> agent runtime ──> runner boundary ──> isolated checkout
+oRPC server ─────────────┘        │
                          ├──> model abstraction ──> provider
                          └──> shared contracts
 
@@ -15,7 +15,7 @@ Nuxt dashboard ───> operational interface ──> auth adapter ──> ses
 ## Dependency direction
 
 - `shared` contains stable data contracts and must not import feature packages.
-- `config`, `models`, `github`, and `runner` implement focused capabilities around shared contracts.
+- `config`, `models`, `source-control`, and `runner` implement focused capabilities around shared contracts.
 - `agent` composes policies and state transitions without knowing HTTP or terminal details.
 - `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
 - `apps/server` is an entry-point adapter and composition root. Like `cli`, it may depend on the runtime; the runtime must not depend on it.
@@ -26,7 +26,7 @@ If a change creates a reverse dependency, move the shared contract inward instea
 
 ## Execution boundary
 
-Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A transport handler, GitHub adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
+Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A transport handler, source-control adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
 
 `observe` is the default mode. It can inspect and report but cannot write. Enabling `fix` requires both an explicit mode and repository policy permission.
 
@@ -96,7 +96,7 @@ Validation lives in `packages/agent/src/validation.ts` and is independent of any
 
 `TaskResult.verified` is derived in exactly one place, at the point a run produces its terminal result: it requires a completed state, an applied change, and every executed check passing. No branch can assert verification it did not earn, which is what makes "a failed verification is never presented as success" a property of the code rather than a convention.
 
-`EvidenceBundle` and its Markdown renderer live in `packages/shared` because both the GitHub adapter and the CLI consume them, and because rendering is a pure function over contracts with no I/O. Terminal states map deterministically onto GitHub check conclusions in `packages/github`.
+`EvidenceBundle` and its Markdown renderer live in `packages/shared` because both the source-control adapters and the CLI consume them, and because rendering is a pure function over contracts with no I/O. Terminal states map deterministically onto a provider-neutral run outcome in `packages/source-control`, which each provider adapter translates into its own status vocabulary — explicitly noting any conclusion the platform cannot express (see `docs/source-control-providers.md`).
 
 ## Adding a capability
 
