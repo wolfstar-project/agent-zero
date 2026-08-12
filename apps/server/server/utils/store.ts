@@ -1,7 +1,9 @@
 import { kv } from 'vite-hub/kv';
 
 import {
+  PersistentDeliveryClaimStore,
   PersistentTaskStore,
+  type DeliveryClaimStore,
   type KeyValueStorage,
   type TaskStore,
 } from '../../src/control-plane.js';
@@ -32,8 +34,21 @@ class KvKeyValueStorage implements KeyValueStorage {
 }
 
 /**
- * One task store per server process. The KV driver (fs-lite locally; Cloudflare KV,
- * Deno KV, or Upstash when hosted) is selected in `vite.config.ts`, so this module
- * never changes when the deployment target does.
+ * One shared storage instance per server process. The KV driver (fs-lite locally;
+ * Cloudflare KV, Deno KV, or Upstash when hosted) is selected in `vite.config.ts`,
+ * so this module never changes when the deployment target does.
  */
-export const taskStore: TaskStore = new PersistentTaskStore(new KvKeyValueStorage());
+const storage: KeyValueStorage = new KvKeyValueStorage();
+
+export const taskStore: TaskStore = new PersistentTaskStore(storage);
+
+/**
+ * The one durable delivery-claim store for this deployment. Every route that ingests
+ * webhooks must inject it as `WebhookOptions.deliveryClaims`: because the claims live
+ * in the shared KV backend rather than a process-local map, a redelivered issue event
+ * observes the recorded outcome across restarts and across server instances instead of
+ * starting a duplicate run. The KV facade has no conditional write, so the claim uses
+ * the documented read-then-write fallback; the router's in-memory registry still
+ * serializes concurrent deliveries within one process.
+ */
+export const deliveryClaimStore: DeliveryClaimStore = new PersistentDeliveryClaimStore(storage);
