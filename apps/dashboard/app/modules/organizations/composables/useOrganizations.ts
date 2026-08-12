@@ -17,11 +17,11 @@ function messageFrom(cause: unknown): string {
 /**
  * Better Auth client calls resolve with `{ data, error }` rather than rejecting on an API error.
  * Throwing the resolved error routes it through `run`'s shared handling, so a failed action
- * surfaces instead of looking successful with empty data.
+ * surfaces instead of looking successful with empty data. Checked inline at each call site
+ * because a generic unwrap helper collapses the client's `{ data, error }` union to `{}`.
  */
-function unwrap<T>(result: { data: T; error: unknown }): T {
-  if (result.error) throw result.error;
-  return result.data;
+function throwOnApiError(apiError: unknown): void {
+  if (apiError) throw apiError;
 }
 
 /**
@@ -67,7 +67,8 @@ export function useOrganizations() {
 
   async function refresh() {
     await run(async (authClient) => {
-      const data = unwrap(await authClient.organization.list());
+      const { data, error: apiError } = await authClient.organization.list();
+      throwOnApiError(apiError);
       organizations.value = data ?? [];
     });
     // A fresh session arrives with no active organization while the switcher renders the first
@@ -84,23 +85,29 @@ export function useOrganizations() {
       return;
     }
     await run(async (authClient) => {
-      const data = unwrap(await authClient.organization.listMembers({ query: { organizationId } }));
+      const { data, error: apiError } = await authClient.organization.listMembers({
+        query: { organizationId },
+      });
+      throwOnApiError(apiError);
       members.value = data?.members ?? [];
     });
   }
 
   async function setActive(organizationId: string) {
     await run(async (authClient) => {
-      const data = unwrap(await authClient.organization.setActive({ organizationId }));
+      const { data, error: apiError } = await authClient.organization.setActive({ organizationId });
+      throwOnApiError(apiError);
       activeOrganization.value = data ?? null;
     });
     await refreshMembers();
   }
 
   async function create(input: { name: string; slug: string }) {
-    const created = await run(async (authClient) =>
-      unwrap(await authClient.organization.create(input)),
-    );
+    const created = await run(async (authClient) => {
+      const { data, error: apiError } = await authClient.organization.create(input);
+      throwOnApiError(apiError);
+      return data;
+    });
     if (created) await refresh();
     return created;
   }
@@ -108,16 +115,25 @@ export function useOrganizations() {
   async function inviteMember(input: { email: string; role: OrganizationRole }) {
     const organizationId = activeOrganization.value?.id;
     if (!organizationId) return undefined;
-    return run(async (authClient) =>
-      unwrap(await authClient.organization.inviteMember({ ...input, organizationId })),
-    );
+    return run(async (authClient) => {
+      const { data, error: apiError } = await authClient.organization.inviteMember({
+        ...input,
+        organizationId,
+      });
+      throwOnApiError(apiError);
+      return data;
+    });
   }
 
   async function removeMember(memberIdOrEmail: string) {
     const organizationId = activeOrganization.value?.id;
     if (!organizationId) return;
     await run(async (authClient) => {
-      unwrap(await authClient.organization.removeMember({ memberIdOrEmail, organizationId }));
+      const { error: apiError } = await authClient.organization.removeMember({
+        memberIdOrEmail,
+        organizationId,
+      });
+      throwOnApiError(apiError);
     });
     await refreshMembers();
   }
