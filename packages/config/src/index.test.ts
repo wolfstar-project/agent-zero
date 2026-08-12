@@ -39,6 +39,11 @@ describe('loadConfig', () => {
     expect(loaded.autofix.enabled).toBe(false);
     expect(loaded.runner.isolation).toBe('local');
     expect(loaded.checks).toEqual([]);
+    expect(loaded.issues).toEqual({
+      enabled: false,
+      requireLabel: 'agent-zero',
+      branchPrefix: 'agent-zero/',
+    });
   });
 
   it('merges nested sections instead of replacing them', async () => {
@@ -127,6 +132,24 @@ describe('validateConfig', () => {
         invalidConfig({ model: { ...defaultConfig.model, provider: 'mystery-cloud' } }),
       ),
     ).toThrow('Invalid model provider');
+  });
+
+  it('requires an explicit opt-in label for issue tasks', () => {
+    expect(() =>
+      validateConfig(config({ issues: { ...defaultConfig.issues, requireLabel: '  ' } })),
+    ).toThrow('issues.requireLabel must be a non-empty label name');
+  });
+
+  it('rejects a branch prefix a git ref cannot carry', () => {
+    for (const branchPrefix of ['', '/lead', '-lead/', 'a..b/', 'a b/', 'a//b', 'refs.lock'])
+      expect(() =>
+        validateConfig(config({ issues: { ...defaultConfig.issues, branchPrefix } })),
+      ).toThrow('issues.branchPrefix must be a valid git branch prefix');
+    for (const branchPrefix of ['agent-zero/', 'bots/agent-zero/', 'agent-zero-'])
+      expect(
+        validateConfig(config({ issues: { ...defaultConfig.issues, branchPrefix } })).issues
+          .branchPrefix,
+      ).toBe(branchPrefix);
   });
 
   it('keeps custom provider endpoints out of repository policy', () => {

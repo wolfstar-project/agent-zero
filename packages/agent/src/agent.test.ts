@@ -11,7 +11,7 @@ import type {
 } from '@agent-zero/shared';
 import { describe, expect, it } from 'vitest';
 
-import { AgentZero, classifyChangeRisk } from './agent.js';
+import { AgentZero, classifyChangeRisk, sanitizeAcceptanceCriteria } from './agent.js';
 
 const sourceFile = 'export function load() {\n  return null;\n}\n';
 
@@ -274,6 +274,63 @@ describe('proactive review', () => {
       'The finding does not cite a file changed by the proactive review diff.',
     );
     expect(writes).toEqual([]);
+  });
+});
+
+describe('issue tasks', () => {
+  it('runs an issue task and records its acceptance criteria as evidence', async () => {
+    const { agent, modelCalls } = harness({
+      decisions: [
+        decision({
+          acceptanceCriteria: ['  load() never returns null  ', '', 'callers stay unchanged'],
+        }),
+      ],
+    });
+    const result = await agent.run({
+      repository: '/checkout',
+      feedback: '[issue #12 by dev] Guard the null return',
+      mode: 'fix',
+      trigger: 'issue',
+      issue: { owner: 'acme', repo: 'app', number: 12 },
+    });
+    expect(result.state).toBe('completed');
+    expect(result.verified).toBe(true);
+    expect(modelCalls[0]?.input.trigger).toBe('issue');
+    expect(result.acceptanceCriteria).toEqual([
+      'load() never returns null',
+      'callers stay unchanged',
+    ]);
+  });
+
+  it('requires an isolated runner for issue-triggered fixes when configured', async () => {
+    const { agent, writes } = harness({
+      overrides: {
+        autofix: {
+          ...defaultConfig.autofix,
+          enabled: true,
+          allowedChangeRisks: ['mechanical', 'behavioral'],
+          requireIsolated: true,
+        },
+      },
+    });
+    const result = await agent.run({
+      repository: '/checkout',
+      feedback: '[issue #12 by dev] Guard the null return',
+      mode: 'fix',
+      trigger: 'issue',
+      issue: { owner: 'acme', repo: 'app', number: 12 },
+    });
+    expect(result.state).toBe('needs-human');
+    expect(result.summary).toContain('isolated runner');
+    expect(writes).toEqual([]);
+  });
+
+  it('bounds model-authored acceptance criteria before they become evidence', () => {
+    const oversized = Array.from({ length: 30 }, (_unused, index) => `criterion ${String(index)}`);
+    expect(sanitizeAcceptanceCriteria(oversized)).toHaveLength(20);
+    expect(sanitizeAcceptanceCriteria(undefined)).toEqual([]);
+    const [long] = sanitizeAcceptanceCriteria(['x'.repeat(1_000)]);
+    expect(long?.length).toBeLessThan(600);
   });
 });
 

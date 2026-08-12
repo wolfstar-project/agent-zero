@@ -2,12 +2,23 @@ import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
 import {
   GitHubChecks,
+  GitHubPullRequests,
+  issueBranchName,
+  issueInputFromTask,
+  parseIssueTask,
   parseReviewEvent,
+  prepareIssuePullRequest,
   reviewInputFromEvent,
   verifyWebhook,
+  type BranchFile,
 } from '@agent-zero/github';
 import { modelFromEnvironment } from '@agent-zero/models';
-import { createRunner, runnerOptionsFromPolicy, type RunnerPool } from '@agent-zero/runner';
+import {
+  createRunner,
+  LocalRunner,
+  runnerOptionsFromPolicy,
+  type RunnerPool,
+} from '@agent-zero/runner';
 import {
   evidenceFromResult,
   now,
@@ -15,6 +26,7 @@ import {
   renderEvidenceMarkdown,
   secretValuesFromEnvironment,
   taskId,
+  type IssueRef,
   type PullRequestRef,
   type ReviewInput,
   type TaskResult,
@@ -63,7 +75,7 @@ export const approvalInput = z.object({
 });
 
 export function health() {
-  return { status: 'ok' as const, service: 'agent-zero', version: '0.3.0' };
+  return { status: 'ok' as const, service: 'agent-zero', version: '0.4.0' };
 }
 
 export async function listTasks(store: TaskStore = defaultStore) {
@@ -236,12 +248,23 @@ export interface WebhookOptions {
   ignoreAuthors?: readonly string[];
   store?: TaskStore;
   scheduler?: TaskScheduler;
+  /** Credentials for publishing an issue run's verified changes as a pull request. */
+  github?: { token: string | undefined; fetch?: typeof globalThis.fetch };
 }
 
 export type WebhookOutcome =
   | { status: 'rejected'; reason: string }
   | { status: 'ignored'; reason: string }
-  | { status: 'accepted'; result: TaskResult; pullRequest: PullRequestRef };
+  | { status: 'accepted'; result: TaskResult; pullRequest: PullRequestRef }
+  | {
+      status: 'accepted';
+      result: TaskResult;
+      issue: IssueRef;
+      /** The pull request the verified changes were published as, when one was earned. */
+      openedPullRequest: { number: number; url: string } | null;
+      /** Why no pull request was opened. Null when one was. */
+      pullRequestReason: string | null;
+    };
 
 export async function ingestWebhook(
   request: WebhookRequest,
@@ -256,6 +279,8 @@ export async function ingestWebhook(
   } catch {
     return { status: 'rejected', reason: 'Webhook body is not valid JSON' };
   }
+
+  if (request.event === 'issues') return ingestIssueEvent(payload, options);
 
   const event = parseReviewEvent(
     request.event,
@@ -281,6 +306,121 @@ export async function ingestWebhook(
     runOptions,
   );
   return { status: 'accepted', result, pullRequest: event.pullRequest };
+}
+
+/**
+ * Run one scoped issue task and, when the run earns it, publish the result as a pull request.
+ *
+ * The issue text is untrusted input: it becomes feedback for the runtime to validate, the run mode
+ * comes only from repository policy, and policy must opt in (`issues.enabled` plus the required
+ * label) before any model call happens. A failed publication never fails the run — the evidence is
+ * already persisted — it is reported as the reason no pull request exists.
+ */
+async function ingestIssueEvent(
+  payload: unknown,
+  options: WebhookOptions,
+): Promise<WebhookOutcome> {
+  const config = await loadConfig(options.checkoutPath);
+  if (!config.issues.enabled)
+    return { status: 'ignored', reason: 'Issue tasks are disabled by repository policy' };
+
+  const task = parseIssueTask('issues', payload, {
+    requireLabel: config.issues.requireLabel,
+    ...(options.ignoreAuthors ? { ignoreAuthors: options.ignoreAuthors } : {}),
+  });
+  if (!task) return { status: 'ignored', reason: 'No actionable issue task in this event' };
+
+  const runOptions: RunTaskOptions = {
+    ...(options.store ? { store: options.store } : {}),
+    ...(options.scheduler ? { scheduler: options.scheduler } : {}),
+  };
+  const result = await runTask(
+    issueInputFromTask(task, { checkoutPath: options.checkoutPath, mode: config.mode }),
+    runOptions,
+  );
+
+  let openedPullRequest: { number: number; url: string } | null = null;
+  let pullRequestReason: string | null = null;
+  try {
+    const publication = await openIssuePullRequest(result.id, {
+      token: options.github?.token,
+      checkoutPath: options.checkoutPath,
+      ...(options.github?.fetch ? { fetch: options.github.fetch } : {}),
+      ...(options.store ? { store: options.store } : {}),
+    });
+    if (publication.opened)
+      openedPullRequest = { number: publication.number, url: publication.url };
+    else pullRequestReason = publication.reason;
+  } catch (error) {
+    pullRequestReason = redactSecrets(error instanceof Error ? error.message : String(error));
+  }
+  return { status: 'accepted', result, issue: task.issue, openedPullRequest, pullRequestReason };
+}
+
+export interface OpenIssuePullRequestOptions {
+  token: string | undefined;
+  checkoutPath: string;
+  fetch?: typeof globalThis.fetch;
+  store?: TaskStore;
+}
+
+export type IssuePullRequestOutcome =
+  | { opened: true; number: number; url: string }
+  | { opened: false; reason: string };
+
+/**
+ * Publish a finished issue run as an isolated branch and review-ready pull request.
+ *
+ * Whether the run has earned a pull request is decided by `prepareIssuePullRequest` alone; this
+ * composition root only supplies the stored evidence, reads the verified change contents through a
+ * read-only runner, and hands both to the GitHub adapter. The default branch is never pushed to:
+ * changes land on a fresh `issues.branchPrefix` branch whose name contains no issue text.
+ */
+export async function openIssuePullRequest(
+  taskIdentifier: string,
+  options: OpenIssuePullRequestOptions,
+): Promise<IssuePullRequestOutcome> {
+  const task = await (options.store ?? defaultStore).get(taskIdentifier);
+  const evidence = task?.evidence;
+  if (!evidence) return { opened: false, reason: `Unknown task: ${taskIdentifier}` };
+
+  const readiness = prepareIssuePullRequest(evidence);
+  if (!readiness.ready) return { opened: false, reason: readiness.reason };
+  const issue = evidence.issue;
+  if (!issue)
+    return { opened: false, reason: 'The run does not reference the issue it worked on.' };
+  if (!options.token) return { opened: false, reason: 'GITHUB_TOKEN is not configured' };
+
+  const config = await loadConfig(options.checkoutPath);
+  const reader = new LocalRunner(options.checkoutPath);
+  const files: BranchFile[] = [];
+  for (const path of evidence.changedFiles)
+    files.push(
+      (await reader.exists(path))
+        ? { path, content: await reader.read(path) }
+        : { path, content: null },
+    );
+
+  const pulls = new GitHubPullRequests({
+    token: options.token,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  });
+  const target = { owner: issue.owner, repo: issue.repo };
+  const base = await pulls.defaultBranch(target);
+  const branch = issueBranchName(config.issues.branchPrefix, issue, taskIdentifier);
+  await pulls.publishBranch(target, {
+    branch,
+    baseSha: base.sha,
+    message: `${readiness.title}\n\nCloses #${String(issue.number)}.`,
+    files,
+  });
+  const opened = await pulls.openPullRequest(target, {
+    title: readiness.title,
+    body: readiness.body,
+    head: branch,
+    base: base.name,
+  });
+  return { opened: true, ...opened };
 }
 
 export interface PublishOptions {

@@ -1,8 +1,9 @@
 import { createHmac } from 'node:crypto';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import type { EvidenceBundle } from '@agent-zero/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -13,6 +14,7 @@ import {
   health,
   ingestWebhook,
   listTasks,
+  openIssuePullRequest,
   publishEvidence,
   runTask,
   taskInput,
@@ -192,7 +194,7 @@ describe('ingestWebhook', () => {
       options(),
     );
     expect(outcome.status).toBe('accepted');
-    if (outcome.status !== 'accepted') return;
+    if (outcome.status !== 'accepted' || !('pullRequest' in outcome)) return;
     expect(outcome.pullRequest).toEqual({
       owner: 'acme',
       repo: 'app',
@@ -246,6 +248,225 @@ describe('ingestWebhook', () => {
     if (outcome.status !== 'accepted') return;
     expect(outcome.result.runner.writable).toBe(false);
     await expect(getTaskEvidence(outcome.result.id)).resolves.toContain('proactive finding');
+  });
+});
+
+function issuePayload(overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    action: 'labeled',
+    repository: { name: 'app', owner: { login: 'acme' } },
+    issue: {
+      number: 12,
+      state: 'open',
+      title: 'Guard the null return in the loader',
+      body: 'load() returns null and callers dereference it.',
+      user: { login: 'dev', type: 'User' },
+      labels: [{ name: 'agent-zero' }],
+      ...overrides,
+    },
+  });
+}
+
+describe('ingestWebhook issue tasks', () => {
+  const options = () => ({ secret, checkoutPath: checkout });
+
+  it('ignores issue events until repository policy enables them', async () => {
+    const body = issuePayload();
+    await expect(
+      ingestWebhook({ event: 'issues', body, signature: sign(body) }, options()),
+    ).resolves.toEqual({
+      status: 'ignored',
+      reason: 'Issue tasks are disabled by repository policy',
+    });
+    expect(tasks.size).toBe(0);
+  });
+
+  it('ignores an enabled repository issue without the required label', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    const body = issuePayload({ labels: [{ name: 'bug' }] });
+    await expect(
+      ingestWebhook({ event: 'issues', body, signature: sign(body) }, options()),
+    ).resolves.toEqual({ status: 'ignored', reason: 'No actionable issue task in this event' });
+    expect(tasks.size).toBe(0);
+  });
+
+  it('runs a labeled issue task in repository mode and withholds the pull request', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    const body = issuePayload();
+    const outcome = await ingestWebhook(
+      { event: 'issues', body, signature: sign(body) },
+      options(),
+    );
+    expect(outcome.status).toBe('accepted');
+    if (outcome.status !== 'accepted' || !('issue' in outcome)) return;
+    expect(outcome.issue).toEqual({ owner: 'acme', repo: 'app', number: 12 });
+    // No model is configured, so the task is rejected, stays unverified, and must not produce a
+    // pull request; the reason is reported instead of a fabricated success.
+    expect(outcome.result.verified).toBe(false);
+    expect(outcome.openedPullRequest).toBeNull();
+    expect(outcome.pullRequestReason).toContain('not accepted');
+    await expect(getTaskEvidence(outcome.result.id)).resolves.toContain('issue task');
+  });
+});
+
+const issueBaseSha = 'b'.repeat(40);
+
+function issueEvidence(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle {
+  return {
+    taskId: 'az_fixture',
+    state: 'completed',
+    verdict: 'accepted',
+    verified: true,
+    mode: 'fix',
+    trigger: 'issue',
+    source: 'github:acme/app#12',
+    issue: { owner: 'acme', repo: 'app', number: 12 },
+    runner: { kind: 'container', isolated: true, writable: true, network: 'none' },
+    finding: {
+      id: 'az_fixture_finding',
+      changeRisk: 'behavioral',
+      title: 'Guard the null return in the loader',
+      explanation: 'load() returns null but callers dereference it.',
+      severity: 'high',
+      confidence: 0.92,
+      valid: true,
+      evidence: ['`return null;` in src/user.ts'],
+      files: ['src/user.ts'],
+      verdict: 'accepted',
+      rejectionReasons: [],
+    },
+    plan: ['Guard the null return'],
+    acceptanceCriteria: ['load() never returns null'],
+    changedFiles: ['src/user.ts'],
+    checks: [{ command: 'pnpm run test', exitCode: 0, stdout: 'ok', stderr: '', durationMs: 10 }],
+    attempts: 1,
+    transitions: [],
+    summary: 'Fixed and verified: Guard the null return in the loader',
+    ...overrides,
+  };
+}
+
+function storeIssueTask(evidence: EvidenceBundle): void {
+  const timestamp = new Date(0).toISOString();
+  tasks.set(evidence.taskId, {
+    id: evidence.taskId,
+    repository: 'acme/app',
+    status: evidence.state,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    events: [],
+    evidence,
+  });
+}
+
+/** A deterministic GitHub Git-data API double for the publication flow. */
+function fakeGitHubApi(): {
+  fetch: typeof globalThis.fetch;
+  requests: { method: string; path: string; body: unknown }[];
+} {
+  const requests: { method: string; path: string; body: unknown }[] = [];
+  const responses: Record<string, unknown> = {
+    '/repos/acme/app': { default_branch: 'main' },
+    '/repos/acme/app/git/ref/heads%2Fmain': { object: { sha: issueBaseSha } },
+    [`/repos/acme/app/git/commits/${issueBaseSha}`]: { tree: { sha: 't'.repeat(40) } },
+    '/repos/acme/app/git/trees': { sha: 'e'.repeat(40) },
+    '/repos/acme/app/git/commits': { sha: 'c'.repeat(40) },
+    '/repos/acme/app/git/refs': { ref: 'created' },
+    '/repos/acme/app/pulls': { number: 41, html_url: 'https://github.com/acme/app/pull/41' },
+  };
+  const handler: typeof globalThis.fetch = async (input, init) => {
+    const path = new URL(
+      typeof input === 'string' ? input : 'url' in input ? input.url : input.href,
+    ).pathname;
+    requests.push({
+      method: init?.method ?? 'GET',
+      path,
+      body: typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined,
+    });
+    if (!(path in responses)) return new Response('{"message":"missing"}', { status: 404 });
+    return new Response(JSON.stringify(responses[path]), { status: 200 });
+  };
+  return { fetch: handler, requests };
+}
+
+describe('openIssuePullRequest', () => {
+  it('publishes a verified issue run as an isolated branch and pull request', async () => {
+    storeIssueTask(issueEvidence());
+    await mkdir(join(checkout, 'src'), { recursive: true });
+    await writeFile(join(checkout, 'src', 'user.ts'), 'export const load = () => ({});\n', 'utf8');
+
+    const github = fakeGitHubApi();
+    const outcome = await openIssuePullRequest('az_fixture', {
+      token: 'ghs_token_value',
+      checkoutPath: checkout,
+      fetch: github.fetch,
+    });
+    expect(outcome).toEqual({
+      opened: true,
+      number: 41,
+      url: 'https://github.com/acme/app/pull/41',
+    });
+
+    const ref = github.requests.find((request) => request.path === '/repos/acme/app/git/refs');
+    expect(ref?.body).toMatchObject({ ref: 'refs/heads/agent-zero/issue-12-az-fixture' });
+    const pull = github.requests.find((request) => request.path === '/repos/acme/app/pulls');
+    expect(pull?.body).toMatchObject({
+      head: 'agent-zero/issue-12-az-fixture',
+      base: 'main',
+      body: expect.stringContaining('Closes #12.') as unknown,
+    });
+    // The default branch itself is never updated: the only ref write creates the new branch.
+    expect(
+      github.requests.filter(
+        (request) => request.method !== 'GET' && request.path.includes('heads%2Fmain'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('refuses to publish an unverified run and sends nothing to GitHub', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_unverified', verified: false }));
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_unverified', {
+        token: 'ghs_token_value',
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toMatchObject({ opened: false, reason: expect.stringContaining('not verified') });
+    expect(github.requests).toEqual([]);
+  });
+
+  it('reports a missing token instead of publishing anonymously', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_tokenless' }));
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_tokenless', {
+        token: undefined,
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toEqual({ opened: false, reason: 'GITHUB_TOKEN is not configured' });
+    expect(github.requests).toEqual([]);
+  });
+
+  it('reports an unknown task instead of inventing evidence', async () => {
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_ghost', {
+        token: 'ghs_token_value',
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toMatchObject({ opened: false, reason: expect.stringContaining('Unknown task') });
+    expect(github.requests).toEqual([]);
   });
 });
 

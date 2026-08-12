@@ -54,12 +54,26 @@ export interface RunnerPolicy {
   maxOutputBytes: number;
 }
 
+/** Policy for turning scoped GitHub issues into verified pull requests. */
+export interface IssuePolicy {
+  /** Issue-to-PR runs are opt-in per repository, like proactive review. */
+  enabled: boolean;
+  /**
+   * Label an issue must carry before it becomes a task. Scoping is explicit: an issue nobody
+   * labeled is never picked up, so arbitrary issue text cannot start a run on its own.
+   */
+  requireLabel: string;
+  /** Prefix for the isolated branch a verified issue task publishes its changes on. */
+  branchPrefix: string;
+}
+
 export interface AgentZeroConfig {
   version: 1;
   mode: RunMode;
   /** Explicit check commands. When empty the checkout's own scripts are discovered. */
   checks: string[];
   proactive: { enabled: boolean };
+  issues: IssuePolicy;
   autofix: {
     enabled: boolean;
     minConfidence: number;
@@ -85,6 +99,7 @@ export const defaultConfig: AgentZeroConfig = {
   mode: 'observe',
   checks: [],
   proactive: { enabled: false },
+  issues: { enabled: false, requireLabel: 'agent-zero', branchPrefix: 'agent-zero/' },
   autofix: {
     enabled: false,
     minConfidence: 0.85,
@@ -137,6 +152,7 @@ export async function loadConfig(cwd: string): Promise<AgentZeroConfig> {
     ...defaultConfig,
     ...parsed,
     proactive: { ...defaultConfig.proactive, ...parsed.proactive },
+    issues: { ...defaultConfig.issues, ...parsed.issues },
     autofix: { ...defaultConfig.autofix, ...parsed.autofix },
     validation: { ...defaultConfig.validation, ...parsed.validation },
     agent: { ...defaultConfig.agent, ...parsed.agent },
@@ -176,6 +192,14 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
   assertRatio(config.autofix.minConfidence, 'autofix.minConfidence');
   if (typeof config.proactive.enabled !== 'boolean')
     throw new Error('proactive.enabled must be a boolean');
+  if (typeof config.issues.enabled !== 'boolean')
+    throw new Error('issues.enabled must be a boolean');
+  if (
+    typeof config.issues.requireLabel !== 'string' ||
+    config.issues.requireLabel.trim().length === 0
+  )
+    throw new Error('issues.requireLabel must be a non-empty label name');
+  assertBranchPrefix(config.issues.branchPrefix);
   if (typeof config.autofix.enabled !== 'boolean')
     throw new Error('autofix.enabled must be a boolean');
   if (typeof config.autofix.requireIsolated !== 'boolean')
@@ -224,6 +248,25 @@ export function mayModifyRepository(config: AgentZeroConfig, mode: RunMode): boo
 /** Whether repository policy permits this class of change to pass the autofix gate. */
 export function mayAutofixChange(config: AgentZeroConfig, risk: ChangeRisk): boolean {
   return risk !== 'high-impact' && config.autofix.allowedChangeRisks.includes(risk);
+}
+
+/**
+ * Branch prefixes become git ref names verbatim, so anything a ref cannot carry is rejected here
+ * rather than surfacing later as a failed push or, worse, an unexpected ref.
+ */
+const BRANCH_PREFIX = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*\/?$/;
+
+function assertBranchPrefix(value: unknown): void {
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.length > 100 ||
+    value.includes('..') ||
+    value.endsWith('.lock') ||
+    value.endsWith('.lock/') ||
+    !BRANCH_PREFIX.test(value)
+  )
+    throw new Error('issues.branchPrefix must be a valid git branch prefix');
 }
 
 function assertRatio(value: number, name: string): void {

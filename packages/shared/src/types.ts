@@ -2,7 +2,7 @@
 export type RunMode = 'observe' | 'suggest' | 'fix' | 'autonomous';
 
 /** What caused the runtime to inspect the checkout. */
-export type ReviewTrigger = 'feedback' | 'proactive';
+export type ReviewTrigger = 'feedback' | 'proactive' | 'issue';
 
 /** How much judgment a proposed change needs before it may be applied automatically. */
 export type ChangeRisk = 'mechanical' | 'behavioral' | 'high-impact';
@@ -71,6 +71,13 @@ export interface PullRequestRef {
   headSha: string;
 }
 
+/** Identifies the GitHub issue an issue-to-PR run works on. */
+export interface IssueRef {
+  owner: string;
+  repo: string;
+  number: number;
+}
+
 /** A single unit of work for the runtime. */
 export interface ReviewInput {
   repository: string;
@@ -83,6 +90,8 @@ export interface ReviewInput {
   files?: string[];
   items?: FeedbackItem[];
   pullRequest?: PullRequestRef;
+  /** Present when the run was triggered by a scoped GitHub issue. */
+  issue?: IssueRef;
 }
 
 /** The part of a finding a model provider is allowed to author. */
@@ -177,6 +186,8 @@ export interface TaskResult {
   verified: boolean;
   finding: Finding | null;
   plan: string[];
+  /** Verifiable completion conditions recorded for an issue task. Empty for review runs. */
+  acceptanceCriteria: string[];
   checks: CheckResult[];
   changedFiles: string[];
   attempts: number;
@@ -192,6 +203,8 @@ export interface AgentDecision {
   /** Model classification; the runtime still applies a conservative repository policy gate. */
   changeRisk: ChangeRisk;
   plan: string[];
+  /** Verifiable completion conditions the model derived for an issue task. */
+  acceptanceCriteria?: string[];
   changes: ProposedChange[];
   /** Adapter-authored accounting metadata; never accepted from the model's structured output. */
   usage?: ModelCallUsage;

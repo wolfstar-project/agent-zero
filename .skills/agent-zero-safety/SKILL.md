@@ -26,6 +26,8 @@ Safety properties are behavior, not documentation. Back every change with determ
 - Runner pools enforce active, per-repository, and lease-duration ceilings before provisioning and stop expired leases.
 - Persistent task records omit review input and checkout paths, and recursively redact every string before storage.
 - A reviewer's claim is not evidence. Reject what the repository does not support, and keep the reasons.
+- An issue becomes a task only when `issues.enabled` is true and the issue carries the required label; issue text is untrusted input, and the run mode comes only from repository policy.
+- A pull request is published only from a completed, verified issue run. `prepareIssuePullRequest` is the single publication gate; branches are created fresh under `issues.branchPrefix`, never force-updated, and the default branch is never committed to.
 
 ## Review workflow
 

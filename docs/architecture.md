@@ -56,6 +56,14 @@ Persistence is a narrow `KeyValueStorage` contract adapted over the ViteHub KV R
 
 Transport concerns stop here: headers, status mapping, and request objects never reach a runtime package.
 
+## Issue-to-PR workflow
+
+A scoped GitHub issue can become a verified, review-ready pull request without ever widening the runtime's authority. The entry point is the same authenticated webhook path: an `issues` event is parsed in `packages/github` and produces a task only when repository policy has opted in (`issues.enabled`) and the issue carries the `issues.requireLabel` label, so arbitrary issue text can never start a run. The issue's title and body travel to the runtime as bounded, untrusted feedback with trigger `issue` — data to validate, never instructions — and the run mode comes only from repository policy, never from the wire.
+
+The run itself is the ordinary lifecycle. During planning the model records verifiable acceptance criteria for the issue alongside its plan; the runtime bounds them and carries them into the task result and evidence bundle. Writes still require an explicit write mode, `autofix.enabled`, confidence, an allowed change-risk class, and — by default, like proactive work — an isolated runner. High-impact changes stop at `needs-human` exactly as before.
+
+Publication has a single home: `prepareIssuePullRequest` in `packages/github` decides whether a finished run has earned a pull request, and composes it when it has. It refuses any run that is not `completed`, not `accepted`, not verified by the repository's own checks, changed no files, or proposes a high-impact change, so a pull request can never claim success its evidence does not support — the body _is_ the rendered evidence, including the acceptance criteria. The composition root in `apps/server` then reads the verified file contents through a read-only runner and hands them to the `GitHubPullRequests` adapter, which publishes them as a commit on a fresh `issues.branchPrefix` branch through the Git data API and opens the pull request against the default branch. The branch name is assembled only from operator policy, the issue number, and the task identifier; an existing ref is never force-updated; and the default branch is never committed to. A failed publication never fails the run — the evidence is already persisted — it is reported as the reason no pull request exists.
+
 ## Authentication boundary
 
 Authentication follows the same adapter rule. Better Auth runs in `apps/auth-server`, a standalone Hono process that mounts the handler at `/api/auth/*` and owns the only database in the repository: Postgres. The dashboard consumes it as a client through `@onmax/nuxt-better-auth` in `clientOnly` mode, which drops the local `/api/auth/**` handlers, the server auth config, and the signing secret. `packages/auth` holds the policy and the instance factory so that the contract is expressible without an HTTP server; its `./config` subpath is free of database dependencies so the dashboard can read feature flags without bundling one.
@@ -79,7 +87,7 @@ discover -> understand -> validate -> plan -> execute -> verify -> review
 Each stage owns one decision:
 
 - **discover** collects the checkout, its working-tree or pull-request base-to-head diff, and its native check commands through the runner.
-- **understand** asks the model to interpret untrusted feedback or proactively inspect the complete diff in repository context.
+- **understand** asks the model to interpret untrusted feedback, proactively inspect the complete diff, or interpret an issue task in repository context.
 - **validate** decides the verdict from repository evidence, never from the reviewer's or the model's assertion.
 - **plan** records the plan and resolves authorization. Each refusal is a distinct reportable outcome rather than a silent downgrade.
 - **execute** applies changes restricted to the validated scope, through the runner.

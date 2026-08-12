@@ -2,6 +2,7 @@ import { redactSecrets, truncateHead, truncateTail } from './redact.js';
 import type {
   CheckResult,
   Finding,
+  IssueRef,
   ReviewInput,
   ReviewTrigger,
   RunMode,
@@ -26,9 +27,13 @@ export interface EvidenceBundle {
   mode: RunMode;
   trigger: ReviewTrigger;
   source: string | null;
+  /** The GitHub issue an issue-to-PR run worked on, kept so reports can link back to it. */
+  issue: IssueRef | null;
   runner: RunnerDescription;
   finding: Finding | null;
   plan: string[];
+  /** Verifiable completion conditions recorded for an issue task. */
+  acceptanceCriteria: string[];
   changedFiles: string[];
   checks: CheckResult[];
   attempts: number;
@@ -39,7 +44,7 @@ export interface EvidenceBundle {
 /** Build the evidence bundle for a finished run. */
 export function evidenceFromResult(
   result: TaskResult,
-  input: Pick<ReviewInput, 'mode' | 'source' | 'trigger'>,
+  input: Pick<ReviewInput, 'mode' | 'source' | 'trigger' | 'issue'>,
 ): EvidenceBundle {
   return {
     taskId: result.id,
@@ -49,9 +54,11 @@ export function evidenceFromResult(
     mode: input.mode,
     trigger: input.trigger ?? 'feedback',
     source: input.source ?? null,
+    issue: input.issue ? { ...input.issue } : null,
     runner: result.runner,
     finding: result.finding,
     plan: [...result.plan],
+    acceptanceCriteria: [...result.acceptanceCriteria],
     changedFiles: [...result.changedFiles],
     checks: [...result.checks],
     attempts: result.attempts,
@@ -89,7 +96,7 @@ export function renderEvidenceMarkdown(
   const clean = (text: string): string => redactSecrets(text, secrets);
 
   const lines: string[] = [
-    `## Agent Zero — ${bundle.trigger === 'proactive' ? 'proactive finding' : 'feedback'} ${bundle.verdict}`,
+    `## Agent Zero — ${triggerLabel(bundle.trigger)} ${bundle.verdict}`,
     '',
     clean(bundle.summary),
     '',
@@ -123,6 +130,7 @@ export function renderEvidenceMarkdown(
     lines.push('### Finding', '', 'No finding was produced.', '');
   }
 
+  lines.push(...list('Acceptance criteria', bundle.acceptanceCriteria.map(clean)));
   lines.push(...list('Plan', bundle.plan.map(clean)));
   lines.push(...list('Changed files', bundle.changedFiles.map(inlineCode)));
 
@@ -162,13 +170,20 @@ export function renderEvidenceMarkdown(
 
 /** One-line title for a GitHub check run or terminal header. */
 export function evidenceTitle(bundle: EvidenceBundle): string {
-  return `${verdictLabel(bundle.verdict)} · ${verificationLabel(bundle)}`;
+  return `${verdictLabel(bundle.trigger, bundle.verdict)} · ${verificationLabel(bundle)}`;
 }
 
-function verdictLabel(verdict: Verdict): string {
-  if (verdict === 'accepted') return 'Feedback accepted';
-  if (verdict === 'rejected') return 'Feedback rejected';
-  return 'Feedback inconclusive';
+function triggerLabel(trigger: ReviewTrigger): string {
+  if (trigger === 'proactive') return 'proactive finding';
+  if (trigger === 'issue') return 'issue task';
+  return 'feedback';
+}
+
+function verdictLabel(trigger: ReviewTrigger, verdict: Verdict): string {
+  const subject = trigger === 'issue' ? 'Issue task' : 'Feedback';
+  if (verdict === 'accepted') return `${subject} accepted`;
+  if (verdict === 'rejected') return `${subject} rejected`;
+  return `${subject} inconclusive`;
 }
 
 function verificationLabel(bundle: EvidenceBundle): string {
