@@ -16,6 +16,9 @@ issues:
   enabled: false
   requireLabel: agent-zero
   branchPrefix: agent-zero/
+  # Report the validation verdict back on the issue as a comment: confirmed with evidence, not
+  # confirmed with the rejection reasons, or inconclusive for a human. Report-only.
+  validationComment: true
 
 # Commands used to verify a change. Leave empty to discover this repository's own
 # lint, typecheck, test, and build scripts. Commands run without a shell, so

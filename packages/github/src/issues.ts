@@ -177,6 +177,96 @@ export function prepareIssuePullRequest(bundle: EvidenceBundle): PullRequestRead
   return { ready: true, title, body: truncateHead(lines.join('\n'), MAX_PR_BODY) };
 }
 
+export type IssueValidationComment =
+  | { ready: true; body: string }
+  | { ready: false; reason: string };
+
+const MAX_COMMENT_BODY = 30_000;
+const MAX_COMMENT_ITEMS = 10;
+
+/** Marker embedded in every validation comment so later automation can recognize its own output. */
+export const VALIDATION_COMMENT_MARKER = '<!-- agent-zero:issue-validation -->';
+
+/**
+ * Compose the validation verdict a finished issue run reports back on its issue.
+ *
+ * This is the triage step made visible: before any change is trusted, the runtime decided from
+ * repository evidence whether the issue actually reports a real problem, and this comment carries
+ * that verdict — confirmed with its evidence, not confirmed with every rejection reason, or
+ * inconclusive with what a human should look at. The comment is derived only from the persisted
+ * evidence bundle, so it can never claim more than the run proved, and a run that failed before
+ * producing a verdict gets no comment rather than a misleading one.
+ */
+export function prepareIssueValidationComment(bundle: EvidenceBundle): IssueValidationComment {
+  if (bundle.trigger !== 'issue')
+    return { ready: false, reason: 'Only an issue-triggered run can report issue validation.' };
+  if (!bundle.issue)
+    return { ready: false, reason: 'The run does not reference the issue it worked on.' };
+  if (bundle.state === 'failed')
+    return {
+      ready: false,
+      reason: 'The run failed before reaching a verdict, so there is nothing to report.',
+    };
+
+  const secrets = secretValuesFromEnvironment();
+  const clean = (text: string): string => redactSecrets(text, secrets);
+  const finding = bundle.finding;
+  const lines: string[] = [VALIDATION_COMMENT_MARKER, `### Agent Zero — issue validation`, ''];
+
+  if (bundle.verdict === 'accepted') {
+    lines.push(
+      '**Confirmed.** Repository evidence supports this report.',
+      '',
+      clean(bundle.summary),
+    );
+    if (finding) {
+      lines.push(...commentList('Evidence', finding.evidence.map(clean)));
+      lines.push(...commentList('Files', finding.files.map(inlineCode)));
+    }
+    lines.push(...commentList('Acceptance criteria', bundle.acceptanceCriteria.map(clean)));
+    if (bundle.verified && bundle.changedFiles.length > 0)
+      lines.push('', 'A verified fix was prepared; see the linked pull request for the evidence.');
+  } else if (bundle.verdict === 'rejected') {
+    lines.push(
+      '**Not confirmed.** The report is not supported by the repository.',
+      '',
+      clean(bundle.summary),
+    );
+    if (finding) lines.push(...commentList('Why', finding.rejectionReasons.map(clean)));
+  } else {
+    lines.push(
+      '**Inconclusive.** The evidence was not sufficient to confirm or reject this report; a human should take a look.',
+      '',
+      clean(bundle.summary),
+    );
+    if (finding)
+      lines.push(...commentList('What was checked', finding.rejectionReasons.map(clean)));
+  }
+
+  lines.push('', `_Task \`${bundle.taskId}\`; validation is evidence-based and report-only._`);
+  return { ready: true, body: truncateHead(lines.join('\n'), MAX_COMMENT_BODY) };
+}
+
+function commentList(heading: string, items: readonly string[]): string[] {
+  if (items.length === 0) return [];
+  const kept = items.slice(0, MAX_COMMENT_ITEMS);
+  const lines = ['', `**${heading}**`, '', ...kept.map((item) => `- ${collapse(item)}`)];
+  if (items.length > kept.length)
+    lines.push(`- … and ${String(items.length - kept.length)} more in the task evidence`);
+  return lines;
+}
+
+function inlineCode(value: string): string {
+  return `\`${value}\``;
+}
+
+const LINE_BREAKS = /\r?\n/g;
+
+/** Collapse a value onto one line so an item cannot restructure the surrounding Markdown. */
+function collapse(value: string): string {
+  return value.replaceAll(LINE_BREAKS, ' ').trim();
+}
+
 function readAuthor(user: unknown, options: ParseIssueOptions): string | null {
   if (!isRecord(user)) return null;
   const login = typeof user.login === 'string' ? user.login : '';

@@ -43,6 +43,7 @@ describe('loadConfig', () => {
       enabled: false,
       requireLabel: 'agent-zero',
       branchPrefix: 'agent-zero/',
+      validationComment: true,
     });
   });
 
@@ -138,6 +139,14 @@ describe('validateConfig', () => {
     expect(() =>
       validateConfig(config({ issues: { ...defaultConfig.issues, requireLabel: '  ' } })),
     ).toThrow('issues.requireLabel must be a non-empty label name');
+  });
+
+  it('rejects a non-boolean validation-comment flag', () => {
+    expect(() =>
+      validateConfig(
+        invalidConfig({ issues: { ...defaultConfig.issues, validationComment: 'yes' } }),
+      ),
+    ).toThrow('issues.validationComment must be a boolean');
   });
 
   it('rejects a branch prefix a git ref cannot carry', () => {

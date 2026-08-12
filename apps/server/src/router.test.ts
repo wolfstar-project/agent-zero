@@ -16,6 +16,7 @@ import {
   listTasks,
   openIssuePullRequest,
   publishEvidence,
+  publishIssueValidation,
   runTask,
   taskInput,
   tasks,
@@ -313,7 +314,31 @@ describe('ingestWebhook issue tasks', () => {
     expect(outcome.result.verified).toBe(false);
     expect(outcome.openedPullRequest).toBeNull();
     expect(outcome.pullRequestReason).toContain('not accepted');
+    // The validation verdict still wants to reach the issue; only the missing token stops it.
+    expect(outcome.validationComment).toEqual({
+      posted: false,
+      reason: 'GITHUB_TOKEN is not configured',
+    });
     await expect(getTaskEvidence(outcome.result.id)).resolves.toContain('issue task');
+  });
+
+  it('keeps the validation comment off when repository policy disables it', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n  validationComment: false\n',
+      'utf8',
+    );
+    const body = issuePayload();
+    const outcome = await ingestWebhook(
+      { event: 'issues', body, signature: sign(body) },
+      { ...options(), github: { token: 'ghs_token_value' } },
+    );
+    expect(outcome.status).toBe('accepted');
+    if (outcome.status !== 'accepted' || !('validationComment' in outcome)) return;
+    expect(outcome.validationComment).toEqual({
+      posted: false,
+      reason: 'Validation comments are disabled by repository policy',
+    });
   });
 });
 
@@ -466,6 +491,64 @@ describe('openIssuePullRequest', () => {
         fetch: github.fetch,
       }),
     ).resolves.toMatchObject({ opened: false, reason: expect.stringContaining('Unknown task') });
+    expect(github.requests).toEqual([]);
+  });
+});
+
+function commentRecorder(): {
+  fetch: typeof globalThis.fetch;
+  requests: { path: string; body: unknown }[];
+} {
+  const requests: { path: string; body: unknown }[] = [];
+  const handler: typeof globalThis.fetch = async (input, init) => {
+    const path = new URL(
+      typeof input === 'string' ? input : 'url' in input ? input.url : input.href,
+    ).pathname;
+    requests.push({
+      path,
+      body: typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined,
+    });
+    return new Response('{"id": 7001}', { status: 201 });
+  };
+  return { fetch: handler, requests };
+}
+
+describe('publishIssueValidation', () => {
+  it('posts the verdict back on the issue, for rejection as much as confirmation', async () => {
+    storeIssueTask(
+      issueEvidence({
+        taskId: 'az_rejected',
+        verdict: 'rejected',
+        verified: false,
+        changedFiles: [],
+        summary: 'Rejected the report with evidence',
+      }),
+    );
+    const github = commentRecorder();
+    await expect(
+      publishIssueValidation('az_rejected', { token: 'ghs_token_value', fetch: github.fetch }),
+    ).resolves.toEqual({ posted: true, commentId: 7001 });
+    expect(github.requests[0]?.path).toBe('/repos/acme/app/issues/12/comments');
+    expect(github.requests[0]?.body).toMatchObject({
+      body: expect.stringContaining('**Not confirmed.**') as unknown,
+    });
+  });
+
+  it('stays silent for a run that failed before reaching a verdict', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_broken', state: 'failed' }));
+    const github = commentRecorder();
+    await expect(
+      publishIssueValidation('az_broken', { token: 'ghs_token_value', fetch: github.fetch }),
+    ).resolves.toMatchObject({ posted: false });
+    expect(github.requests).toEqual([]);
+  });
+
+  it('reports a missing token instead of posting anonymously', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_comment_tokenless' }));
+    const github = commentRecorder();
+    await expect(
+      publishIssueValidation('az_comment_tokenless', { token: undefined, fetch: github.fetch }),
+    ).resolves.toEqual({ posted: false, reason: 'GITHUB_TOKEN is not configured' });
     expect(github.requests).toEqual([]);
   });
 });

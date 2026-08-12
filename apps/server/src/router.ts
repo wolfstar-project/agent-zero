@@ -2,12 +2,14 @@ import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
 import {
   GitHubChecks,
+  GitHubIssueComments,
   GitHubPullRequests,
   issueBranchName,
   issueInputFromTask,
   parseIssueTask,
   parseReviewEvent,
   prepareIssuePullRequest,
+  prepareIssueValidationComment,
   reviewInputFromEvent,
   verifyWebhook,
   type BranchFile,
@@ -264,6 +266,8 @@ export type WebhookOutcome =
       openedPullRequest: { number: number; url: string } | null;
       /** Why no pull request was opened. Null when one was. */
       pullRequestReason: string | null;
+      /** Whether the validation verdict was reported back on the issue, and why not otherwise. */
+      validationComment: { posted: boolean; reason: string | null };
     };
 
 export async function ingestWebhook(
@@ -339,6 +343,28 @@ async function ingestIssueEvent(
     runOptions,
   );
 
+  let validationComment: { posted: boolean; reason: string | null } = {
+    posted: false,
+    reason: 'Validation comments are disabled by repository policy',
+  };
+  if (config.issues.validationComment) {
+    try {
+      const report = await publishIssueValidation(result.id, {
+        token: options.github?.token,
+        ...(options.github?.fetch ? { fetch: options.github.fetch } : {}),
+        ...(options.store ? { store: options.store } : {}),
+      });
+      validationComment = report.posted
+        ? { posted: true, reason: null }
+        : { posted: false, reason: report.reason };
+    } catch (error) {
+      validationComment = {
+        posted: false,
+        reason: redactSecrets(error instanceof Error ? error.message : String(error)),
+      };
+    }
+  }
+
   let openedPullRequest: { number: number; url: string } | null = null;
   let pullRequestReason: string | null = null;
   try {
@@ -354,7 +380,54 @@ async function ingestIssueEvent(
   } catch (error) {
     pullRequestReason = redactSecrets(error instanceof Error ? error.message : String(error));
   }
-  return { status: 'accepted', result, issue: task.issue, openedPullRequest, pullRequestReason };
+  return {
+    status: 'accepted',
+    result,
+    issue: task.issue,
+    openedPullRequest,
+    pullRequestReason,
+    validationComment,
+  };
+}
+
+export interface PublishIssueValidationOptions {
+  token: string | undefined;
+  fetch?: typeof globalThis.fetch;
+  store?: TaskStore;
+}
+
+export type IssueValidationOutcome =
+  | { posted: true; commentId: number }
+  | { posted: false; reason: string };
+
+/**
+ * Report a finished issue run's validation verdict back on its issue.
+ *
+ * Whether there is a verdict to report — and what it says — is decided by
+ * `prepareIssueValidationComment` from the persisted evidence alone; this composition root only
+ * supplies the stored bundle and posts the composed comment. Report-only: nothing here can label,
+ * edit, close, or otherwise act on the issue.
+ */
+export async function publishIssueValidation(
+  taskIdentifier: string,
+  options: PublishIssueValidationOptions,
+): Promise<IssueValidationOutcome> {
+  const task = await (options.store ?? defaultStore).get(taskIdentifier);
+  const evidence = task?.evidence;
+  if (!evidence) return { posted: false, reason: `Unknown task: ${taskIdentifier}` };
+
+  const comment = prepareIssueValidationComment(evidence);
+  if (!comment.ready) return { posted: false, reason: comment.reason };
+  const issue = evidence.issue;
+  if (!issue)
+    return { posted: false, reason: 'The run does not reference the issue it worked on.' };
+  if (!options.token) return { posted: false, reason: 'GITHUB_TOKEN is not configured' };
+
+  const commentId = await new GitHubIssueComments({
+    token: options.token,
+    ...(options.fetch ? { fetch: options.fetch } : {}),
+  }).create(issue, comment.body);
+  return { posted: true, commentId };
 }
 
 export interface OpenIssuePullRequestOptions {

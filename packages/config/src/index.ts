@@ -65,6 +65,12 @@ export interface IssuePolicy {
   requireLabel: string;
   /** Prefix for the isolated branch a verified issue task publishes its changes on. */
   branchPrefix: string;
+  /**
+   * Report the validation verdict back on the issue as a comment: whether the repository actually
+   * has the reported problem, with the evidence or the rejection reasons. Report-only; it never
+   * changes what a run may write.
+   */
+  validationComment: boolean;
 }
 
 export interface AgentZeroConfig {
@@ -99,7 +105,12 @@ export const defaultConfig: AgentZeroConfig = {
   mode: 'observe',
   checks: [],
   proactive: { enabled: false },
-  issues: { enabled: false, requireLabel: 'agent-zero', branchPrefix: 'agent-zero/' },
+  issues: {
+    enabled: false,
+    requireLabel: 'agent-zero',
+    branchPrefix: 'agent-zero/',
+    validationComment: true,
+  },
   autofix: {
     enabled: false,
     minConfidence: 0.85,
@@ -200,6 +211,8 @@ export function validateConfig(config: AgentZeroConfig): AgentZeroConfig {
   )
     throw new Error('issues.requireLabel must be a non-empty label name');
   assertBranchPrefix(config.issues.branchPrefix);
+  if (typeof config.issues.validationComment !== 'boolean')
+    throw new Error('issues.validationComment must be a boolean');
   if (typeof config.autofix.enabled !== 'boolean')
     throw new Error('autofix.enabled must be a boolean');
   if (typeof config.autofix.requireIsolated !== 'boolean')

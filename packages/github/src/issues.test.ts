@@ -6,6 +6,8 @@ import {
   issueInputFromTask,
   parseIssueTask,
   prepareIssuePullRequest,
+  prepareIssueValidationComment,
+  VALIDATION_COMMENT_MARKER,
 } from './issues.js';
 
 function payload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -146,39 +148,39 @@ describe('issueBranchName', () => {
   });
 });
 
-describe('prepareIssuePullRequest', () => {
-  const bundle: EvidenceBundle = {
-    taskId: 'az_test',
-    state: 'completed',
+const bundle: EvidenceBundle = {
+  taskId: 'az_test',
+  state: 'completed',
+  verdict: 'accepted',
+  verified: true,
+  mode: 'fix',
+  trigger: 'issue',
+  source: 'github:acme/app#12',
+  issue: { owner: 'acme', repo: 'app', number: 12 },
+  runner: { kind: 'container', isolated: true, writable: true, network: 'none' },
+  finding: {
+    id: 'az_test_finding',
+    changeRisk: 'behavioral',
+    title: 'Guard the null return in the loader',
+    explanation: 'load() returns null but callers dereference it.',
+    severity: 'high',
+    confidence: 0.92,
+    valid: true,
+    evidence: ['`return null;` in src/user.ts'],
+    files: ['src/user.ts'],
     verdict: 'accepted',
-    verified: true,
-    mode: 'fix',
-    trigger: 'issue',
-    source: 'github:acme/app#12',
-    issue: { owner: 'acme', repo: 'app', number: 12 },
-    runner: { kind: 'container', isolated: true, writable: true, network: 'none' },
-    finding: {
-      id: 'az_test_finding',
-      changeRisk: 'behavioral',
-      title: 'Guard the null return in the loader',
-      explanation: 'load() returns null but callers dereference it.',
-      severity: 'high',
-      confidence: 0.92,
-      valid: true,
-      evidence: ['`return null;` in src/user.ts'],
-      files: ['src/user.ts'],
-      verdict: 'accepted',
-      rejectionReasons: [],
-    },
-    plan: ['Guard the null return'],
-    acceptanceCriteria: ['load() never returns null'],
-    changedFiles: ['src/user.ts'],
-    checks: [{ command: 'pnpm run test', exitCode: 0, stdout: 'ok', stderr: '', durationMs: 10 }],
-    attempts: 1,
-    transitions: [],
-    summary: 'Fixed and verified: Guard the null return in the loader',
-  };
+    rejectionReasons: [],
+  },
+  plan: ['Guard the null return'],
+  acceptanceCriteria: ['load() never returns null'],
+  changedFiles: ['src/user.ts'],
+  checks: [{ command: 'pnpm run test', exitCode: 0, stdout: 'ok', stderr: '', durationMs: 10 }],
+  attempts: 1,
+  transitions: [],
+  summary: 'Fixed and verified: Guard the null return in the loader',
+};
 
+describe('prepareIssuePullRequest', () => {
   it('composes a review-ready pull request from a verified issue run', () => {
     const readiness = prepareIssuePullRequest(bundle);
     expect(readiness).toMatchObject({ ready: true });
@@ -238,5 +240,92 @@ describe('prepareIssuePullRequest', () => {
     });
     if (!leaking.ready) throw new Error('expected a ready pull request');
     expect(leaking.body).not.toContain('ghp_0123456789');
+  });
+});
+
+describe('prepareIssueValidationComment', () => {
+  it('reports a confirmed issue with its evidence and criteria', () => {
+    const comment = prepareIssueValidationComment(bundle);
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).toContain(VALIDATION_COMMENT_MARKER);
+    expect(comment.body).toContain('**Confirmed.**');
+    expect(comment.body).toContain('`return null;` in src/user.ts');
+    expect(comment.body).toContain('load() never returns null');
+    expect(comment.body).toContain('see the linked pull request');
+  });
+
+  it('reports a rejected issue with every rejection reason', () => {
+    const comment = prepareIssueValidationComment({
+      ...bundle,
+      verdict: 'rejected',
+      verified: false,
+      changedFiles: [],
+      summary: 'Rejected the feedback with evidence',
+      finding: {
+        ...bundle.finding!,
+        verdict: 'rejected',
+        valid: false,
+        rejectionReasons: ['None of the cited files exist in the checkout: src/ghost.ts.'],
+      },
+    });
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).toContain('**Not confirmed.**');
+    expect(comment.body).toContain('src/ghost.ts');
+    expect(comment.body).not.toContain('pull request');
+  });
+
+  it('reports an inconclusive issue as needing a human', () => {
+    const comment = prepareIssueValidationComment({
+      ...bundle,
+      state: 'needs-human',
+      verdict: 'inconclusive',
+      verified: false,
+      changedFiles: [],
+    });
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).toContain('**Inconclusive.**');
+    expect(comment.body).toContain('a human should take a look');
+  });
+
+  it('never claims a fix without a verified change', () => {
+    const comment = prepareIssueValidationComment({ ...bundle, verified: false });
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).not.toContain('see the linked pull request');
+  });
+
+  it('reports nothing for a failed run or a non-issue trigger', () => {
+    expect(prepareIssueValidationComment({ ...bundle, state: 'failed' })).toMatchObject({
+      ready: false,
+    });
+    expect(prepareIssueValidationComment({ ...bundle, trigger: 'feedback' })).toMatchObject({
+      ready: false,
+    });
+    expect(prepareIssueValidationComment({ ...bundle, issue: null })).toMatchObject({
+      ready: false,
+    });
+  });
+
+  it('keeps a multi-line reason from restructuring the comment and bounds the list', () => {
+    const reasons = Array.from(
+      { length: 15 },
+      (_unused, index) => `reason ${String(index)}\nwith a second line`,
+    );
+    const comment = prepareIssueValidationComment({
+      ...bundle,
+      verdict: 'rejected',
+      finding: { ...bundle.finding!, verdict: 'rejected', rejectionReasons: reasons },
+    });
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).toContain('- reason 0 with a second line');
+    expect(comment.body).toContain('… and 5 more in the task evidence');
+  });
+
+  it('redacts credentials before they can reach the issue thread', () => {
+    const comment = prepareIssueValidationComment({
+      ...bundle,
+      summary: 'done with ghp_0123456789abcdefghijklmnopqrstuvwxyz',
+    });
+    if (!comment.ready) throw new Error('expected a ready comment');
+    expect(comment.body).not.toContain('ghp_0123456789');
   });
 });
