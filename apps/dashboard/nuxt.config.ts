@@ -1,9 +1,12 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
 import { authConfigFromEnvironment, defaultAuthServerUrl, loginPath } from './config/auth.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
-import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 
 // Resolved once at config evaluation so the dashboard publishes the same sign-in policy the auth
 // server derives from the shared environment (AUTH_ENABLE_SIGNUP, GitHub OAuth credentials).
@@ -12,6 +15,20 @@ import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 // auth server enforces its own policy regardless, so a stale build can only mislabel the login
 // page, never open a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
+// locale directory has to be wired through each locale's `files` entries instead (the module's own
+// documented pattern for this). `@agent-zero/i18n` keeps `i18nLocales.files` package-relative
+// (`en/common.json`) so it stays portable; this is the one place that resolves them against the
+// installed package's real `locales/` directory.
+const i18nPackageDirectory = dirname(
+  fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
+);
+const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
+const resolvedI18nLocales = i18nLocales.map((locale) => ({
+  ...locale,
+  files: locale.files.map((file) => join(i18nLocalesDirectory, file)),
+}));
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -78,7 +95,7 @@ export default defineNuxtConfig({
     plugins: [stripEmptyI18nMessagesPlugin()],
   },
   i18n: {
-    locales: i18nLocales,
+    locales: resolvedI18nLocales,
     defaultLocale,
     // The dashboard is a single internal surface, so localised URL prefixes would only churn
     // route paths without buying any of the SEO they exist for.

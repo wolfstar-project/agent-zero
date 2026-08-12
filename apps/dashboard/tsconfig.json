@@ -2,17 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist",
-    // The i18n tooling under scripts/ runs directly through Node's type stripping, which resolves
-    // relative imports verbatim, so those specifiers must keep their real .ts extension.
-    "rewriteRelativeImportExtensions": true
+    "outDir": "dist"
   },
   "include": [
     "app/**/*.ts",
     "config/**/*.ts",
-    "i18n/locale-features.json",
-    "lunaria.config.ts",
-    "scripts/**/*.ts",
     "uno-preset-a11y.ts",
     "uno-preset-rtl.ts",
     "uno.config.ts",

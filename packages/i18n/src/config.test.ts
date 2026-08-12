@@ -3,10 +3,10 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { defaultLocale, locales } from '../../config/i18n.js';
-import lunariaConfig from '../../lunaria.config.js';
+import lunariaConfig from '../lunaria.config.js';
+import { defaultLocale, locales } from './config.js';
 
-const localesDirectory = join(import.meta.dirname, '../../i18n/locales');
+const localesDirectory = join(import.meta.dirname, '../locales');
 const sourceLocale: string = defaultLocale;
 
 const localeEntries = Object.entries(locales).map(([lang, definition]) => ({
@@ -49,16 +49,16 @@ describe('translation dictionaries', () => {
 });
 
 describe('lunaria configuration', () => {
-  // `lunaria.config.ts` derives its locales from `config/i18n.ts`; these assertions guard the
+  // `lunaria.config.ts` derives its locales from `src/config.ts`; these assertions guard the
   // derivation (source excluded from targets, labels preserved) rather than a manual copy.
-  it('tracks the same source locale as the dashboard', () => {
+  it('tracks the same source locale as this package ships', () => {
     expect(lunariaConfig.sourceLocale).toEqual({
       label: sourceEntry?.label,
       lang: sourceEntry?.lang,
     });
   });
 
-  it('tracks every non-source locale the dashboard ships', () => {
+  it('tracks every non-source locale this package ships', () => {
     expect(lunariaConfig.locales).toEqual(
       targetLocales.map((entry) => ({ label: entry.label, lang: entry.lang })),
     );

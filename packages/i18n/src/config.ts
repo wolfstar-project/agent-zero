@@ -1,6 +1,6 @@
-import localeFeatures from '../i18n/locale-features.json' with { type: 'json' };
+import localeFeatures from '../locales/locale-features.json' with { type: 'json' };
 
-/** Presentation metadata for a locale the dashboard ships translations for. */
+/** Presentation metadata for a locale a consuming app ships translations for. */
 export interface LocaleDefinition {
   /** Name of the language, written in that language, for the locale switcher. */
   readonly label: string;
@@ -23,7 +23,7 @@ export const localeCookieName = 'agent-zero-locale';
 
 /**
  * Feature message files loaded (and deep-merged) per locale via `files`.
- * Layout: `i18n/locales/{locale}/{feature}.json`
+ * Layout: `locales/{locale}/{feature}.json`
  *
  * Translations are split by scope rather than kept in one file per locale, which is also the unit
  * Lunaria reports progress on.

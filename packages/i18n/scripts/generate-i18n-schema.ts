@@ -1,6 +1,6 @@
 /* oxlint-disable no-console -- generation reporting */
 // JSON Schema generator for the locale feature files, ported from wolfstar.rocks (Apache 2.0
-// license). Generates `i18n/schemas/{feature}.schema.json` from each `en/*` reference file and
+// license). Generates `schemas/{feature}.schema.json` from each `en/*` reference file and
 // points every locale's copy at the matching schema, so editors validate structure and key names.
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -10,13 +10,13 @@ import {
   FEATURE_FILES,
   LOCALES_DIRECTORY,
   REFERENCE_LOCALE,
+  isJsonRecord,
   localeFeatureAbsolutePath,
+  type NestedObject,
 } from './utils/i18n-locale-files.ts';
 
-const SCHEMAS_DIRECTORY = join(import.meta.dirname, '../i18n/schemas');
-
-type Json = Record<string, unknown>;
-type LocaleJson = Json & { $schema?: string };
+const SCHEMAS_DIRECTORY = join(import.meta.dirname, '../schemas');
+const JSON_EXTENSION_PATTERN = /\.json$/;
 
 interface JsonSchema {
   $schema?: string;
@@ -27,13 +27,13 @@ interface JsonSchema {
   additionalProperties?: boolean;
 }
 
-function generateSubSchema(obj: Json): JsonSchema {
+function generateSubSchema(obj: NestedObject): JsonSchema {
   const properties: Record<string, JsonSchema> = {};
 
   for (const [key, value] of Object.entries(obj)) {
     if (key === '$schema') continue;
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      properties[key] = generateSubSchema(value as Json);
+    if (isJsonRecord(value)) {
+      properties[key] = generateSubSchema(value);
     } else {
       properties[key] = { type: 'string' };
     }
@@ -42,11 +42,13 @@ function generateSubSchema(obj: Json): JsonSchema {
   return { type: 'object', properties, additionalProperties: false };
 }
 
-function generateSchema(obj: LocaleJson, featureFile: string): JsonSchema {
+// `$schema` is never read here — it's skipped by generateSubSchema and only ever discarded by
+// callers below — so a plain NestedObject is sufficient; no dedicated "locale file" type is needed.
+function generateSchema(obj: NestedObject, featureFile: string): JsonSchema {
   const baseSchema = generateSubSchema(obj);
   return {
     $schema: 'http://json-schema.org/draft-07/schema#',
-    title: `Agent Zero dashboard i18n locale file (${featureFile})`,
+    title: `Agent Zero i18n locale file (${featureFile})`,
     description: `Schema for ${featureFile}. Generated from ${REFERENCE_LOCALE}/${featureFile} — do not edit manually.`,
     ...baseSchema,
     properties: {
@@ -65,9 +67,11 @@ async function main(): Promise<void> {
 
   for (const featureFile of FEATURE_FILES) {
     const referenceFilePath = localeFeatureAbsolutePath(REFERENCE_LOCALE, featureFile);
-    const referenceContent = JSON.parse(await readFile(referenceFilePath, 'utf-8')) as LocaleJson;
-    const schema = generateSchema(referenceContent, featureFile);
-    const schemaFileName = featureFile.replace(/\.json$/, '.schema.json');
+    const referenceParsed: unknown = JSON.parse(await readFile(referenceFilePath, 'utf-8'));
+    if (!isJsonRecord(referenceParsed))
+      throw new Error(`expected ${referenceFilePath} to contain a JSON object`);
+    const schema = generateSchema(referenceParsed, featureFile);
+    const schemaFileName = featureFile.replace(JSON_EXTENSION_PATTERN, '.schema.json');
     const schemaFilePath = join(SCHEMAS_DIRECTORY, schemaFileName);
     await writeFile(schemaFilePath, `${JSON.stringify(schema, null, 2)}\n`, 'utf-8');
 
@@ -76,9 +80,10 @@ async function main(): Promise<void> {
     const schemaRef = `../../schemas/${schemaFileName}`;
     for (const localeDirectory of localeDirectories) {
       const featurePath = join(LOCALES_DIRECTORY, localeDirectory, featureFile);
-      const { $schema: _, ...content } = JSON.parse(
-        await readFile(featurePath, 'utf-8'),
-      ) as LocaleJson;
+      const featureParsed: unknown = JSON.parse(await readFile(featurePath, 'utf-8'));
+      if (!isJsonRecord(featureParsed))
+        throw new Error(`expected ${featurePath} to contain a JSON object`);
+      const { $schema: _, ...content } = featureParsed;
       await writeFile(
         featurePath,
         `${JSON.stringify({ $schema: schemaRef, ...content }, null, 2)}\n`,

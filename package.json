@@ -12,6 +12,8 @@
     "dev": "turbo run dev",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
+    "i18n:report": "turbo run i18n:report",
+    "i18n:schema": "turbo run i18n:schema",
     "i18n:status": "turbo run i18n:status",
     "knip": "knip",
     "lint": "turbo run lint",

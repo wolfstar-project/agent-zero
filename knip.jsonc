@@ -13,6 +13,12 @@
     "nano-staged",
   ],
   "workspaces": {
+    "packages/i18n": {
+      // Every i18n:* script is invoked directly (`node scripts/x.ts`) from package.json rather
+      // than imported, so each is its own entry point. lunaria.config.ts is discovered by
+      // @lunariajs/core's own filesystem convention, not imported.
+      "entry": ["src/index.ts", "scripts/*.ts", "lunaria.config.ts"],
+    },
     "packages/mail": {
       // maizzle.config.ts is discovered by Maizzle's own `render()` call by filesystem
       // convention (it walks up from the template path), not imported by anything in src/.

@@ -29,8 +29,8 @@
           class="focus-ring mt-1 h-8 border border-line bg-raised px-2 text-xs text-ink"
           :disabled="pending"
         >
-          <option v-for="value in ORGANIZATION_ROLES" :key="value" :value="value">
-            {{ $t(`organizations.roles.${value}`) }}
+          <option v-for="option in roleOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
           </option>
         </select>
       </div>
@@ -51,12 +51,24 @@
 </template>
 
 <script setup lang="ts">
-import { ORGANIZATION_ROLES, type OrganizationRole } from '../types/organization';
+import { computed } from 'vue';
+
+import { type OrganizationRole } from '../types/organization';
 
 const { pending, inviteMember } = useOrganizations();
+const { t } = useI18n();
 
 const emailId = useId();
 const roleId = useId();
+
+// Written out as static `t()` calls rather than a dynamic `t(\`organizations.roles.${value}\`)`,
+// since vue-i18n-extract's static usage report (`aube run i18n:report`) can't see interpolated
+// keys and would otherwise report every role key as unused and fail the build.
+const roleOptions = computed<{ value: OrganizationRole; label: string }[]>(() => [
+  { value: 'member', label: t('organizations.roles.member') },
+  { value: 'admin', label: t('organizations.roles.admin') },
+  { value: 'owner', label: t('organizations.roles.owner') },
+]);
 
 const email = ref('');
 const role = ref<OrganizationRole>('member');

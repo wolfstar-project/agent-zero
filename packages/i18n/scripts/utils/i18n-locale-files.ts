@@ -1,15 +1,24 @@
 // Shared helpers for the i18n tooling scripts, ported from wolfstar.rocks (Apache 2.0 license).
-// The dashboard splits every locale into feature files under `i18n/locales/{locale}/{feature}`.
+// Every locale splits into feature files under `locales/{locale}/{feature}`.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import localeFeatures from '../../i18n/locale-features.json' with { type: 'json' };
+import localeFeatures from '../../locales/locale-features.json' with { type: 'json' };
 
-export const LOCALES_DIRECTORY = join(import.meta.dirname, '../../i18n/locales');
+export const LOCALES_DIRECTORY = join(import.meta.dirname, '../../locales');
 export const REFERENCE_LOCALE = 'en';
 export const FEATURE_FILES = localeFeatures.features as readonly string[];
 
-type NestedObject = Record<string, unknown>;
+export type NestedObject = Record<string, unknown>;
+
+/**
+ * True for a JSON object (not null, not an array) — the shape every locale and schema file uses.
+ * A type guard rather than a cast: `JSON.parse` returns `any`, and these files are hand-edited, so
+ * a malformed one (an array, a bare string) should fail loudly instead of being trusted.
+ */
+export function isJsonRecord(value: unknown): value is NestedObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /** Absolute path to a locale feature file. */
 export function localeFeatureAbsolutePath(localeCode: string, featureFile: string): string {
@@ -26,7 +35,9 @@ export function listLocaleCodes(): string[] {
 
 export function readFeatureFile(localeCode: string, featureFile: string): NestedObject {
   const filePath = localeFeatureAbsolutePath(localeCode, featureFile);
-  return JSON.parse(readFileSync(filePath, 'utf-8')) as NestedObject;
+  const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf-8'));
+  if (!isJsonRecord(parsed)) throw new Error(`expected ${filePath} to contain a JSON object`);
+  return parsed;
 }
 
 /** Deep-merge all feature files for a locale into one object (for tooling reports). */

@@ -1,6 +1,6 @@
 /* oxlint-disable no-console -- audit reporting */
 // Unused translation remover, ported from wolfstar.rocks (Apache 2.0 license).
-// Removes catalog keys that no `app/**` file references (per vue-i18n-extract) from every
+// Removes catalog keys that no consuming app file references (per vue-i18n-extract) from every
 // locale's feature files. Review the diff: dynamically-built keys are false positives.
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -13,14 +13,16 @@ import { createI18NReport, type I18NItem } from 'vue-i18n-extract';
 import {
   FEATURE_FILES,
   REFERENCE_LOCALE,
+  isJsonRecord,
   listLocaleCodes,
   loadMergedLocale,
   localeFeatureAbsolutePath,
+  type NestedObject,
 } from './utils/i18n-locale-files.ts';
 
-const VUE_FILES_GLOB = './app/**/*.?(vue|ts|js)';
-
-type NestedObject = Record<string, unknown>;
+// apps/dashboard is this package's only current consumer; extend this list if a second one starts
+// shipping translations here.
+const VUE_FILES_GLOB = '../../apps/dashboard/app/**/*.?(vue|ts|js)';
 
 /** Removes a key path (e.g. "foo.bar.baz") from a nested object. Cleans up empty parents. */
 function removeKey(obj: NestedObject, path: string): boolean {
@@ -34,8 +36,8 @@ function removeKey(obj: NestedObject, path: string): boolean {
     return false;
   }
   const child = obj[first];
-  if (child !== null && typeof child === 'object' && !Array.isArray(child)) {
-    const removed = removeKey(child as NestedObject, rest.join('.'));
+  if (isJsonRecord(child)) {
+    const removed = removeKey(child, rest.join('.'));
     if (removed && Object.keys(child).length === 0) {
       delete obj[first];
     }
@@ -80,10 +82,11 @@ async function run(): Promise<void> {
     for (const locale of listLocaleCodes()) {
       for (const feature of FEATURE_FILES) {
         const filePath = localeFeatureAbsolutePath(locale, feature);
-        const content = JSON.parse(await readFile(filePath, 'utf-8')) as NestedObject;
-        const removed = removeKeysFromObject(content, uniquePaths);
+        const parsed: unknown = JSON.parse(await readFile(filePath, 'utf-8'));
+        if (!isJsonRecord(parsed)) throw new Error(`expected ${filePath} to contain a JSON object`);
+        const removed = removeKeysFromObject(parsed, uniquePaths);
         if (removed > 0) {
-          await writeFile(filePath, `${JSON.stringify(content, null, 2)}\n`, 'utf-8');
+          await writeFile(filePath, `${JSON.stringify(parsed, null, 2)}\n`, 'utf-8');
           console.log(styleText('yellow', `  ${locale}/${feature}: removed ${removed} key(s)`));
           totalRemoved += removed;
         }

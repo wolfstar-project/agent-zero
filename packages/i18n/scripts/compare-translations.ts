@@ -9,13 +9,15 @@ import { styleText } from 'node:util';
 import {
   FEATURE_FILES,
   REFERENCE_LOCALE,
+  isJsonRecord,
   listLocaleCodes,
   localeFeatureAbsolutePath,
   readFeatureFile,
   withoutSchema,
+  type NestedObject,
 } from './utils/i18n-locale-files.ts';
 
-type NestedObject = Record<string, unknown>;
+const JSON_EXTENSION_PATTERN = /\.json$/;
 
 interface SyncStats {
   missing: string[];
@@ -23,9 +25,6 @@ interface SyncStats {
   feature: string;
   locale: string;
 }
-
-const isNested = (value: unknown): value is NestedObject =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 function syncLocaleData(
   reference: NestedObject,
@@ -41,8 +40,8 @@ function syncLocaleData(
     const propertyPath = prefix ? `${prefix}.${key}` : key;
     const referenceValue = reference[key];
 
-    if (isNested(referenceValue)) {
-      const nextTarget = isNested(target[key]) ? target[key] : {};
+    if (isJsonRecord(referenceValue)) {
+      const nextTarget = isJsonRecord(target[key]) ? target[key] : {};
       const data = syncLocaleData(referenceValue, nextTarget, stats, fix, propertyPath);
       if (fix && Object.keys(data).length === 0) continue;
       result[key] = data;
@@ -56,7 +55,8 @@ function syncLocaleData(
       if (fix) {
         // Empty placeholder, never the English source string: copying the reference text makes an
         // untranslated key indistinguishable from a real translation for Lunaria and translators.
-        // Empty leaves are stripped at build time (config/i18n-empty-placeholders.ts), so the
+        // Empty leaves are stripped at build time by the consuming app (see
+        // apps/dashboard/config/i18n-empty-placeholders.ts), so the
         // runtime falls back to English.
         result[key] = '';
       }
@@ -132,7 +132,7 @@ function reportLocale(locale: string, results: SyncStats[], fix: boolean): void 
 function main(): void {
   const args = process.argv.slice(2);
   const fix = args.includes('--fix');
-  const localeArg = args.find((arg) => arg !== '--fix')?.replace(/\.json$/, '');
+  const localeArg = args.find((arg) => arg !== '--fix')?.replace(JSON_EXTENSION_PATTERN, '');
 
   const locales = localeArg
     ? [localeArg]
@@ -140,13 +140,13 @@ function main(): void {
 
   for (const locale of locales) {
     if (!existsSync(localeFeatureAbsolutePath(locale, FEATURE_FILES[0] ?? ''))) {
-      console.error(styleText('red', `Error: locale directory not found: i18n/locales/${locale}/`));
+      console.error(styleText('red', `Error: locale directory not found: locales/${locale}/`));
       process.exit(1);
     }
   }
 
   console.log(styleText('cyan', `=== Translation audit${fix ? ' (with --fix)' : ''} ===`));
-  console.log(`Reference: i18n/locales/${REFERENCE_LOCALE}/{feature}.json`);
+  console.log(`Reference: locales/${REFERENCE_LOCALE}/{feature}.json`);
   console.log(`Checking ${locales.length} locale(s) × ${FEATURE_FILES.length} feature file(s)...`);
 
   let totalMissing = 0;

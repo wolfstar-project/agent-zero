@@ -1,7 +1,8 @@
 /* oxlint-disable no-console -- audit reporting */
 // Static i18n usage report, ported from wolfstar.rocks (Apache 2.0 license).
-// Cross-checks the keys used in `app/**` against the reference catalog: missing and dynamic keys
-// fail the run, unused keys are reported as warnings (see `i18n:report:fix` to remove them).
+// Cross-checks the keys used in the consuming app's source against the reference catalog: missing
+// and dynamic keys fail the run, unused keys are reported as warnings (see `i18n:report:fix` to
+// remove them).
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,7 +17,9 @@ import {
   loadMergedLocale,
 } from './utils/i18n-locale-files.ts';
 
-const VUE_FILES_GLOB = './app/**/*.?(vue|ts|js)';
+// apps/dashboard is this package's only current consumer; extend this list if a second one starts
+// shipping translations here.
+const VUE_FILES_GLOB = '../../apps/dashboard/app/**/*.?(vue|ts|js)';
 
 function printSection(
   title: string,
