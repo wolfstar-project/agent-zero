@@ -12,9 +12,21 @@ export type {
   TaskApproval,
 } from '../shared/dashboard.js';
 
+/** One changed file's verified content, or null when the change deleted the file. */
+export interface ChangedFileSnapshot {
+  path: string;
+  content: string | null;
+}
+
 /** Durable, deliberately narrow task history. Review input and checkout paths are never stored. */
 export interface StoredTask extends DashboardTask {
   evidence?: EvidenceBundle;
+  /**
+   * Immutable contents of the run's changed files, captured through the run's own boundary the
+   * moment it finished. Publication reads from this snapshot, never from the live checkout, so a
+   * mutation after verification cannot ride along under the run's evidence.
+   */
+  changedFileSnapshot?: ChangedFileSnapshot[];
 }
 
 export interface TaskStore {

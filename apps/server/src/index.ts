@@ -37,6 +37,7 @@ export {
   TaskQueueQuotaError,
   TaskScheduler,
   type ApprovalDecision,
+  type ChangedFileSnapshot,
   type ControlPlaneTaskStatus,
   type KeyValueStorage,
   type SchedulerOptions,

@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
 import {
@@ -13,12 +15,14 @@ import {
   reviewInputFromEvent,
   verifyWebhook,
   type BranchFile,
+  type IssueTask,
 } from '@agent-zero/github';
 import { modelFromEnvironment } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
   runnerOptionsFromPolicy,
+  type Runner,
   type RunnerPool,
 } from '@agent-zero/runner';
 import {
@@ -39,6 +43,7 @@ import {
   MemoryTaskStore,
   TaskScheduler,
   type ApprovalDecision,
+  type ChangedFileSnapshot,
   type StoredTask,
   type TaskStore,
 } from './control-plane.js';
@@ -189,8 +194,13 @@ export async function runTask(
         },
       });
       let result: TaskResult;
+      let snapshot: ChangedFileSnapshot[] | undefined;
       try {
         result = await agent.run(input);
+        // Captured through the run's own boundary before the lease is released, so publication
+        // later reads exactly what the run verified, never whatever the checkout holds by then.
+        if (result.changedFiles.length > 0)
+          snapshot = await snapshotChangedFiles(runner, result.changedFiles);
       } finally {
         if (lease) await options.runnerPool?.release(lease.id);
       }
@@ -199,6 +209,7 @@ export async function runTask(
       record.updatedAt = now();
       record.result = result;
       record.evidence = evidenceFromResult(result, input);
+      if (snapshot) record.changedFileSnapshot = snapshot;
       await store.save(record);
       return result;
     });
@@ -242,6 +253,8 @@ export interface WebhookRequest {
   event: string;
   body: string;
   signature: string | undefined;
+  /** GitHub's `X-GitHub-Delivery` identifier, used to recognize redeliveries of the same event. */
+  delivery?: string;
 }
 
 export interface WebhookOptions {
@@ -252,6 +265,8 @@ export interface WebhookOptions {
   scheduler?: TaskScheduler;
   /** Credentials for publishing an issue run's verified changes as a pull request. */
   github?: { token: string | undefined; fetch?: typeof globalThis.fetch };
+  /** Delivery-key claims for issue events; defaults to a process-wide registry. */
+  deliveries?: Map<string, Promise<WebhookOutcome>>;
 }
 
 export type WebhookOutcome =
@@ -284,7 +299,7 @@ export async function ingestWebhook(
     return { status: 'rejected', reason: 'Webhook body is not valid JSON' };
   }
 
-  if (request.event === 'issues') return ingestIssueEvent(payload, options);
+  if (request.event === 'issues') return ingestIssueEvent(request, payload, options);
 
   const event = parseReviewEvent(
     request.event,
@@ -312,15 +327,23 @@ export async function ingestWebhook(
   return { status: 'accepted', result, pullRequest: event.pullRequest };
 }
 
+/** Process-wide issue delivery claims, bounded so redelivery tracking cannot grow without limit. */
+const defaultDeliveries = new Map<string, Promise<WebhookOutcome>>();
+const MAX_DELIVERY_CLAIMS = 10_000;
+
 /**
  * Run one scoped issue task and, when the run earns it, publish the result as a pull request.
  *
  * The issue text is untrusted input: it becomes feedback for the runtime to validate, the run mode
  * comes only from repository policy, and policy must opt in (`issues.enabled` plus the required
- * label) before any model call happens. A failed publication never fails the run — the evidence is
- * already persisted — it is reported as the reason no pull request exists.
+ * label) before any model call happens. Before any work starts, the issue's claimed repository is
+ * bound to the checkout's own git identity, and the delivery is claimed atomically so a GitHub
+ * redelivery observes the recorded outcome instead of starting a second run. A failed publication
+ * never fails the run — the evidence is already persisted — it is reported as the reason no pull
+ * request exists.
  */
 async function ingestIssueEvent(
+  request: WebhookRequest,
   payload: unknown,
   options: WebhookOptions,
 ): Promise<WebhookOutcome> {
@@ -334,12 +357,46 @@ async function ingestIssueEvent(
   });
   if (!task) return { status: 'ignored', reason: 'No actionable issue task in this event' };
 
+  const identity = await new LocalRunner(options.checkoutPath).originRepository();
+  const mismatch = checkoutRepositoryMismatch(identity, task.issue);
+  if (mismatch) return { status: 'rejected', reason: mismatch };
+
+  // The claim is registered before the work starts, so a concurrent redelivery shares the
+  // in-flight outcome rather than racing a second run past the check above.
+  const deliveries = options.deliveries ?? defaultDeliveries;
+  const key = issueDeliveryKey(request);
+  const claimed = deliveries.get(key);
+  if (claimed) return claimed;
+  if (deliveries.size >= MAX_DELIVERY_CLAIMS) {
+    const oldest = deliveries.keys().next().value;
+    if (oldest !== undefined) deliveries.delete(oldest);
+  }
+  const outcome = runIssueTask(
+    task,
+    { mode: config.mode, validationComment: config.issues.validationComment },
+    options,
+  );
+  deliveries.set(key, outcome);
+  try {
+    return await outcome;
+  } catch (error) {
+    // A transport-level failure recorded no outcome worth replaying; let a redelivery retry.
+    deliveries.delete(key);
+    throw error;
+  }
+}
+
+async function runIssueTask(
+  task: IssueTask,
+  policy: { mode: ReviewInput['mode']; validationComment: boolean },
+  options: WebhookOptions,
+): Promise<WebhookOutcome> {
   const runOptions: RunTaskOptions = {
     ...(options.store ? { store: options.store } : {}),
     ...(options.scheduler ? { scheduler: options.scheduler } : {}),
   };
   const result = await runTask(
-    issueInputFromTask(task, { checkoutPath: options.checkoutPath, mode: config.mode }),
+    issueInputFromTask(task, { checkoutPath: options.checkoutPath, mode: policy.mode }),
     runOptions,
   );
 
@@ -347,7 +404,7 @@ async function ingestIssueEvent(
     posted: false,
     reason: 'Validation comments are disabled by repository policy',
   };
-  if (config.issues.validationComment) {
+  if (policy.validationComment) {
     try {
       const report = await publishIssueValidation(result.id, {
         token: options.github?.token,
@@ -430,6 +487,16 @@ export async function publishIssueValidation(
   return { posted: true, commentId };
 }
 
+/**
+ * The idempotency key for one issue delivery. GitHub's delivery identifier is preferred; without
+ * one, a redelivered event still carries a byte-identical body, so its digest recognizes it.
+ */
+function issueDeliveryKey(request: WebhookRequest): string {
+  if (request.delivery !== undefined && request.delivery.length > 0)
+    return `delivery:${request.delivery}`;
+  return `payload:${createHash('sha256').update(`${request.event}\n${request.body}`).digest('hex')}`;
+}
+
 export interface OpenIssuePullRequestOptions {
   token: string | undefined;
   checkoutPath: string;
@@ -445,9 +512,12 @@ export type IssuePullRequestOutcome =
  * Publish a finished issue run as an isolated branch and review-ready pull request.
  *
  * Whether the run has earned a pull request is decided by `prepareIssuePullRequest` alone; this
- * composition root only supplies the stored evidence, reads the verified change contents through a
- * read-only runner, and hands both to the GitHub adapter. The default branch is never pushed to:
- * changes land on a fresh `issues.branchPrefix` branch whose name contains no issue text.
+ * composition root only supplies the stored evidence and the immutable snapshot captured when the
+ * run finished, and hands both to the GitHub adapter. The live checkout is never re-read, so a
+ * mutation after verification cannot be published under the run's evidence, and the target
+ * repository must match the checkout's own git identity before anything is sent. The default
+ * branch is never pushed to: changes land on a fresh `issues.branchPrefix` branch whose name
+ * contains no issue text.
  */
 export async function openIssuePullRequest(
   taskIdentifier: string,
@@ -464,15 +534,23 @@ export async function openIssuePullRequest(
     return { opened: false, reason: 'The run does not reference the issue it worked on.' };
   if (!options.token) return { opened: false, reason: 'GITHUB_TOKEN is not configured' };
 
-  const config = await loadConfig(options.checkoutPath);
-  const reader = new LocalRunner(options.checkoutPath);
+  const identity = await new LocalRunner(options.checkoutPath).originRepository();
+  const mismatch = checkoutRepositoryMismatch(identity, issue);
+  if (mismatch) return { opened: false, reason: mismatch };
+
+  const snapshot = new Map(task.changedFileSnapshot?.map((file) => [file.path, file.content]));
   const files: BranchFile[] = [];
-  for (const path of evidence.changedFiles)
-    files.push(
-      (await reader.exists(path))
-        ? { path, content: await reader.read(path) }
-        : { path, content: null },
-    );
+  for (const path of evidence.changedFiles) {
+    const content = snapshot.get(path);
+    if (content === undefined)
+      return {
+        opened: false,
+        reason: 'No immutable snapshot of the verified changes covers every changed file.',
+      };
+    files.push({ path, content });
+  }
+
+  const config = await loadConfig(options.checkoutPath);
 
   const pulls = new GitHubPullRequests({
     token: options.token,
@@ -519,6 +597,43 @@ export async function publishEvidence(
     ...(options.fetch ? { fetch: options.fetch } : {}),
   }).publish(target, task.evidence);
   return { published: true };
+}
+
+/**
+ * Why an issue's claimed repository cannot be served by this checkout, or null when it can.
+ *
+ * The webhook payload names its own owner and repository, so those fields alone must never select
+ * a publication target: a token authorized for several repositories would happily write one
+ * checkout's content into another. The checkout's git identity is the trusted side, and an absent
+ * or ambiguous identity fails closed.
+ */
+function checkoutRepositoryMismatch(
+  identity: { owner: string; repo: string } | null,
+  issue: IssueRef,
+): string | null {
+  if (!identity)
+    return 'The checkout does not declare a single trusted origin repository, so the issue cannot be bound to it.';
+  if (
+    identity.owner.toLowerCase() !== issue.owner.toLowerCase() ||
+    identity.repo.toLowerCase() !== issue.repo.toLowerCase()
+  )
+    return `The event claims repository ${issue.owner}/${issue.repo}, but the checkout tracks ${identity.owner}/${identity.repo}.`;
+  return null;
+}
+
+/** Read each changed file's final content through the run's own boundary. */
+async function snapshotChangedFiles(
+  runner: Runner,
+  paths: readonly string[],
+): Promise<ChangedFileSnapshot[]> {
+  const files: ChangedFileSnapshot[] = [];
+  for (const path of paths)
+    files.push(
+      (await runner.exists(path))
+        ? { path, content: await runner.read(path) }
+        : { path, content: null },
+    );
+  return files;
 }
 
 function repositoryLabel(input: ReviewInput): string {

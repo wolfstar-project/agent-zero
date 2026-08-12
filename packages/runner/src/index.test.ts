@@ -507,6 +507,53 @@ describe('git inspection', () => {
   });
 });
 
+function remoteProcess(stdout: string, exitCode = 0): ProcessRunner {
+  return async (program, args) =>
+    program === 'git' && args.join(' ') === 'remote get-url origin'
+      ? { exitCode, stdout, stderr: '' }
+      : { exitCode: 0, stdout: '', stderr: '' };
+}
+
+describe('originRepository', () => {
+  it('parses the owner and repository from an HTTPS origin', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('https://github.com/acme/app.git\n'),
+    });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('parses an scp-style SSH origin', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('git@github.com:acme/app.git') });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('parses an ssh:// origin without the .git suffix', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('ssh://git@github.com/acme/app'),
+    });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('reports no identity when the checkout has no origin remote', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('', 2) });
+    await expect(runner.originRepository()).resolves.toBeNull();
+  });
+
+  it('reports no identity for an ambiguous multi-line answer', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('https://github.com/acme/app.git\nhttps://github.com/evil/app.git\n'),
+    });
+    await expect(runner.originRepository()).resolves.toBeNull();
+  });
+
+  it('reports no identity for a URL that does not name exactly owner/repo', async () => {
+    for (const url of ['https://github.com/acme', 'https://github.com/a/b/c', '/srv/git/app'])
+      await expect(
+        new LocalRunner(root, { process: remoteProcess(url) }).originRepository(),
+      ).resolves.toBeNull();
+  });
+});
+
 /** The value the engine would receive for `--network`. */
 function networkArgument(runner: ContainerRunner): string | undefined {
   const args = runner.engineArguments();

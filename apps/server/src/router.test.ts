@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process';
 import { createHmac } from 'node:crypto';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 
 import type { EvidenceBundle } from '@agent-zero/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -20,6 +22,7 @@ import {
   runTask,
   taskInput,
   tasks,
+  type WebhookOutcome,
 } from './router.js';
 
 const secret = 'webhook-secret-value';
@@ -49,6 +52,14 @@ function reviewPayload(overrides: Record<string, unknown> = {}): string {
 }
 
 let checkout: string;
+
+const git = promisify(execFile);
+
+/** Give the checkout the trusted git identity that binds it to a publication target. */
+async function bindCheckout(url = 'https://github.com/acme/app.git'): Promise<void> {
+  await git('git', ['init', '--quiet'], { cwd: checkout });
+  await git('git', ['remote', 'add', 'origin', url], { cwd: checkout });
+}
 
 beforeEach(async () => {
   tasks.clear();
@@ -269,7 +280,11 @@ function issuePayload(overrides: Record<string, unknown> = {}): string {
 }
 
 describe('ingestWebhook issue tasks', () => {
-  const options = () => ({ secret, checkoutPath: checkout });
+  const options = () => ({
+    secret,
+    checkoutPath: checkout,
+    deliveries: new Map<string, Promise<WebhookOutcome>>(),
+  });
 
   it('ignores issue events until repository policy enables them', async () => {
     const body = issuePayload();
@@ -301,6 +316,7 @@ describe('ingestWebhook issue tasks', () => {
       'version: 1\nissues:\n  enabled: true\n',
       'utf8',
     );
+    await bindCheckout();
     const body = issuePayload();
     const outcome = await ingestWebhook(
       { event: 'issues', body, signature: sign(body) },
@@ -328,6 +344,7 @@ describe('ingestWebhook issue tasks', () => {
       'version: 1\nissues:\n  enabled: true\n  validationComment: false\n',
       'utf8',
     );
+    await bindCheckout();
     const body = issuePayload();
     const outcome = await ingestWebhook(
       { event: 'issues', body, signature: sign(body) },
@@ -339,6 +356,75 @@ describe('ingestWebhook issue tasks', () => {
       posted: false,
       reason: 'Validation comments are disabled by repository policy',
     });
+  });
+
+  it('rejects an issue event whose checkout tracks a different repository', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    await bindCheckout('https://github.com/donor/library.git');
+    const body = issuePayload();
+    const outcome = await ingestWebhook(
+      { event: 'issues', body, signature: sign(body) },
+      options(),
+    );
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: expect.stringContaining('checkout tracks donor/library') as unknown,
+    });
+    expect(tasks.size).toBe(0);
+  });
+
+  it('rejects an issue event when the checkout declares no trusted identity', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    const body = issuePayload();
+    const outcome = await ingestWebhook(
+      { event: 'issues', body, signature: sign(body) },
+      options(),
+    );
+    expect(outcome).toEqual({
+      status: 'rejected',
+      reason: expect.stringContaining('trusted origin repository') as unknown,
+    });
+    expect(tasks.size).toBe(0);
+  });
+
+  it('returns the recorded outcome for a redelivered issue event instead of a second run', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    await bindCheckout();
+    const body = issuePayload();
+    const shared = options();
+    const request = { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-1' };
+    const first = await ingestWebhook(request, shared);
+    const second = await ingestWebhook(request, shared);
+    expect(first.status).toBe('accepted');
+    expect(second).toBe(first);
+    expect(tasks.size).toBe(1);
+  });
+
+  it('deduplicates a redelivery by payload when no delivery identifier is supplied', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    await bindCheckout();
+    const body = issuePayload();
+    const shared = options();
+    const first = await ingestWebhook({ event: 'issues', body, signature: sign(body) }, shared);
+    const second = await ingestWebhook({ event: 'issues', body, signature: sign(body) }, shared);
+    expect(second).toBe(first);
+    expect(tasks.size).toBe(1);
   });
 });
 
@@ -379,7 +465,14 @@ function issueEvidence(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle 
   };
 }
 
-function storeIssueTask(evidence: EvidenceBundle): void {
+const VERIFIED_CONTENT = 'export const load = (): object => ({});\n';
+
+function storeIssueTask(
+  evidence: EvidenceBundle,
+  snapshot: { path: string; content: string | null }[] | null = evidence.changedFiles.map(
+    (path) => ({ path, content: VERIFIED_CONTENT }),
+  ),
+): void {
   const timestamp = new Date(0).toISOString();
   tasks.set(evidence.taskId, {
     id: evidence.taskId,
@@ -389,6 +482,7 @@ function storeIssueTask(evidence: EvidenceBundle): void {
     updatedAt: timestamp,
     events: [],
     evidence,
+    ...(snapshot ? { changedFileSnapshot: snapshot } : {}),
   });
 }
 
@@ -425,8 +519,7 @@ function fakeGitHubApi(): {
 describe('openIssuePullRequest', () => {
   it('publishes a verified issue run as an isolated branch and pull request', async () => {
     storeIssueTask(issueEvidence());
-    await mkdir(join(checkout, 'src'), { recursive: true });
-    await writeFile(join(checkout, 'src', 'user.ts'), 'export const load = () => ({});\n', 'utf8');
+    await bindCheckout();
 
     const github = fakeGitHubApi();
     const outcome = await openIssuePullRequest('az_fixture', {
@@ -440,6 +533,12 @@ describe('openIssuePullRequest', () => {
       url: 'https://github.com/acme/app/pull/41',
     });
 
+    // The published contents are the stored verified snapshot, never a fresh checkout read: the
+    // checkout holds no such file at all, exactly as after a post-verification mutation.
+    const tree = github.requests.find((request) => request.path === '/repos/acme/app/git/trees');
+    expect(tree?.body).toMatchObject({
+      tree: [{ path: 'src/user.ts', content: VERIFIED_CONTENT }],
+    });
     const ref = github.requests.find((request) => request.path === '/repos/acme/app/git/refs');
     expect(ref?.body).toMatchObject({ ref: 'refs/heads/agent-zero/issue-12-az-fixture' });
     const pull = github.requests.find((request) => request.path === '/repos/acme/app/pulls');
@@ -454,6 +553,56 @@ describe('openIssuePullRequest', () => {
         (request) => request.method !== 'GET' && request.path.includes('heads%2Fmain'),
       ),
     ).toEqual([]);
+  });
+
+  it('refuses to publish into a repository the checkout does not track', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_confused' }));
+    await bindCheckout('https://github.com/donor/library.git');
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_confused', {
+        token: 'ghs_token_value',
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toMatchObject({
+      opened: false,
+      reason: expect.stringContaining('checkout tracks donor/library') as unknown,
+    });
+    expect(github.requests).toEqual([]);
+  });
+
+  it('refuses to publish when the checkout has no trusted identity', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_unbound' }));
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_unbound', {
+        token: 'ghs_token_value',
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toMatchObject({
+      opened: false,
+      reason: expect.stringContaining('trusted origin repository') as unknown,
+    });
+    expect(github.requests).toEqual([]);
+  });
+
+  it('refuses to publish a run that stored no immutable snapshot', async () => {
+    storeIssueTask(issueEvidence({ taskId: 'az_snapshotless' }), null);
+    await bindCheckout();
+    const github = fakeGitHubApi();
+    await expect(
+      openIssuePullRequest('az_snapshotless', {
+        token: 'ghs_token_value',
+        checkoutPath: checkout,
+        fetch: github.fetch,
+      }),
+    ).resolves.toMatchObject({
+      opened: false,
+      reason: expect.stringContaining('snapshot') as unknown,
+    });
+    expect(github.requests).toEqual([]);
   });
 
   it('refuses to publish an unverified run and sends nothing to GitHub', async () => {

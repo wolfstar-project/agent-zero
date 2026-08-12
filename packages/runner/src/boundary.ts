@@ -275,6 +275,26 @@ export abstract class RepositoryBoundary implements Runner {
     return patches;
   }
 
+  /**
+   * The `owner/repo` identity recorded in the checkout's own git metadata.
+   *
+   * The `origin` remote URL is trusted local state: it was written when the checkout was created,
+   * not supplied by a webhook. Callers use it to bind a checkout to the repository an event claims
+   * to be about, so this fails closed: a checkout without exactly one parseable `origin` URL has
+   * no identity and returns null rather than a guess.
+   */
+  async originRepository(): Promise<{ owner: string; repo: string } | null> {
+    const outcome = await this.git(['remote', 'get-url', 'origin']);
+    if (outcome.exitCode !== 0) return null;
+    const urls = outcome.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const url = urls[0];
+    if (urls.length !== 1 || url === undefined) return null;
+    return parseRemoteRepository(url);
+  }
+
   async changedFiles(): Promise<string[]> {
     const status = await this.git(['status', '--porcelain']);
     return status.stdout
@@ -523,6 +543,38 @@ function boundedDiff(patches: readonly string[], budget: number): string {
 function unavailablePatch(path: string, reason: string): string {
   const name = HEADER_UNSAFE.test(path) ? JSON.stringify(path) : path;
   return `diff --git a/${name} b/${name}\n[untracked file patch unavailable: ${reason}]`;
+}
+
+// The path portion of an scp-style git remote such as `git@github.com:owner/repo.git`.
+const SCP_REMOTE = /^[\w.-]+@[\w.-]+:(?<path>.+)$/u;
+const GIT_SUFFIX = /\.git$/u;
+
+/**
+ * Extract `owner/repo` from a git remote URL, or null when the URL names anything else.
+ *
+ * Exactly two path segments are required: a URL with more or fewer segments does not identify a
+ * GitHub-style repository and is rejected rather than truncated into one.
+ */
+function parseRemoteRepository(url: string): { owner: string; repo: string } | null {
+  let path: string;
+  const scp = SCP_REMOTE.exec(url);
+  if (scp?.groups?.path !== undefined) path = scp.groups.path;
+  else {
+    try {
+      path = new URL(url).pathname;
+    } catch {
+      return null;
+    }
+  }
+  const segments = path
+    .replaceAll('\\', '/')
+    .split('/')
+    .filter((segment) => segment.length > 0);
+  const [owner, tail] = segments;
+  if (segments.length !== 2 || !owner || !tail) return null;
+  const repo = tail.replace(GIT_SUFFIX, '');
+  if (repo.length === 0) return null;
+  return { owner, repo };
 }
 
 function assertInside(root: string, candidate: string, original: string): void {
