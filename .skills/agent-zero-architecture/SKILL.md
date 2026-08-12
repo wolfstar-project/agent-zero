@@ -16,7 +16,9 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
-- `apps/server`: oRPC transport, task persistence, scheduling, and the composition root that constructs a runner. See the `orpc-server` skill.
+- `auth`: authentication policy and the Better Auth instance factory. No HTTP server, no runtime imports.
+- `api`: the oRPC router, control-plane operations (task persistence, scheduling), and the Better Auth Hono mount. Composes the runtime, GitHub, models, config, and auth packages; nothing composes into it. Holds no HTTP host of its own.
+- `apps/server`: the Nitro v3 + ViteHub composition root that constructs a runner and serves `packages/api`'s router over `/rpc/**` (RPC) and `/api/v1/**` (OpenAPI), plus `/api/auth/**` and `/api/dashboard`. The only component with a database credential. See the `orpc-server` skill.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
 
 ## Workflow

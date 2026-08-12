@@ -1,8 +1,8 @@
+import { dashboardOverview } from '@agent-zero/api';
 import { redactSecrets } from '@agent-zero/shared';
 import { defineHandler } from 'nitro';
 import type { EventHandlerWithFetch } from 'nitro/h3';
 
-import { dashboardOverview } from '../../src/dashboard.js';
 import { json, messageOf } from '../utils/respond.js';
 import { taskStore } from '../utils/store.js';
 

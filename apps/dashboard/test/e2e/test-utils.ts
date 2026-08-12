@@ -3,9 +3,9 @@ import type { ConsoleMessage, Page } from '@playwright/test';
 
 /**
  * Origin the dashboard talks to for authentication. Must match the `siteUrl` default in
- * `config/auth.ts`, since the auth adapter is a separate service and is not started for e2e.
+ * `config/auth.ts`, since `apps/server` is a separate service and is not started for e2e.
  */
-const AUTH_ORIGIN = 'http://localhost:3002';
+const AUTH_ORIGIN = 'http://localhost:3001';
 
 const AUTHENTICATED_SESSION = {
   user: {

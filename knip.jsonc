@@ -16,7 +16,7 @@
     "apps/server": {
       // Nitro discovers server routes, middleware, and utilities from the
       // filesystem, so knip cannot see who references them.
-      "entry": ["src/index.ts", "server/**/*.ts", "vite.config.ts", "nitro.config.ts"],
+      "entry": ["server/**/*.ts", "vite.config.ts", "nitro.config.ts"],
     },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does

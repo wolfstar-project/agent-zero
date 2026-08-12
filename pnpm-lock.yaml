@@ -100,55 +100,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
 
-  apps/auth-server:
-    dependencies:
-      '@agent-zero/auth':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/shared':
-        specifier: workspace:*
-        version: 0.3.0
-      '@arethetypeswrong/core':
-        specifier: ^0.18.1
-        version: 0.18.5
-      '@hono/node-server':
-        specifier: ^1.19.17
-        version: 1.19.17(hono@4.13.1)
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.13
-      '@types/node':
-        specifier: ^18.0.0 || ^20.0.0 || >=22.0.0
-        version: 24.13.3
-      happy-dom:
-        specifier: '*'
-        version: 20.11.2
-      hono:
-        specifier: ^4.13.1
-        version: 4.13.1
-      publint:
-        specifier: ^0.3.8
-        version: 0.3.23
-    devDependencies:
-      oxlint:
-        specifier: ^1.44.0
-        version: 1.77.0(oxlint-tsgolint@7.0.2001)
-      oxlint-tsgolint:
-        specifier: ^7.0.2001
-        version: 7.0.2001
-      tsdown:
-        specifier: ^0.22.14
-        version: 0.22.14(@arethetypeswrong/core@0.18.5)(publint@0.3.23)(tsx@4.23.11)
-      tsx:
-        specifier: ^4.20.3
-        version: 4.23.11
-      typescript:
-        specifier: ^5.9.2
-        version: typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
-
   apps/dashboard:
     dependencies:
       '@agent-zero/auth':
@@ -278,27 +229,21 @@ importers:
 
   apps/server:
     dependencies:
-      '@agent-zero/agent':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/config':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/github':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/models':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/runner':
+      '@agent-zero/api':
         specifier: workspace:*
         version: 0.3.0
       '@agent-zero/shared':
         specifier: workspace:*
         version: 0.3.0
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26
       '@orpc/server':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/zod':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(zod@4.4.3)
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.13
@@ -345,8 +290,8 @@ importers:
         specifier: ^2.4.2
         version: 2.9.0
       zod:
-        specifier: ^4.1.5
-        version: 4.1.11
+        specifier: '>=4.3.5'
+        version: 4.4.3
     devDependencies:
       oxlint:
         specifier: ^1.44.0
@@ -396,6 +341,82 @@ importers:
       tsx:
         specifier: '*'
         version: 4.23.11
+    devDependencies:
+      oxlint:
+        specifier: ^1.44.0
+        version: 1.77.0(oxlint-tsgolint@7.0.2001)
+      oxlint-tsgolint:
+        specifier: ^7.0.2001
+        version: 7.0.2001
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(@arethetypeswrong/core@0.18.5)(publint@0.3.23)(tsx@4.23.11)
+      typescript:
+        specifier: ^5.9.2
+        version: typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
+
+  packages/api:
+    dependencies:
+      '@agent-zero/agent':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/auth':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/config':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/github':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/models':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/runner':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/shared':
+        specifier: workspace:*
+        version: 0.3.0
+      '@arethetypeswrong/core':
+        specifier: ^0.18.1
+        version: 0.18.5
+      '@orpc/contract':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26
+      '@orpc/server':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(crossws@0.4.10)
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.13
+      '@types/node':
+        specifier: ^18.0.0 || ^20.0.0 || >=22.0.0
+        version: 24.13.3
+      crossws:
+        specifier: '>=0.3.4'
+        version: 0.4.10
+      happy-dom:
+        specifier: '*'
+        version: 20.11.2
+      hono:
+        specifier: ^4.13.1
+        version: 4.13.1
+      publint:
+        specifier: ^0.3.8
+        version: 0.3.23
+      tsx:
+        specifier: '*'
+        version: 4.23.11
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       oxlint:
         specifier: ^1.44.0
@@ -2384,11 +2405,11 @@ packages:
     resolution: {integrity: sha512-6xPjqqLl34jBXWYMO34ywLVQsT8FgH948x8YI9o6Tdqs7+n4QRyvkC+BcvVQaAPNc+pyqsvZAXcbdMEcGgDUGw==}
     engines: {node: '>=12.0.0'}
 
-  '@hono/node-server@1.19.17':
-    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4
+  '@hey-api/spec-types@0.0.0-next-20260408030107':
+    resolution: {integrity: sha512-P5DKr4dpZ7lmZpZt2bc2KWuzU9vl4GZcN7VrjchZF1WWKNGZFnwWhBxZo1t6P2muOCopIvqD2Fvp5os4QiitKA==}
+
+  '@hey-api/types@0.1.4':
+    resolution: {integrity: sha512-thWfawrDIP7wSI9ioT13I5soaaqB5vAPIiZmgD8PbeEVKNrkonc0N/Sjj97ezl7oQgusZmaNphGdMKipPO6IBg==}
 
   '@hono/node-server@2.1.0':
     resolution: {integrity: sha512-XovyyCCnBzW+zKu+z/zq8hwNs4KOR5rEMAOxo2f40Q5xoOI37IMm6MIg2COOUtUApo0i6850MTBKH2u4QLGIqg==}
@@ -3504,6 +3525,23 @@ packages:
   '@orpc/contract@2.0.0-beta.26':
     resolution: {integrity: sha512-tTeJBN0s+weE67t6Xyjt7pCnSaytWrUase4VdyajjjtWba2wxqIwMHITyvSKohmLVwym6LYAoGLqXF4ORgwHYQ==}
 
+  '@orpc/json-schema@2.0.0-beta.26':
+    resolution: {integrity: sha512-BBPsT4QvfhgS9CvVV6GGhG5CFAo61fSCP7dLIRXNd9IYQib0qmW56rLJ7U0Ro5yryoO5YrSCzV0aTD6eMX/W/A==}
+
+  '@orpc/openapi@2.0.0-beta.26':
+    resolution: {integrity: sha512-em8HJFEV6apEytMnrwNKndKAA+261m82JloxY1Jz3H1HUdqq3ztH3ZRC5nGQFSFvy/QXpdrj6APdK35hDOnIkw==}
+    peerDependencies:
+      '@scalar/api-reference': '>=1.57.2'
+      '@types/swagger-ui': '>=5.32.0'
+      swagger-ui: '>=5.32.6'
+    peerDependenciesMeta:
+      '@scalar/api-reference':
+        optional: true
+      '@types/swagger-ui':
+        optional: true
+      swagger-ui:
+        optional: true
+
   '@orpc/server@2.0.0-beta.26':
     resolution: {integrity: sha512-IBvwkJkCkPMxOLd2A2Js2baTXc4FE//W+wnXrMXkdNXarwjId9AJ+NJngxHitjepQKqc2fnqvWlMDvypS3WdQg==}
     peerDependencies:
@@ -3522,6 +3560,11 @@ packages:
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
+
+  '@orpc/zod@2.0.0-beta.26':
+    resolution: {integrity: sha512-NOLmnyvF5J/9twWk7ffgoHD6ObEI+Gth4VqI9M/TonpLt0pp9MWVllWuNfxvWJLOCPwfVmmD84ayU9i5TzssJQ==}
+    peerDependencies:
+      zod: '>=4.3.5'
 
   '@oxc-parser/binding-android-arm-eabi@0.131.0':
     resolution: {integrity: sha512-t2xicr9pfzkSRYx5aPqZqlLaayIwJTqgQ81Jor31Xep2nGyL2Aq3d0K5wOfeR7VevaSdxaS9dzSQP9xDwn8fDg==}
@@ -12929,26 +12972,26 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/gateway@3.0.151(zod@4.1.11)':
+  '@ai-sdk/gateway@3.0.151(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.39(zod@4.1.11)
+      '@ai-sdk/provider-utils': 4.0.39(zod@4.4.3)
       '@vercel/oidc': 3.2.0
-      zod: 4.1.11
+      zod: 4.4.3
 
-  '@ai-sdk/gateway@4.0.15(zod@4.1.11)':
+  '@ai-sdk/gateway@4.0.15(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.7(zod@4.1.11)
+      '@ai-sdk/provider-utils': 5.0.7(zod@4.4.3)
       '@vercel/oidc': 3.2.0
-      zod: 4.1.11
+      zod: 4.4.3
 
-  '@ai-sdk/gateway@4.0.26(zod@4.1.11)':
+  '@ai-sdk/gateway@4.0.26(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.12(zod@4.1.11)
+      '@ai-sdk/provider-utils': 5.0.12(zod@4.4.3)
       '@vercel/oidc': 3.2.0
-      zod: 4.1.11
+      zod: 4.4.3
 
   '@ai-sdk/gateway@4.0.46(zod@4.4.3)':
     dependencies:
@@ -12963,23 +13006,23 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/harness-codex@1.0.41(zod@4.1.11)':
+  '@ai-sdk/harness-codex@1.0.41(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/harness': 1.0.39(ws@8.21.3)(zod@4.1.11)
-      '@ai-sdk/provider-utils': 5.0.12(zod@4.1.11)
+      '@ai-sdk/harness': 1.0.39(ws@8.21.3)(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.12(zod@4.4.3)
       ws: 8.21.3
-      zod: 4.1.11
+      zod: 4.4.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@ai-sdk/harness@1.0.39(ws@8.21.3)(zod@4.1.11)':
+  '@ai-sdk/harness@1.0.39(ws@8.21.3)(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.12(zod@4.1.11)
-      ai: 7.0.34(zod@4.1.11)
+      '@ai-sdk/provider-utils': 5.0.12(zod@4.4.3)
+      ai: 7.0.34(zod@4.4.3)
       ws: 8.21.3
-      zod: 4.1.11
+      zod: 4.4.3
 
   '@ai-sdk/openai-compatible@3.0.27(zod@4.4.3)':
     dependencies:
@@ -12993,20 +13036,20 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.25(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@4.0.39(zod@4.1.11)':
+  '@ai-sdk/provider-utils@4.0.39(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 3.0.14
       '@standard-schema/spec': 1.1.0
       eventsource-parser: 3.1.0
-      zod: 4.1.11
+      zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.12(zod@4.1.11)':
+  '@ai-sdk/provider-utils@5.0.12(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.0
-      zod: 4.1.11
+      zod: 4.4.3
 
   '@ai-sdk/provider-utils@5.0.25(zod@4.4.3)':
     dependencies:
@@ -13017,13 +13060,13 @@ snapshots:
       undici: 7.29.0
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.7(zod@4.1.11)':
+  '@ai-sdk/provider-utils@5.0.7(zod@4.4.3)':
     dependencies:
       '@ai-sdk/provider': 4.0.3
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.0
-      zod: 4.1.11
+      zod: 4.4.3
 
   '@ai-sdk/provider@3.0.14':
     dependencies:
@@ -13934,16 +13977,16 @@ snapshots:
   '@cbor-extract/cbor-extract-win32-x64@2.2.2':
     optional: true
 
-  '@chat-adapter/shared@4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)':
+  '@chat-adapter/shared@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)':
     dependencies:
-      chat: 4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/telegram@4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)':
+  '@chat-adapter/telegram@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)':
     dependencies:
-      '@chat-adapter/shared': 4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)
-      chat: 4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)
+      '@chat-adapter/shared': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -14614,9 +14657,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@hono/node-server@1.19.17(hono@4.13.1)':
+  '@hey-api/spec-types@0.0.0-next-20260408030107':
     dependencies:
-      hono: 4.13.1
+      '@hey-api/types': 0.1.4
+
+  '@hey-api/types@0.1.4': {}
 
   '@hono/node-server@2.1.0(hono@4.13.1)':
     dependencies:
@@ -15093,7 +15138,7 @@ snapshots:
       json5: 2.2.3
       rollup: 4.62.4
 
-  '@modelcontextprotocol/sdk@1.30.0(zod@4.1.11)':
+  '@modelcontextprotocol/sdk@1.30.0(zod@4.4.3)':
     dependencies:
       '@hono/node-server': 2.1.0(hono@4.13.1)
       ajv: 8.20.0
@@ -15110,8 +15155,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.1.11
-      zod-to-json-schema: 3.25.2(zod@4.1.11)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -16013,6 +16058,33 @@ snapshots:
     transitivePeerDependencies:
       - '@opentelemetry/api'
 
+  '@orpc/json-schema@2.0.0-beta.26(crossws@0.4.10)':
+    dependencies:
+      '@orpc/client': 2.0.0-beta.26
+      '@orpc/contract': 2.0.0-beta.26
+      '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/shared': 2.0.0-beta.26
+      '@standard-schema/spec': 1.1.0
+      json-schema-typed: 8.0.2
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - fastify
+
+  '@orpc/openapi@2.0.0-beta.26':
+    dependencies:
+      '@hey-api/spec-types': 0.0.0-next-20260408030107
+      '@orpc/client': 2.0.0-beta.26
+      '@orpc/contract': 2.0.0-beta.26
+      '@orpc/json-schema': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/shared': 2.0.0-beta.26
+      '@standardserver/core': 0.7.1
+      '@standardserver/fetch': 0.7.1
+      rou3: 0.9.1
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - fastify
+
   '@orpc/server@2.0.0-beta.26(crossws@0.4.10)':
     dependencies:
       '@orpc/client': 2.0.0-beta.26
@@ -16035,6 +16107,15 @@ snapshots:
       '@standardserver/shared': 0.7.1
       radash: 12.1.1
       type-fest: 5.8.0
+
+  '@orpc/zod@2.0.0-beta.26(zod@4.4.3)':
+    dependencies:
+      '@orpc/json-schema': 2.0.0-beta.26(crossws@0.4.10)
+      json-schema-typed: 8.0.2
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - fastify
 
   '@oxc-parser/binding-android-arm-eabi@0.131.0':
     optional: true
@@ -17735,17 +17816,17 @@ snapshots:
       d3-time-format: 4.1.0
       internmap: 2.0.3
 
-  '@vite-hub/agent@0.0.3(a08d4e0b7d28c3acb45700979c488772)':
+  '@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab)':
     dependencies:
-      '@ai-sdk/gateway': 4.0.26(zod@4.1.11)
-      '@ai-sdk/harness': 1.0.39(ws@8.21.3)(zod@4.1.11)
-      '@ai-sdk/harness-codex': 1.0.41(zod@4.1.11)
-      '@chat-adapter/telegram': 4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)
+      '@ai-sdk/gateway': 4.0.26(zod@4.4.3)
+      '@ai-sdk/harness': 1.0.39(ws@8.21.3)(zod@4.4.3)
+      '@ai-sdk/harness-codex': 1.0.41(zod@4.4.3)
+      '@chat-adapter/telegram': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
       '@libsql/client': 0.17.4
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       '@vercel/nft': 1.10.2(rollup@4.62.4)
-      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/email': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/markdown-template': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
@@ -17753,9 +17834,9 @@ snapshots:
       '@vite-hub/runtime': 0.0.3
       '@vite-hub/schedule': 0.0.3(@vite-hub/kv@0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35)
-      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      ai: 7.0.19(zod@4.1.11)
-      chat: 4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11)
+      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      ai: 7.0.19(zod@4.4.3)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
       comark: 0.5.1
       effect: 4.0.0-beta.99
       esbuild: 0.27.7
@@ -17775,9 +17856,9 @@ snapshots:
       - utf-8-validate
       - vue
 
-  '@vite-hub/auth@0.0.3(@vite-hub/agent@0.0.3(a08d4e0b7d28c3acb45700979c488772))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/auth@0.0.3(@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
-      '@vite-hub/agent': 0.0.3(a08d4e0b7d28c3acb45700979c488772)
+      '@vite-hub/agent': 0.0.3(65798f536b21fa737609d6ea615e66ab)
       '@vite-hub/runtime': 0.0.3
       better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41)
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
@@ -17792,7 +17873,7 @@ snapshots:
       - solid-js
       - svelte
 
-  '@vite-hub/blob@0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/blob@0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
       '@aws-sdk/client-s3': 3.1106.0
       '@aws-sdk/lib-storage': 3.1106.0(@aws-sdk/client-s3@3.1106.0)
@@ -17804,7 +17885,7 @@ snapshots:
       aws4fetch: 1.0.20
       defu: 6.1.7
       esbuild: 0.27.7
-      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11)
+      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3)
       h3: 2.0.1-rc.25(crossws@0.4.10)
       pathe: 2.0.3
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
@@ -17957,9 +18038,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vite-hub/source@0.0.3(zod@4.1.11)':
+  '@vite-hub/source@0.0.3(zod@4.4.3)':
     dependencies:
-      '@modelcontextprotocol/sdk': 1.30.0(zod@4.1.11)
+      '@modelcontextprotocol/sdk': 1.30.0(zod@4.4.3)
       '@vite-hub/runtime': 0.0.3
       effect: 4.0.0-beta.99
       mrmime: 2.0.1
@@ -17987,15 +18068,15 @@ snapshots:
       - '@aws-sdk/credential-provider-web-identity'
       - ws
 
-  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
       '@vercel/nft': 1.10.2(rollup@4.62.4)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/markdown-template': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/runtime': 0.0.3
       '@vite-hub/shell': 0.0.3
-      '@vite-hub/source': 0.0.3(zod@4.1.11)
-      ai: 6.0.228(zod@4.1.11)
+      '@vite-hub/source': 0.0.3(zod@4.4.3)
+      ai: 6.0.228(zod@4.4.3)
       defu: 6.1.7
       exsolve: 1.1.1
       h3: 2.0.1-rc.25(crossws@0.4.10)
@@ -18017,15 +18098,15 @@ snapshots:
       - supports-color
       - unstorage
 
-  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
       '@vercel/nft': 1.10.2(rollup@4.62.4)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/markdown-template': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/runtime': 0.0.3
       '@vite-hub/shell': 0.0.3
-      '@vite-hub/source': 0.0.3(zod@4.1.11)
-      ai: 7.0.19(zod@4.1.11)
+      '@vite-hub/source': 0.0.3(zod@4.4.3)
+      ai: 7.0.19(zod@4.4.3)
       defu: 6.1.7
       exsolve: 1.1.1
       h3: 2.0.1-rc.25(crossws@0.4.10)
@@ -18854,27 +18935,27 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@6.0.228(zod@4.1.11):
+  ai@6.0.228(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 3.0.151(zod@4.1.11)
+      '@ai-sdk/gateway': 3.0.151(zod@4.4.3)
       '@ai-sdk/provider': 3.0.14
-      '@ai-sdk/provider-utils': 4.0.39(zod@4.1.11)
+      '@ai-sdk/provider-utils': 4.0.39(zod@4.4.3)
       '@opentelemetry/api': 1.9.0
-      zod: 4.1.11
+      zod: 4.4.3
 
-  ai@7.0.19(zod@4.1.11):
+  ai@7.0.19(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.15(zod@4.1.11)
+      '@ai-sdk/gateway': 4.0.15(zod@4.4.3)
       '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.7(zod@4.1.11)
-      zod: 4.1.11
+      '@ai-sdk/provider-utils': 5.0.7(zod@4.4.3)
+      zod: 4.4.3
 
-  ai@7.0.34(zod@4.1.11):
+  ai@7.0.34(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.26(zod@4.1.11)
+      '@ai-sdk/gateway': 4.0.26(zod@4.4.3)
       '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.12(zod@4.1.11)
-      zod: 4.1.11
+      '@ai-sdk/provider-utils': 5.0.12(zod@4.4.3)
+      zod: 4.4.3
 
   ai@7.0.58(zod@4.4.3):
     dependencies:
@@ -19441,10 +19522,10 @@ snapshots:
 
   character-entities@2.0.2: {}
 
-  chat@4.35.0(ai@7.0.19(zod@4.1.11))(workflow@5.0.0-beta.35)(zod@4.1.11):
+  chat@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
-      ai: 7.0.19(zod@4.1.11)
+      ai: 7.0.19(zod@4.4.3)
       mdast-util-to-string: 4.0.0
       remark-gfm: 4.0.1
       remark-parse: 11.0.0
@@ -19452,7 +19533,7 @@ snapshots:
       remend: 1.3.0
       unified: 11.0.5
       workflow: 5.0.0-beta.35
-      zod: 4.1.11
+      zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -20668,7 +20749,7 @@ snapshots:
     dependencies:
       filename-reserved-regex: 4.0.0
 
-  files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11):
+  files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3):
     dependencies:
       '@aws-sdk/client-s3': 3.1106.0
       '@aws-sdk/lib-storage': 3.1106.0(@aws-sdk/client-s3@3.1106.0)
@@ -20682,7 +20763,7 @@ snapshots:
       '@netlify/blobs': 10.7.12
       '@supabase/storage-js': 2.112.2
       '@vercel/blob': 2.7.0
-      ai: 6.0.228(zod@4.1.11)
+      ai: 6.0.228(zod@4.4.3)
       aws4fetch: 1.0.20
       box-typescript-sdk-gen: 1.19.1
       commander: 15.0.0
@@ -20691,9 +20772,9 @@ snapshots:
       picomatch: 4.0.5
       safe-regex2: 5.1.1
       uploadthing: 7.7.4
-      zod: 4.1.11
+      zod: 4.4.3
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.30.0(zod@4.1.11)
+      '@modelcontextprotocol/sdk': 1.30.0(zod@4.4.3)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
@@ -25009,9 +25090,9 @@ snapshots:
       '@netlify/blobs': 10.7.12
       '@supabase/storage-js': 2.112.2
       '@vercel/sandbox': 1.10.2
-      '@vite-hub/agent': 0.0.3(a08d4e0b7d28c3acb45700979c488772)
-      '@vite-hub/auth': 0.0.3(@vite-hub/agent@0.0.3(a08d4e0b7d28c3acb45700979c488772))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/agent': 0.0.3(65798f536b21fa737609d6ea615e66ab)
+      '@vite-hub/auth': 0.0.3(@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/browser': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/cli': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
@@ -25026,16 +25107,16 @@ snapshots:
       '@vite-hub/sandbox': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/schedule': 0.0.3(@vite-hub/kv@0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/shell': 0.0.3
-      '@vite-hub/source': 0.0.3(zod@4.1.11)
+      '@vite-hub/source': 0.0.3(zod@4.4.3)
       '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35)
-      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.1.11))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@workflow/builders': 5.0.0-beta.35
-      ai: 6.0.228(zod@4.1.11)
+      ai: 6.0.228(zod@4.4.3)
       box-typescript-sdk-gen: 1.19.1
       drizzle-kit: 0.31.10
       drizzle-orm: 0.45.2
       dropbox: 10.44.0
-      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.1.11))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.1.11)
+      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3)
       google-auth-library: 10.9.1
       uploadthing: 7.7.4
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
@@ -25717,10 +25798,6 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.7.0
-
-  zod-to-json-schema@3.25.2(zod@4.1.11):
-    dependencies:
-      zod: 4.1.11
 
   zod-to-json-schema@3.25.2(zod@4.4.3):
     dependencies:

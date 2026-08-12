@@ -4,7 +4,7 @@ import { authOptionsFromEnvironment } from './auth.js';
 
 const completeEnvironment = {
   BETTER_AUTH_SECRET: 'a-very-secret-value',
-  BETTER_AUTH_URL: 'http://localhost:3002',
+  BETTER_AUTH_URL: 'http://localhost:3001',
   AUTH_DASHBOARD_ORIGIN: 'http://localhost:3000',
   AUTH_DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/agent_zero_auth',
 };

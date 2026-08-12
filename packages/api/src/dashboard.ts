@@ -1,7 +1,7 @@
-import type { DashboardOverview } from '../shared/dashboard.js';
 import type { StoredTask } from './control-plane.js';
+import type { DashboardOverview } from './types.js';
 
-export type { DashboardOverview } from '../shared/dashboard.js';
+export type { DashboardOverview } from './types.js';
 
 export function dashboardOverview(tasks: StoredTask[]): DashboardOverview {
   return {

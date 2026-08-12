@@ -1,9 +1,9 @@
 import { createRouterClient } from '@orpc/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { Principal } from './auth.js';
-import { MemoryTaskStore, type StoredTask } from './control-plane.js';
-import { rpcRouter } from './rpc.js';
+import type { Principal } from '../access.js';
+import { MemoryTaskStore, type StoredTask } from '../control-plane.js';
+import { rpcRouter } from './router.js';
 
 const TIMESTAMP = '2026-08-09T10:00:00.000Z';
 const VALIDATION_ERROR = /validation/i;

@@ -5,7 +5,7 @@ import {
   authenticate,
   mayTargetRepository,
   type ControlPlaneAccess,
-} from './auth.js';
+} from './access.js';
 
 const TOKEN_FORMAT_ERROR = /name:token/;
 const MODE_FORMAT_ERROR = /name:mode\|mode/;

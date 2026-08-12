@@ -5,11 +5,11 @@ Agent Zero is organized as a dependency-directed monorepo. The core decides what
 ```text
 GitHub adapter ─┐
 CLI adapter ────┼──> agent runtime ──> runner boundary ──> isolated checkout
-oRPC server ────┘        │
+packages/api ───┘        │
                          ├──> model abstraction ──> provider
                          └──> shared contracts
 
-Nuxt dashboard ───> operational interface ──> auth adapter ──> session store
+Nuxt dashboard ───> apps/server (oRPC + OpenAPI + auth) ──> auth adapter ──> session store
 ```
 
 ## Dependency direction
@@ -18,9 +18,10 @@ Nuxt dashboard ───> operational interface ──> auth adapter ──> ses
 - `config`, `models`, `github`, and `runner` implement focused capabilities around shared contracts.
 - `agent` composes policies and state transitions without knowing HTTP or terminal details.
 - `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
-- `apps/server` is an entry-point adapter and composition root. Like `cli`, it may depend on the runtime; the runtime must not depend on it.
+- `auth` holds authentication policy and the Better Auth instance and does not depend on the runtime.
+- `packages/api` composes the runtime, GitHub, models, config, and auth adapters into one router. It may depend on all of them; none of them may depend on it.
+- `apps/server` is the entry-point adapter and composition root: a Nitro v3 + ViteHub host that serves `packages/api`'s router and holds the only database credential in the repository.
 - `apps/dashboard` is a frontend-only Nuxt interface and does not import runtime packages.
-- `auth` holds authentication policy and the Better Auth instance; `apps/auth-server` is the entry-point adapter that exposes it over HTTP. Neither may depend on the runtime.
 
 If a change creates a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime.
 
@@ -44,25 +45,38 @@ Model transports follow the same adapter rule. `packages/models` owns the AI SDK
 
 `apps/dashboard` owns presentation only. It has no custom Nitro server routes, RPC contracts, persistence adapters, scheduler, runtime-package dependencies, shell capability, or target-filesystem capability. Any future live data source must be implemented as a separate adapter with an explicit contract rather than composed into the dashboard.
 
+## API package
+
+`packages/api` is the library the dashboard's server ultimately reads from: it composes the agent runtime, GitHub adapter, model abstraction, config, and auth packages into one typed oRPC router (`health`, `tasks.list`, `tasks.get`, `tasks.create`, `approvals.decide`), a control-plane operations layer (`runTask`, `TaskScheduler`, `TaskStore`), and the Better Auth Hono mount (`createAuthApp`). It holds no HTTP host of its own — `apps/server` is the only place that constructs a transport handler from it — which keeps the router and its authorization rules identical regardless of which wire protocol serves a given request.
+
+Procedures validate at the boundary with Zod and then delegate; they never invoke a shell or touch a checkout, because `runTask` is the only place that resolves policy and constructs a runner. A hosted `RunnerPool` lease is optional and still yields nothing but a `Runner`.
+
 ## Control-plane boundary
 
-`apps/server` is that separate adapter: the transport and composition root the dashboard reads from, kept in its own package so presentation never gains runtime capability.
+`apps/server` is the composition root and the only entry-point adapter with HTTP capability. It is a Nitro v3 host composed as a Vite app with ViteHub, and exposes:
 
-It exposes one typed oRPC router (`health`, `tasks.list`, `tasks.get`, `tasks.create`, `approvals.decide`) through a Nitro v3 host composed as a Vite app with ViteHub, plus a single aggregate `GET /api/dashboard` for the operational view. Procedures validate at the boundary with Zod and then delegate; they never invoke a shell or touch a checkout, because `runTask` is the only place that resolves policy and constructs a runner. A hosted `RunnerPool` lease is optional and still yields nothing but a `Runner`.
+| Route                | Purpose                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/rpc/**`            | `packages/api`'s router over the typed oRPC RPC transport                                                    |
+| `/api/v1/**`         | The same router over OpenAPI/REST (`OpenAPIHandler`); docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
+| `/api/auth/**`       | The Better Auth handler (`createAuthApp`)                                                                    |
+| `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters                                    |
+
+`/rpc/**` and `/api/v1/**` serve the exact same `rpcRouter` and therefore the exact same authorization rules; only the wire protocol differs. `.route()` metadata on each procedure (method, path, tags) exists purely for the OpenAPI transport and has no effect on the RPC transport.
 
 Mutations fail closed behind operator-issued bearer credentials (`AGENT_ZERO_CONTROL_PLANE_TOKENS`, comma-separated `name:token` pairs). `tasks.create` additionally requires the target repository path to appear in `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES`, so an HTTP caller cannot point a run at an arbitrary server-local path, and the requested execution mode to be granted to the principal via `AGENT_ZERO_CONTROL_PLANE_MODES` (comma-separated `name:mode|mode` grants; without one a principal is limited to the non-writable `observe` and `suggest` modes). Approval decisions record the authenticated principal's name rather than a wire-supplied actor. Reads stay open for the dashboard.
 
-Persistence is a narrow `KeyValueStorage` contract adapted over the ViteHub KV Runtime Helper, so the filesystem driver, Cloudflare KV, Deno KV, or Upstash stays interchangeable. Records are redacted on the way in and hold no review input and no checkout path, so task history cannot become a credential or filesystem leak. `TaskScheduler` bounds concurrency globally and per repository, and rejects work once the queue is exhausted rather than growing without limit.
+Task persistence is a narrow `KeyValueStorage` contract adapted over the ViteHub KV Runtime Helper, so the filesystem driver, Cloudflare KV, Deno KV, or Upstash stays interchangeable. Records are redacted on the way in and hold no review input and no checkout path, so task history cannot become a credential or filesystem leak. `TaskScheduler` bounds concurrency globally and per repository, and rejects work once the queue is exhausted rather than growing without limit.
 
-Transport concerns stop here: headers, status mapping, and request objects never reach a runtime package.
+Transport concerns stop at the route handlers: headers, status mapping, and request objects never reach a runtime package.
 
 ## Authentication boundary
 
-Authentication follows the same adapter rule. Better Auth runs in `apps/auth-server`, a standalone Hono process that mounts the handler at `/api/auth/*` and owns the only database in the repository: Postgres. The dashboard consumes it as a client through `@onmax/nuxt-better-auth` in `clientOnly` mode, which drops the local `/api/auth/**` handlers, the server auth config, and the signing secret. `packages/auth` holds the policy and the instance factory so that the contract is expressible without an HTTP server; its `./config` subpath is free of database dependencies so the dashboard can read feature flags without bundling one.
+Authentication follows the same adapter rule at the package level, but not at the process level: Better Auth is mounted in-process by `apps/server`'s `/api/auth/**` route, which is the only route in the app that resolves `AUTH_DATABASE_URL` and `BETTER_AUTH_SECRET` and therefore the only part of `apps/server` that opens a connection to Postgres, the only database in the repository. Every other route reaches storage exclusively through the `KeyValueStorage` contract. The dashboard consumes auth as a client through `@onmax/nuxt-better-auth` in `clientOnly` mode, which drops the local `/api/auth/**` handlers, the server auth config, and the signing secret. `packages/auth` holds the policy and the instance factory so that the contract is expressible without an HTTP server; its `./config` subpath is free of database dependencies so the dashboard can read feature flags without bundling one, and `packages/api`'s `createAuthApp` is the only place that turns that instance into a fetch-compatible handler.
 
 The session store's schema is declared in Drizzle (`packages/auth/src/schema.ts`) rather than generated by Better Auth's own migration CLI, so `user`, `session`, `account`, and `verification` are reviewable, checked-in SQL under `packages/auth/drizzle/` like any other schema change. `drizzleAdapter` binds the Better Auth model layer to that schema; nothing outside `packages/auth` queries the tables directly.
 
-The dashboard renders as a single-page app. The session cookie is scoped to the auth server's origin, so a server render can never observe it: SSR would classify every visitor as signed out, redirect to `/login`, and then be corrected on the client. Deployments that want a server-side guard must place both origins behind one hostname.
+The dashboard renders as a single-page app. The session cookie is scoped to `apps/server`'s origin, so a server render can never observe it: SSR would classify every visitor as signed out, redirect to `/login`, and then be corrected on the client. Deployments that want a server-side guard must place both origins behind one hostname.
 
 ## State transitions
 

@@ -6,22 +6,19 @@
     "build": "vite build",
     "clean": "tsc -b --clean",
     "dev": "vite dev",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server shared",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src server",
     "start": "node .output/server/index.mjs",
-    "test": "vitest run src",
+    "test": "vitest run src --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },
   "dependencies": {
-    "@agent-zero/agent": "workspace:*",
-    "@agent-zero/config": "workspace:*",
-    "@agent-zero/github": "workspace:*",
-    "@agent-zero/models": "workspace:*",
-    "@agent-zero/runner": "workspace:*",
+    "@agent-zero/api": "workspace:*",
     "@agent-zero/shared": "workspace:*",
+    "@orpc/openapi": "2.0.0-beta.26",
     "@orpc/server": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
     "nitro": "^3.0.260610-beta",
-    "vite-hub": "^0.0.3",
-    "zod": "^4.1.5"
+    "vite-hub": "^0.0.3"
   },
   "devDependencies": {
     "oxlint": "^1.44.0",

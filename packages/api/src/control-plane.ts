@@ -4,13 +4,9 @@ import {
   type EvidenceBundle,
 } from '@agent-zero/shared';
 
-import type { DashboardTask } from '../shared/dashboard.js';
+import type { DashboardTask } from './types.js';
 
-export type {
-  ApprovalDecision,
-  ControlPlaneTaskStatus,
-  TaskApproval,
-} from '../shared/dashboard.js';
+export type { ApprovalDecision, ControlPlaneTaskStatus, TaskApproval } from './types.js';
 
 /** Durable, deliberately narrow task history. Review input and checkout paths are never stored. */
 export interface StoredTask extends DashboardTask {

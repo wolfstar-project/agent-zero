@@ -69,9 +69,9 @@ export default defineNuxtConfig({
     },
   },
   auth: {
-    // Better Auth runs in `apps/auth-server`, not here. Client-only mode drops the local
-    // `/api/auth/**` handlers, the server config, and the signing secret, which is what keeps the
-    // dashboard free of Nitro auth routes and of any persistence.
+    // Better Auth runs in `apps/server` (via `@agent-zero/api`), not here. Client-only mode drops
+    // the local `/api/auth/**` handlers, the server config, and the signing secret, which is what
+    // keeps the dashboard free of Nitro auth routes and of any persistence.
     clientOnly: true,
     redirects: {
       login: loginPath,

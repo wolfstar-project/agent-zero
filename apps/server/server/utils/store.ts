@@ -1,10 +1,5 @@
+import { PersistentTaskStore, type KeyValueStorage, type TaskStore } from '@agent-zero/api';
 import { kv } from 'vite-hub/kv';
-
-import {
-  PersistentTaskStore,
-  type KeyValueStorage,
-  type TaskStore,
-} from '../../src/control-plane.js';
 
 /** Adapts the ViteHub KV Runtime Helper to the transport-neutral {@link KeyValueStorage} contract. */
 class KvKeyValueStorage implements KeyValueStorage {

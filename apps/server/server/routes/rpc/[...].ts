@@ -1,10 +1,15 @@
+import {
+  accessFromEnvironment,
+  authenticate,
+  mayTargetRepository,
+  rpcRouter,
+  type RpcContext,
+} from '@agent-zero/api';
 import { redactSecrets } from '@agent-zero/shared';
 import { RPCHandler } from '@orpc/server/fetch';
 import { defineHandler } from 'nitro';
 import type { EventHandlerWithFetch } from 'nitro/h3';
 
-import { accessFromEnvironment, authenticate, mayTargetRepository } from '../../../src/auth.js';
-import { rpcRouter, type RpcContext } from '../../../src/rpc.js';
 import { json, messageOf } from '../../utils/respond.js';
 import { taskStore } from '../../utils/store.js';
 

@@ -17,14 +17,14 @@ export {
   type WebhookOptions,
   type WebhookOutcome,
   type WebhookRequest,
-} from './router.js';
+} from './operations.js';
 export {
   accessFromEnvironment,
   authenticate,
   mayTargetRepository,
   type ControlPlaneAccess,
   type Principal,
-} from './auth.js';
+} from './access.js';
 export {
   MemoryTaskStore,
   PersistentTaskStore,
@@ -40,6 +40,7 @@ export {
   type TaskStore,
 } from './control-plane.js';
 export { dashboardOverview, type DashboardOverview } from './dashboard.js';
-export { portFromEnvironment } from './port.js';
-export { rpcRouter, type RpcContext, type RpcRouter } from './rpc.js';
+export { rpcRouter, type RpcContext, type RpcRouter } from './orpc/router.js';
 export { FileKeyValueStorage } from './storage.js';
+export { createAuthApp } from './auth-app.js';
+export { authOptionsFromEnvironment, type AuthInstanceOptions } from '@agent-zero/auth';
