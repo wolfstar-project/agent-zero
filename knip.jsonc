@@ -13,6 +13,14 @@
     "nano-staged",
   ],
   "workspaces": {
+    "packages/mail": {
+      // maizzle.config.ts is discovered by Maizzle's own `render()` call by filesystem
+      // convention (it walks up from the template path), not imported by anything in src/.
+      "entry": ["src/index.ts", "maizzle.config.ts"],
+      // Resolved by Maizzle's Tailwind integration from the package name, not imported
+      // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
+      "ignoreDependencies": ["@maizzle/tailwindcss"],
+    },
     "apps/server": {
       // Nitro discovers server routes, middleware, and utilities from the
       // filesystem, so knip cannot see who references them.

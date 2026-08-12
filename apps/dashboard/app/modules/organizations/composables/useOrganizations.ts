@@ -5,6 +5,15 @@ import { useState } from 'nuxt/app';
 
 import type { Organization, OrganizationMember, OrganizationRole } from '../types/organization.js';
 
+/** Surface the server's message without assuming a shape the plugin may not return. */
+function messageFrom(cause: unknown): string {
+  if (cause && typeof cause === 'object' && 'message' in cause) {
+    const { message } = cause as { message?: unknown };
+    if (typeof message === 'string' && message !== '') return message;
+  }
+  return 'organizations.errors.generic';
+}
+
 /**
  * Organization state for the dashboard.
  *
@@ -23,15 +32,6 @@ export function useOrganizations() {
   const members = useState<OrganizationMember[]>('organizations:members', () => []);
   const pending = useState('organizations:pending', () => false);
   const error = useState<string | null>('organizations:error', () => null);
-
-  /** Surface the server's message without assuming a shape the plugin may not return. */
-  function messageFrom(cause: unknown): string {
-    if (cause && typeof cause === 'object' && 'message' in cause) {
-      const { message } = cause as { message?: unknown };
-      if (typeof message === 'string' && message !== '') return message;
-    }
-    return 'organizations.errors.generic';
-  }
 
   /**
    * Run one client call with shared pending and error handling.

@@ -11,6 +11,7 @@ const completeEnvironment = {
 };
 
 const MISSING_URL_MESSAGE = /missing required environment variable: BETTER_AUTH_URL/;
+const MISSING_SEND_INVITATION_EMAIL_PATTERN = /sendInvitationEmail/;
 
 /** Return the failure message so assertions stay outside the catch block. */
 function messageFrom(run: () => unknown): string {
@@ -90,7 +91,7 @@ describe('createAuth with organizations', () => {
         ...instanceOptions,
         config: { ...defaultAuthConfig, enableOrganizations: true },
       }),
-    ).toThrow(/sendInvitationEmail/);
+    ).toThrow(MISSING_SEND_INVITATION_EMAIL_PATTERN);
   });
 
   it('constructs without a transport while organizations are off', () => {

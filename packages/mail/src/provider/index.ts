@@ -27,13 +27,15 @@ function requireEnvironmentValue(
   return value;
 }
 
+const DECIMAL_PORT_PATTERN = /^\d+$/u;
+
 function requirePort(
   environment: Readonly<Record<string, string | undefined>>,
   name: string,
 ): number {
   const raw = requireEnvironmentValue(environment, name);
   // Validate the whole value: `Number.parseInt` would truncate `587abc` to a usable port.
-  if (!/^\d+$/u.test(raw)) throw new Error(`invalid ${name}: expected a port number`);
+  if (!DECIMAL_PORT_PATTERN.test(raw)) throw new Error(`invalid ${name}: expected a port number`);
   const port = Number.parseInt(raw, 10);
   if (port < 1 || port > 65_535) throw new Error(`invalid ${name}: expected a port number`);
   return port;
@@ -56,20 +58,20 @@ export function mailProviderFromEnvironment(
       `invalid MAIL_PROVIDER: expected one of ${MAIL_PROVIDER_NAMES.join(', ')}, received ${configured}`,
     );
 
-  switch (configured) {
-    case 'resend':
-      return createResendProvider({
-        apiKey: requireEnvironmentValue(environment, 'RESEND_API_KEY'),
-      });
-    case 'smtp':
-      return createSmtpProvider({
-        host: requireEnvironmentValue(environment, 'SMTP_HOST'),
-        port: requirePort(environment, 'SMTP_PORT'),
-        secure: environment.SMTP_SECURE === 'true',
-        ...(environment.SMTP_USER?.trim() ? { user: environment.SMTP_USER.trim() } : {}),
-        ...(environment.SMTP_PASSWORD ? { password: environment.SMTP_PASSWORD } : {}),
-      });
-    case 'console':
-      return createConsoleProvider();
-  }
+  if (configured === 'resend')
+    return createResendProvider({
+      apiKey: requireEnvironmentValue(environment, 'RESEND_API_KEY'),
+    });
+
+  if (configured === 'smtp')
+    return createSmtpProvider({
+      host: requireEnvironmentValue(environment, 'SMTP_HOST'),
+      port: requirePort(environment, 'SMTP_PORT'),
+      secure: environment.SMTP_SECURE === 'true',
+      ...(environment.SMTP_USER?.trim() ? { user: environment.SMTP_USER.trim() } : {}),
+      ...(environment.SMTP_PASSWORD ? { password: environment.SMTP_PASSWORD } : {}),
+    });
+
+  // The only remaining member of MailProviderName, narrowed by isProviderName above.
+  return createConsoleProvider();
 }
