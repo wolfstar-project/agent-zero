@@ -94,28 +94,35 @@ describe('defaultBranch', () => {
 describe('publishBranch', () => {
   const responses = {
     [`/repos/acme/app/git/commits/${baseSha}`]: { tree: { sha: 't'.repeat(40) } },
+    '/repos/acme/app/git/blobs': { sha: 'f'.repeat(40) },
     '/repos/acme/app/git/trees': { sha: 'e'.repeat(40) },
     '/repos/acme/app/git/commits': { sha: 'c'.repeat(40) },
     '/repos/acme/app/git/refs': { ref: 'refs/heads/agent-zero/issue-12' },
   };
 
-  it('builds the branch from base commit, tree, commit, and a fresh ref', async () => {
+  it('builds the branch from base commit, byte-safe blobs, tree, commit, and a fresh ref', async () => {
     const { pulls, requests } = adapter(responses);
+    // Invalid UTF-8 bytes: only a base64 blob can carry them to GitHub without corruption.
+    const binary = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0x80]).toString('base64');
     const outcome = await pulls.publishBranch(target, {
       branch: 'agent-zero/issue-12',
       baseSha,
       message: 'Guard the null return',
       files: [
-        { path: 'src/user.ts', content: 'export const load = () => ({});\n' },
-        { path: 'src/stale.ts', content: null },
+        { path: 'assets/logo.png', contentBase64: binary },
+        { path: 'src/stale.ts', contentBase64: null },
       ],
     });
     expect(outcome).toEqual({ commitSha: 'c'.repeat(40) });
+    const blob = requests.find((request) => request.path === '/repos/acme/app/git/blobs');
+    expect(blob?.body).toEqual({ content: binary, encoding: 'base64' });
+    // The exact equality matters: entries reference blobs by id and never carry an inline
+    // `content` field, because the tree API's text-only content field corrupts binary bytes.
     const tree = requests.find((request) => request.path === '/repos/acme/app/git/trees');
-    expect(tree?.body).toMatchObject({
+    expect(tree?.body).toEqual({
       base_tree: 't'.repeat(40),
       tree: [
-        { path: 'src/user.ts', mode: '100644', type: 'blob', content: expect.any(String) },
+        { path: 'assets/logo.png', mode: '100644', type: 'blob', sha: 'f'.repeat(40) },
         { path: 'src/stale.ts', mode: '100644', type: 'blob', sha: null },
       ],
     });
@@ -135,19 +142,19 @@ describe('publishBranch', () => {
         branch: 'agent-zero/issue-12',
         baseSha,
         message: 'retry',
-        files: [{ path: 'src/user.ts', content: 'x' }],
+        files: [{ path: 'src/user.ts', contentBase64: 'eA==' }],
       }),
     ).rejects.toThrow('422');
   });
 
-  it('refuses unsafe branches, escaped paths, and empty change sets before any request', async () => {
+  it('refuses unsafe branches, escaped paths, non-base64 content, and empty change sets before any request', async () => {
     const { pulls, requests } = adapter(responses);
     await expect(
       pulls.publishBranch(target, {
         branch: 'a..b',
         baseSha,
         message: 'm',
-        files: [{ path: 'a', content: '' }],
+        files: [{ path: 'a', contentBase64: '' }],
       }),
     ).rejects.toThrow('unsafe branch name');
     await expect(
@@ -155,9 +162,17 @@ describe('publishBranch', () => {
         branch: 'agent-zero/issue-12',
         baseSha,
         message: 'm',
-        files: [{ path: '../escape', content: '' }],
+        files: [{ path: '../escape', contentBase64: '' }],
       }),
     ).rejects.toThrow('not inside the repository');
+    await expect(
+      pulls.publishBranch(target, {
+        branch: 'agent-zero/issue-12',
+        baseSha,
+        message: 'm',
+        files: [{ path: 'src/user.ts', contentBase64: 'not base64!' }],
+      }),
+    ).rejects.toThrow('not base64');
     await expect(
       pulls.publishBranch(target, {
         branch: 'agent-zero/issue-12',
@@ -180,7 +195,7 @@ describe('publishBranch', () => {
         branch: 'agent-zero/issue-12',
         baseSha,
         message: 'm',
-        files: [{ path: 'src/user.ts', content: 'x' }],
+        files: [{ path: 'src/user.ts', contentBase64: 'eA==' }],
       }),
     ).rejects.toThrow(REDACTED_FAILURE);
   });

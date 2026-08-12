@@ -11,12 +11,13 @@ export interface RepositoryTarget {
 }
 
 /**
- * One file of the published change set. `content` carries the complete new file content; `null`
- * records a deletion.
+ * One file of the published change set. `contentBase64` carries the complete new file bytes as
+ * base64; `null` records a deletion. Base64 is deliberate: the tree API's inline `content` field
+ * is UTF-8 text, so publishing through it would corrupt any bytes that are not valid UTF-8.
  */
 export interface BranchFile {
   path: string;
-  content: string | null;
+  contentBase64: string | null;
 }
 
 export interface PublishBranchOptions {
@@ -46,6 +47,8 @@ export interface GitHubPullRequestsOptions {
 const MAX_TITLE = 256;
 const MAX_BODY = 60_000;
 const COMMIT_SHA = /^[0-9a-f]{7,64}$/i;
+// Standard base64 with optional padding; anything else is a caller bug, refused before any request.
+const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 /**
  * Git ref names this adapter is willing to create.
@@ -117,22 +120,38 @@ export class GitHubPullRequests {
       throw new Error('publishBranch requires a valid base commit SHA');
     if (options.files.length === 0)
       throw new Error('Refusing to publish a branch with no changed files');
-    for (const file of options.files)
+    for (const file of options.files) {
       if (!isRepositoryRelativePath(file.path))
         throw new Error(`Changed path is not inside the repository: ${file.path}`);
+      if (file.contentBase64 !== null && !BASE64.test(file.contentBase64))
+        throw new Error(`Changed file content is not base64: ${file.path}`);
+    }
 
     const prefix = `/repos/${target.owner}/${target.repo}`;
     const baseCommit = await this.send('GET', `${prefix}/git/commits/${options.baseSha}`);
     const baseTree = readString(readRecord(baseCommit, 'tree'), 'sha');
     if (!baseTree) throw new Error('GitHub did not report a tree for the base commit');
 
+    // Contents go through the blob API as base64, never the tree API's inline `content` field:
+    // that field is UTF-8 text, and routing bytes through it would corrupt binary files.
+    const entries: Record<string, unknown>[] = [];
+    for (const file of options.files) {
+      if (file.contentBase64 === null) {
+        entries.push({ path: file.path, mode: '100644', type: 'blob', sha: null });
+        continue;
+      }
+      const blob = await this.send('POST', `${prefix}/git/blobs`, {
+        content: file.contentBase64,
+        encoding: 'base64',
+      });
+      const blobSha = readString(blob, 'sha');
+      if (!blobSha) throw new Error(`GitHub did not return a blob id for ${file.path}`);
+      entries.push({ path: file.path, mode: '100644', type: 'blob', sha: blobSha });
+    }
+
     const tree = await this.send('POST', `${prefix}/git/trees`, {
       base_tree: baseTree,
-      tree: options.files.map((file) =>
-        file.content === null
-          ? { path: file.path, mode: '100644', type: 'blob', sha: null }
-          : { path: file.path, mode: '100644', type: 'blob', content: file.content },
-      ),
+      tree: entries,
     });
     const treeSha = readString(tree, 'sha');
     if (!treeSha) throw new Error('GitHub did not return a tree id');

@@ -533,11 +533,12 @@ function issueEvidence(overrides: Partial<EvidenceBundle> = {}): EvidenceBundle 
 }
 
 const VERIFIED_CONTENT = 'export const load = (): object => ({});\n';
+const VERIFIED_CONTENT_BASE64 = Buffer.from(VERIFIED_CONTENT).toString('base64');
 
 function storeIssueTask(
   evidence: EvidenceBundle,
-  snapshot: { path: string; content: string | null }[] | null = evidence.changedFiles.map(
-    (path) => ({ path, content: VERIFIED_CONTENT }),
+  snapshot: { path: string; contentBase64: string | null }[] | null = evidence.changedFiles.map(
+    (path) => ({ path, contentBase64: VERIFIED_CONTENT_BASE64 }),
   ),
 ): void {
   const timestamp = new Date(0).toISOString();
@@ -563,6 +564,7 @@ function fakeGitHubApi(): {
     '/repos/acme/app': { default_branch: 'main' },
     '/repos/acme/app/git/ref/heads%2Fmain': { object: { sha: issueBaseSha } },
     [`/repos/acme/app/git/commits/${issueBaseSha}`]: { tree: { sha: 't'.repeat(40) } },
+    '/repos/acme/app/git/blobs': { sha: 'f'.repeat(40) },
     '/repos/acme/app/git/trees': { sha: 'e'.repeat(40) },
     '/repos/acme/app/git/commits': { sha: 'c'.repeat(40) },
     '/repos/acme/app/git/refs': { ref: 'created' },
@@ -601,10 +603,13 @@ describe('openIssuePullRequest', () => {
     });
 
     // The published contents are the stored verified snapshot, never a fresh checkout read: the
-    // checkout holds no such file at all, exactly as after a post-verification mutation.
+    // checkout holds no such file at all, exactly as after a post-verification mutation. The
+    // bytes travel as a base64 blob, so content that is not valid UTF-8 survives unchanged.
+    const blob = github.requests.find((request) => request.path === '/repos/acme/app/git/blobs');
+    expect(blob?.body).toEqual({ content: VERIFIED_CONTENT_BASE64, encoding: 'base64' });
     const tree = github.requests.find((request) => request.path === '/repos/acme/app/git/trees');
     expect(tree?.body).toMatchObject({
-      tree: [{ path: 'src/user.ts', content: VERIFIED_CONTENT }],
+      tree: [{ path: 'src/user.ts', sha: 'f'.repeat(40) }],
     });
     const ref = github.requests.find((request) => request.path === '/repos/acme/app/git/refs');
     expect(ref?.body).toMatchObject({ ref: 'refs/heads/agent-zero/issue-12-az-fixture' });

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   now,
@@ -15,10 +15,16 @@ export type {
   TaskApproval,
 } from '../shared/dashboard.js';
 
-/** One changed file's verified content, or null when the change deleted the file. */
+/**
+ * One changed file's verified content, or null when the change deleted the file.
+ *
+ * The content is base64 of the file's exact bytes, not decoded text: a snapshot passes through
+ * JSON persistence and back into Git blob creation, and a string decode would silently replace
+ * invalid UTF-8 sequences, publishing different bytes than the run verified.
+ */
 export interface ChangedFileSnapshot {
   path: string;
-  content: string | null;
+  contentBase64: string | null;
 }
 
 /** Durable, deliberately narrow task history. Review input and checkout paths are never stored. */
@@ -107,15 +113,19 @@ const DELIVERY_PREFIX = 'deliveries:';
 interface DeliveryClaimRecord {
   claimedAt: string;
   outcome: unknown;
+  /** Random arbitration token; only the contender whose token survives the read-back owns the claim. */
+  token?: string;
 }
 
 /**
  * Delivery claims persisted through the same provider-neutral storage layer as task records.
  *
- * The claim marker is written before the work it guards, so the dangerous window is the write
- * itself: drivers that expose {@link KeyValueStorage.setItemIfAbsent} make the claim atomic
- * across instances, and the read-then-write fallback still stops every redelivery that arrives
- * after the marker is durable (restarts, other instances, evicted in-memory claims).
+ * The claim marker is written before the work it guards. Drivers that expose
+ * {@link KeyValueStorage.setItemIfAbsent} make the claim an atomic conditional create across
+ * instances. Drivers without one never get a bare read-then-write: the claim is arbitrated
+ * instead — every contender writes a marker carrying a random token and then reads the key back,
+ * and only the contender whose token survived owns the delivery. Two instances that both saw the
+ * key absent therefore resolve to exactly one owner instead of both claiming.
  */
 export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
   constructor(
@@ -125,15 +135,20 @@ export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
 
   async claim(key: string): Promise<DeliveryClaim> {
     const storageKey = deliveryStorageKey(key);
-    const marker: DeliveryClaimRecord = { claimedAt: now(), outcome: null };
+    const marker: DeliveryClaimRecord = { claimedAt: now(), outcome: null, token: randomUUID() };
     if (this.storage.setItemIfAbsent) {
       if (await this.storage.setItemIfAbsent(storageKey, marker)) return { claimed: true };
       return { claimed: false, outcome: await this.recordedOutcome(storageKey) };
     }
     const existing = await this.storage.getItem(storageKey);
     if (isDeliveryClaimRecord(existing)) return { claimed: false, outcome: existing.outcome };
+    // Token arbitration for drivers without a conditional create: the write is last-writer-wins,
+    // so the read-back elects a single owner among contenders that all observed the key absent.
+    // A losing contender reports the standing claim rather than starting duplicate work.
     await this.storage.setItem(storageKey, marker);
-    return { claimed: true };
+    const written = await this.storage.getItem(storageKey);
+    if (isDeliveryClaimRecord(written) && written.token === marker.token) return { claimed: true };
+    return { claimed: false, outcome: isDeliveryClaimRecord(written) ? written.outcome : null };
   }
 
   async complete(key: string, outcome: unknown): Promise<void> {

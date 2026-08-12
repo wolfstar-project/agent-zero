@@ -577,16 +577,18 @@ export async function openIssuePullRequest(
   const mismatch = checkoutRepositoryMismatch(identity, issue);
   if (mismatch) return { opened: false, reason: mismatch };
 
-  const snapshot = new Map(task.changedFileSnapshot?.map((file) => [file.path, file.content]));
+  const snapshot = new Map(
+    task.changedFileSnapshot?.map((file) => [file.path, file.contentBase64]),
+  );
   const files: BranchFile[] = [];
   for (const path of evidence.changedFiles) {
-    const content = snapshot.get(path);
-    if (content === undefined)
+    const contentBase64 = snapshot.get(path);
+    if (contentBase64 === undefined)
       return {
         opened: false,
         reason: 'No immutable snapshot of the verified changes covers every changed file.',
       };
-    files.push({ path, content });
+    files.push({ path, contentBase64 });
   }
 
   const config = await loadConfig(options.checkoutPath);
@@ -660,7 +662,12 @@ function checkoutRepositoryMismatch(
   return null;
 }
 
-/** Read each changed file's final content through the run's own boundary. */
+/**
+ * Read each changed file's final content through the run's own boundary.
+ *
+ * The bytes are captured raw and stored as base64: a string read would replace invalid UTF-8
+ * sequences, so a verified binary change would be published with corrupted contents.
+ */
 async function snapshotChangedFiles(
   runner: Runner,
   paths: readonly string[],
@@ -669,8 +676,8 @@ async function snapshotChangedFiles(
   for (const path of paths)
     files.push(
       (await runner.exists(path))
-        ? { path, content: await runner.read(path) }
-        : { path, content: null },
+        ? { path, contentBase64: Buffer.from(await runner.readBytes(path)).toString('base64') }
+        : { path, contentBase64: null },
     );
   return files;
 }

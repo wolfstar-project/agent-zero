@@ -125,6 +125,11 @@ function harness(options: HarnessOptions = {}): Harness {
       if (content === undefined) throw new Error(`missing ${path}`);
       return content;
     },
+    readBytes: async (path) => {
+      const content = files[path];
+      if (content === undefined) throw new Error(`missing ${path}`);
+      return new TextEncoder().encode(content);
+    },
     exists: async (path) => path in files,
     write: async (path, content) => {
       if (!description.writable) throw new Error('read-only runner');

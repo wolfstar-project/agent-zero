@@ -57,6 +57,8 @@ export interface Runner {
   /** Files in the working-tree or committed pull-request diff under review. */
   reviewFiles(options?: RepositoryContextOptions): Promise<string[]>;
   read(path: string): Promise<string>;
+  /** The file's exact bytes, for content that must survive republication byte-for-byte. */
+  readBytes(path: string): Promise<Uint8Array>;
   exists(path: string): Promise<boolean>;
   write(path: string, content: string): Promise<void>;
   check(command: string, timeoutMs: number): Promise<CheckResult>;
@@ -125,6 +127,19 @@ export abstract class RepositoryBoundary implements Runner {
     const handle = await this.openInside(path, constants.O_RDONLY);
     try {
       return await handle.readFile('utf8');
+    } finally {
+      await handle.close();
+    }
+  }
+
+  /**
+   * Unlike {@link read}, no encoding is applied: invalid UTF-8 sequences survive untouched, so a
+   * binary change captured through this method republishes with exactly the verified bytes.
+   */
+  async readBytes(path: string): Promise<Uint8Array> {
+    const handle = await this.openInside(path, constants.O_RDONLY);
+    try {
+      return await handle.readFile();
     } finally {
       await handle.close();
     }

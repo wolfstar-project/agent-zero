@@ -43,12 +43,13 @@ const storage: KeyValueStorage = new KvKeyValueStorage();
 export const taskStore: TaskStore = new PersistentTaskStore(storage);
 
 /**
- * The one durable delivery-claim store for this deployment. Every route that ingests
- * webhooks must inject it as `WebhookOptions.deliveryClaims`: because the claims live
- * in the shared KV backend rather than a process-local map, a redelivered issue event
- * observes the recorded outcome across restarts and across server instances instead of
- * starting a duplicate run. The KV facade has no conditional write, so the claim uses
- * the documented read-then-write fallback; the router's in-memory registry still
- * serializes concurrent deliveries within one process.
+ * The one durable delivery-claim store for this deployment, injected as
+ * `WebhookOptions.deliveryClaims` by the webhook route (`routes/webhooks/github.post.ts`):
+ * because the claims live in the shared KV backend rather than a process-local map, a
+ * redelivered issue event observes the recorded outcome across restarts and across server
+ * instances instead of starting a duplicate run. The KV facade has no conditional write, so
+ * the claim uses the store's token-arbitrated fallback, which elects a single owner among
+ * contenders that all saw the key absent; the router's in-memory registry still serializes
+ * concurrent deliveries within one process.
  */
 export const deliveryClaimStore: DeliveryClaimStore = new PersistentDeliveryClaimStore(storage);

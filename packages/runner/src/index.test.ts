@@ -137,10 +137,20 @@ describe('path boundary', () => {
     await expect(runner.exists('src/missing.ts')).resolves.toBe(false);
   });
 
+  it('reads exact bytes, preserving content that is not valid UTF-8', async () => {
+    const bytes = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0x80, 0x00]);
+    await writeFile(join(root, 'src', 'image.png'), bytes);
+    const runner = new LocalRunner(root);
+    await expect(runner.readBytes('src/image.png')).resolves.toEqual(Buffer.from(bytes));
+    // The string API would have replaced the invalid sequences; the byte API must not.
+    expect(new TextEncoder().encode(await runner.read('src/image.png'))).not.toEqual(bytes);
+  });
+
   it('rejects paths outside the repository', async () => {
     const runner = new LocalRunner(root);
     await expect(runner.read('../secret')).rejects.toThrow('Path escapes repository');
     await expect(runner.read('/etc/passwd')).rejects.toThrow('Path escapes repository');
+    await expect(runner.readBytes('../secret')).rejects.toThrow('Path escapes repository');
   });
 
   it('refuses to read or write git metadata', async () => {

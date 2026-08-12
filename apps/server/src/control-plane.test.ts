@@ -56,6 +56,30 @@ class AtomicRecordingStorage extends RecordingStorage {
   }
 }
 
+/**
+ * A conditional-write-less driver that holds the first `contenders` absence checks at a barrier,
+ * so every contender observes the key absent before any of them writes — the exact interleaving
+ * a naive read-then-write claim resolves by granting the delivery to all of them.
+ */
+class RacingStorage extends RecordingStorage {
+  private waiting: (() => void)[] = [];
+  private held = 0;
+  constructor(private readonly contenders: number) {
+    super();
+  }
+
+  override async getItem(key: string): Promise<unknown> {
+    if (this.held < this.contenders && !this.values.has(key)) {
+      this.held += 1;
+      await new Promise<void>((resolve) => {
+        this.waiting.push(resolve);
+        if (this.waiting.length >= this.contenders) for (const release of this.waiting) release();
+      });
+    }
+    return super.getItem(key);
+  }
+}
+
 describe('task persistence', () => {
   it('round-trips structured history through a provider-neutral store', async () => {
     const storage = new RecordingStorage();
@@ -87,7 +111,7 @@ describe('task persistence', () => {
 describe('PersistentDeliveryClaimStore', () => {
   for (const [driver, storage] of [
     ['a conditional-write driver', () => new AtomicRecordingStorage()],
-    ['the read-then-write fallback', () => new RecordingStorage()],
+    ['the token-arbitrated fallback', () => new RecordingStorage()],
   ] as const) {
     it(`grants a claim exactly once and replays the completed outcome via ${driver}`, async () => {
       const store = new PersistentDeliveryClaimStore(storage(), []);
@@ -104,6 +128,17 @@ describe('PersistentDeliveryClaimStore', () => {
       });
     });
   }
+
+  it('grants exactly one claim when concurrent contenders both observe the key absent', async () => {
+    // Two instances race the fallback: both absence checks return null before either write lands.
+    // Token arbitration must elect a single owner instead of granting the delivery to both.
+    const store = new PersistentDeliveryClaimStore(new RacingStorage(2), []);
+    const outcomes = await Promise.all([
+      store.claim('delivery:guid-race'),
+      store.claim('delivery:guid-race'),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.claimed)).toHaveLength(1);
+  });
 
   it('keeps distinct deliveries independent', async () => {
     const store = new PersistentDeliveryClaimStore(new AtomicRecordingStorage(), []);
