@@ -545,27 +545,39 @@ function unavailablePatch(path: string, reason: string): string {
   return `diff --git a/${name} b/${name}\n[untracked file patch unavailable: ${reason}]`;
 }
 
-// The path portion of an scp-style git remote such as `git@github.com:owner/repo.git`.
-const SCP_REMOTE = /^[\w.-]+@[\w.-]+:(?<path>.+)$/u;
+// The host and path portions of an scp-style git remote such as `git@github.com:owner/repo.git`.
+const SCP_REMOTE = /^[\w.-]+@(?<host>[\w.-]+):(?<path>.+)$/u;
 const GIT_SUFFIX = /\.git$/u;
+// The only host whose remotes mint a repository identity. Callers bind this identity to GitHub
+// webhook targets, so a remote on any other host must not resolve to an `owner/repo` at all:
+// `https://attacker.example/acme/app.git` is not GitHub's `acme/app`.
+const GITHUB_HOST = 'github.com';
 
 /**
- * Extract `owner/repo` from a git remote URL, or null when the URL names anything else.
+ * Extract `owner/repo` from a GitHub remote URL, or null when the URL names anything else.
  *
- * Exactly two path segments are required: a URL with more or fewer segments does not identify a
- * GitHub-style repository and is rejected rather than truncated into one.
+ * The remote host must be `github.com`: the identity approves publication to the GitHub
+ * repository of the same name, so a checkout tracking another host has no GitHub identity and
+ * fails closed. Exactly two path segments are required: a URL with more or fewer segments does
+ * not identify a GitHub repository and is rejected rather than truncated into one.
  */
 function parseRemoteRepository(url: string): { owner: string; repo: string } | null {
+  let host: string;
   let path: string;
   const scp = SCP_REMOTE.exec(url);
-  if (scp?.groups?.path !== undefined) path = scp.groups.path;
-  else {
+  if (scp?.groups?.host !== undefined && scp.groups.path !== undefined) {
+    host = scp.groups.host;
+    path = scp.groups.path;
+  } else {
     try {
-      path = new URL(url).pathname;
+      const parsed = new URL(url);
+      host = parsed.hostname;
+      path = parsed.pathname;
     } catch {
       return null;
     }
   }
+  if (host.toLowerCase() !== GITHUB_HOST) return null;
   const segments = path
     .replaceAll('\\', '/')
     .split('/')

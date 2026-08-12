@@ -41,6 +41,17 @@ describe('FileKeyValueStorage', () => {
     await expect(storage.getKeys('tasks:')).resolves.toEqual([]);
   });
 
+  it('grants a conditional write to exactly one claimant and preserves the winner', async () => {
+    const storage = new FileKeyValueStorage(directory);
+    await expect(storage.setItemIfAbsent('deliveries:abc', { claimedAt: 'first' })).resolves.toBe(
+      true,
+    );
+    await expect(storage.setItemIfAbsent('deliveries:abc', { claimedAt: 'second' })).resolves.toBe(
+      false,
+    );
+    await expect(storage.getItem('deliveries:abc')).resolves.toEqual({ claimedAt: 'first' });
+  });
+
   it('removes a record without disturbing its siblings', async () => {
     const storage = new FileKeyValueStorage(directory);
     await storage.setItem('tasks:az_1', { id: 'az_1' });

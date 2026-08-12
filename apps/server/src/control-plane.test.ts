@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MemoryTaskStore,
+  PersistentDeliveryClaimStore,
   PersistentTaskStore,
   TaskQueueQuotaError,
   TaskScheduler,
@@ -41,6 +42,18 @@ class RecordingStorage implements KeyValueStorage {
   async getKeys(base = ''): Promise<string[]> {
     return [...this.values.keys()].filter((key) => key.startsWith(base));
   }
+  async removeItem(key: string): Promise<void> {
+    this.values.delete(key);
+  }
+}
+
+/** A driver that offers the atomic conditional write; the base class exercises the fallback. */
+class AtomicRecordingStorage extends RecordingStorage {
+  async setItemIfAbsent(key: string, value: unknown): Promise<boolean> {
+    if (this.values.has(key)) return false;
+    this.values.set(key, value);
+    return true;
+  }
 }
 
 describe('task persistence', () => {
@@ -68,6 +81,56 @@ describe('task persistence', () => {
     await store.save(task);
     task.status = 'failed';
     await expect(store.get('az_1')).resolves.toMatchObject({ status: 'queued' });
+  });
+});
+
+describe('PersistentDeliveryClaimStore', () => {
+  for (const [driver, storage] of [
+    ['a conditional-write driver', () => new AtomicRecordingStorage()],
+    ['the read-then-write fallback', () => new RecordingStorage()],
+  ] as const) {
+    it(`grants a claim exactly once and replays the completed outcome via ${driver}`, async () => {
+      const store = new PersistentDeliveryClaimStore(storage(), []);
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+      // The claim is standing but unfinished, so there is no outcome to replay yet.
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+        claimed: false,
+        outcome: null,
+      });
+      await store.complete('delivery:guid-1', { status: 'ignored', reason: 'recorded' });
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+        claimed: false,
+        outcome: { status: 'ignored', reason: 'recorded' },
+      });
+    });
+  }
+
+  it('keeps distinct deliveries independent', async () => {
+    const store = new PersistentDeliveryClaimStore(new AtomicRecordingStorage(), []);
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+    await expect(store.claim('delivery:guid-2')).resolves.toEqual({ claimed: true });
+  });
+
+  it('releases an unfinished claim so a redelivery may retry', async () => {
+    const store = new PersistentDeliveryClaimStore(new AtomicRecordingStorage(), []);
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+    await store.release('delivery:guid-1');
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+  });
+
+  it('redacts credentials before an outcome is persisted', async () => {
+    const storage = new AtomicRecordingStorage();
+    const store = new PersistentDeliveryClaimStore(storage, ['provider-secret-value']);
+    await store.claim('delivery:guid-1');
+    await store.complete('delivery:guid-1', {
+      status: 'rejected',
+      reason: 'token=provider-secret-value',
+    });
+    expect(JSON.stringify([...storage.values.values()])).not.toContain('provider-secret-value');
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+      claimed: false,
+      outcome: { status: 'rejected', reason: 'token=[redacted]' },
+    });
   });
 });
 

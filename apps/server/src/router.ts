@@ -44,6 +44,7 @@ import {
   TaskScheduler,
   type ApprovalDecision,
   type ChangedFileSnapshot,
+  type DeliveryClaimStore,
   type StoredTask,
   type TaskStore,
 } from './control-plane.js';
@@ -265,8 +266,13 @@ export interface WebhookOptions {
   scheduler?: TaskScheduler;
   /** Credentials for publishing an issue run's verified changes as a pull request. */
   github?: { token: string | undefined; fetch?: typeof globalThis.fetch };
-  /** Delivery-key claims for issue events; defaults to a process-wide registry. */
+  /** In-flight delivery-key claims for issue events; defaults to a process-wide registry. */
   deliveries?: Map<string, Promise<WebhookOutcome>>;
+  /**
+   * Durable delivery claims shared across restarts and instances. Without one, redelivery
+   * deduplication only spans this process's lifetime and its bounded in-memory registry.
+   */
+  deliveryClaims?: DeliveryClaimStore;
 }
 
 export type WebhookOutcome =
@@ -367,6 +373,21 @@ async function ingestIssueEvent(
   const key = issueDeliveryKey(request);
   const claimed = deliveries.get(key);
   if (claimed) return claimed;
+
+  // The durable claim is also taken before the work starts, so a redelivery after a process
+  // restart, on another instance, or after the in-memory claim above was evicted observes the
+  // recorded outcome instead of starting a duplicate run.
+  if (options.deliveryClaims) {
+    const claim = await options.deliveryClaims.claim(key);
+    if (!claim.claimed) {
+      if (isRecordedWebhookOutcome(claim.outcome)) return claim.outcome;
+      return {
+        status: 'ignored',
+        reason: 'This delivery is already claimed by an in-flight run',
+      };
+    }
+  }
+
   if (deliveries.size >= MAX_DELIVERY_CLAIMS) {
     const oldest = deliveries.keys().next().value;
     if (oldest !== undefined) deliveries.delete(oldest);
@@ -378,12 +399,30 @@ async function ingestIssueEvent(
   );
   deliveries.set(key, outcome);
   try {
-    return await outcome;
+    const settled = await outcome;
+    // Best effort: a lost outcome write must not fail the finished run, and the standing claim
+    // marker still stops a duplicate; the redelivery is then declined instead of replayed.
+    await options.deliveryClaims?.complete(key, settled).catch(() => undefined);
+    return settled;
   } catch (error) {
     // A transport-level failure recorded no outcome worth replaying; let a redelivery retry.
     deliveries.delete(key);
+    await options.deliveryClaims?.release(key).catch(() => undefined);
     throw error;
   }
+}
+
+/**
+ * Narrow a durably recorded delivery outcome back to the webhook contract. Anything else in the
+ * record (an in-flight marker's null, or a corrupted value) replays nothing.
+ */
+function isRecordedWebhookOutcome(value: unknown): value is WebhookOutcome {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    (value.status === 'rejected' || value.status === 'ignored' || value.status === 'accepted')
+  );
 }
 
 async function runIssueTask(

@@ -9,6 +9,11 @@ import type { EvidenceBundle } from '@agent-zero/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  PersistentDeliveryClaimStore,
+  type DeliveryClaimStore,
+  type KeyValueStorage,
+} from './control-plane.js';
+import {
   decideApproval,
   getStoredTask,
   getTask,
@@ -426,7 +431,69 @@ describe('ingestWebhook issue tasks', () => {
     expect(second).toBe(first);
     expect(tasks.size).toBe(1);
   });
+
+  it('replays the durably recorded outcome after a restart discards in-process claims', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    await bindCheckout();
+    const deliveryClaims = new PersistentDeliveryClaimStore(memoryStorage(), []);
+    const body = issuePayload();
+    const request = { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-2' };
+    const first = await ingestWebhook(request, { ...options(), deliveryClaims });
+    // A fresh in-process registry simulates a restarted or different server instance.
+    const second = await ingestWebhook(request, { ...options(), deliveryClaims });
+    expect(first.status).toBe('accepted');
+    expect(second).toEqual(JSON.parse(JSON.stringify(first)));
+    expect(tasks.size).toBe(1);
+  });
+
+  it('declines a redelivery while another instance holds the durable claim', async () => {
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nissues:\n  enabled: true\n',
+      'utf8',
+    );
+    await bindCheckout();
+    const deliveryClaims: DeliveryClaimStore = {
+      claim: async () => ({ claimed: false, outcome: null }),
+      complete: async () => undefined,
+      release: async () => undefined,
+    };
+    const body = issuePayload();
+    const outcome = await ingestWebhook(
+      { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-3' },
+      { ...options(), deliveryClaims },
+    );
+    expect(outcome).toEqual({
+      status: 'ignored',
+      reason: 'This delivery is already claimed by an in-flight run',
+    });
+    expect(tasks.size).toBe(0);
+  });
 });
+
+/** Deterministic in-memory storage with the atomic conditional write a KV driver would offer. */
+function memoryStorage(): KeyValueStorage {
+  const values = new Map<string, unknown>();
+  return {
+    getItem: async (key) => values.get(key) ?? null,
+    setItem: async (key, value) => {
+      values.set(key, structuredClone(value));
+    },
+    getKeys: async (base = '') => [...values.keys()].filter((key) => key.startsWith(base)),
+    removeItem: async (key) => {
+      values.delete(key);
+    },
+    setItemIfAbsent: async (key, value) => {
+      if (values.has(key)) return false;
+      values.set(key, structuredClone(value));
+      return true;
+    },
+  };
+}
 
 const issueBaseSha = 'b'.repeat(40);
 

@@ -33,12 +33,15 @@ export {
 } from './auth.js';
 export {
   MemoryTaskStore,
+  PersistentDeliveryClaimStore,
   PersistentTaskStore,
   TaskQueueQuotaError,
   TaskScheduler,
   type ApprovalDecision,
   type ChangedFileSnapshot,
   type ControlPlaneTaskStatus,
+  type DeliveryClaim,
+  type DeliveryClaimStore,
   type KeyValueStorage,
   type SchedulerOptions,
   type SchedulerSnapshot,

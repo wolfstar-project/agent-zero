@@ -552,6 +552,24 @@ describe('originRepository', () => {
         new LocalRunner(root, { process: remoteProcess(url) }).originRepository(),
       ).resolves.toBeNull();
   });
+
+  it('reports no identity for a remote hosted anywhere other than GitHub', async () => {
+    for (const url of [
+      'https://attacker.example/acme/app.git',
+      'git@attacker.example:acme/app.git',
+      'ssh://git@attacker.example/acme/app.git',
+      'https://github.com.attacker.example/acme/app.git',
+      'git@gitlab.com:acme/app.git',
+    ])
+      await expect(
+        new LocalRunner(root, { process: remoteProcess(url) }).originRepository(),
+      ).resolves.toBeNull();
+  });
+
+  it('accepts a GitHub host regardless of letter case', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('git@GitHub.com:acme/app.git') });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
 });
 
 /** The value the engine would receive for `--network`. */
