@@ -42,8 +42,10 @@ onMounted(async () => {
   }
 
   try {
-    await client.organization.acceptInvitation({ invitationId });
-    status.value = 'accepted';
+    // Better Auth resolves API failures as `{ data, error }` rather than rejecting, so an invalid
+    // or expired invitation must be read from the resolved error, not just the catch path.
+    const { error } = await client.organization.acceptInvitation({ invitationId });
+    status.value = error ? 'failed' : 'accepted';
   } catch {
     status.value = 'failed';
   }

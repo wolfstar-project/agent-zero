@@ -11,6 +11,7 @@ export {
   createSmtpProvider,
   MAIL_PROVIDER_NAMES,
   mailProviderFromEnvironment,
+  mailProviderNameFromEnvironment,
   type MailProvider,
   type MailProviderName,
   type OutgoingMail,

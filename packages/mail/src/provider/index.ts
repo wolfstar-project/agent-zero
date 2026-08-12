@@ -42,6 +42,23 @@ function requirePort(
 }
 
 /**
+ * Resolve and validate the configured transport name without constructing the transport.
+ *
+ * Composition roots use this to tell a delivering transport apart from the console default when
+ * a feature (such as organization invitations) must not silently log mail instead of sending it.
+ */
+export function mailProviderNameFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): MailProviderName {
+  const configured = environment.MAIL_PROVIDER?.trim() ?? 'console';
+  if (!isProviderName(configured))
+    throw new Error(
+      `invalid MAIL_PROVIDER: expected one of ${MAIL_PROVIDER_NAMES.join(', ')}, received ${configured}`,
+    );
+  return configured;
+}
+
+/**
  * Resolve the configured transport.
  *
  * The single place delivery backends are selected, so callers depend on {@link MailProvider}
@@ -52,11 +69,7 @@ function requirePort(
 export function mailProviderFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): MailProvider {
-  const configured = environment.MAIL_PROVIDER?.trim() ?? 'console';
-  if (!isProviderName(configured))
-    throw new Error(
-      `invalid MAIL_PROVIDER: expected one of ${MAIL_PROVIDER_NAMES.join(', ')}, received ${configured}`,
-    );
+  const configured = mailProviderNameFromEnvironment(environment);
 
   if (configured === 'resend')
     return createResendProvider({

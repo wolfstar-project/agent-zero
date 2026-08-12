@@ -4,7 +4,10 @@ import type { MailProvider, OutgoingMail } from './types.js';
 export interface SmtpProviderOptions {
   readonly host: string;
   readonly port: number;
-  /** Implicit TLS. Conventionally true on 465 and false on 587, which upgrades via STARTTLS. */
+  /**
+   * Implicit TLS. Conventionally true on 465 and false on 587. When false the connection must
+   * still upgrade via STARTTLS; delivery never falls back to plaintext.
+   */
   readonly secure: boolean;
   readonly user?: string;
   readonly password?: string;
@@ -23,6 +26,10 @@ export function createSmtpProvider(options: SmtpProviderOptions): MailProvider {
       host: options.host,
       port: options.port,
       secure: options.secure,
+      // Without this, a relay that does not advertise STARTTLS (or an on-path party stripping
+      // the advertisement) would silently downgrade reset, verification, and invitation links
+      // plus the AUTH credentials to plaintext. Implicit-TLS connections already encrypt.
+      requireTLS: !options.secure,
       // Anonymous relays are legitimate on an internal network, so credentials stay optional
       // rather than being forced into a half-configured auth block.
       ...(options.user && options.password

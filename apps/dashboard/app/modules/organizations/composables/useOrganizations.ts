@@ -15,6 +15,16 @@ function messageFrom(cause: unknown): string {
 }
 
 /**
+ * Better Auth client calls resolve with `{ data, error }` rather than rejecting on an API error.
+ * Throwing the resolved error routes it through `run`'s shared handling, so a failed action
+ * surfaces instead of looking successful with empty data.
+ */
+function unwrap<T>(result: { data: T; error: unknown }): T {
+  if (result.error) throw result.error;
+  return result.data;
+}
+
+/**
  * Organization state for the dashboard.
  *
  * Wraps the Better Auth client so components deal in plain reactive state and a few actions
@@ -57,9 +67,14 @@ export function useOrganizations() {
 
   async function refresh() {
     await run(async (authClient) => {
-      const { data } = await authClient.organization.list();
+      const data = unwrap(await authClient.organization.list());
       organizations.value = data ?? [];
     });
+    // A fresh session arrives with no active organization while the switcher renders the first
+    // entry, so the selection is synchronized here or members and invitations would stay
+    // disabled until the user re-selects manually.
+    const first = organizations.value[0];
+    if (!activeOrganization.value && first) await setActive(first.id);
   }
 
   async function refreshMembers() {
@@ -69,24 +84,25 @@ export function useOrganizations() {
       return;
     }
     await run(async (authClient) => {
-      const { data } = await authClient.organization.listMembers({ query: { organizationId } });
+      const data = unwrap(
+        await authClient.organization.listMembers({ query: { organizationId } }),
+      );
       members.value = data?.members ?? [];
     });
   }
 
   async function setActive(organizationId: string) {
     await run(async (authClient) => {
-      const { data } = await authClient.organization.setActive({ organizationId });
+      const data = unwrap(await authClient.organization.setActive({ organizationId }));
       activeOrganization.value = data ?? null;
     });
     await refreshMembers();
   }
 
   async function create(input: { name: string; slug: string }) {
-    const created = await run(async (authClient) => {
-      const { data } = await authClient.organization.create(input);
-      return data;
-    });
+    const created = await run(async (authClient) =>
+      unwrap(await authClient.organization.create(input)),
+    );
     if (created) await refresh();
     return created;
   }
@@ -94,17 +110,16 @@ export function useOrganizations() {
   async function inviteMember(input: { email: string; role: OrganizationRole }) {
     const organizationId = activeOrganization.value?.id;
     if (!organizationId) return undefined;
-    return run(async (authClient) => {
-      const { data } = await authClient.organization.inviteMember({ ...input, organizationId });
-      return data;
-    });
+    return run(async (authClient) =>
+      unwrap(await authClient.organization.inviteMember({ ...input, organizationId })),
+    );
   }
 
   async function removeMember(memberIdOrEmail: string) {
     const organizationId = activeOrganization.value?.id;
     if (!organizationId) return;
     await run(async (authClient) => {
-      await authClient.organization.removeMember({ memberIdOrEmail, organizationId });
+      unwrap(await authClient.organization.removeMember({ memberIdOrEmail, organizationId }));
     });
     await refreshMembers();
   }

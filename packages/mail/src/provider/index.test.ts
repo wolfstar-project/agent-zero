@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createConsoleProvider, mailProviderFromEnvironment } from './index.js';
+import {
+  createConsoleProvider,
+  mailProviderFromEnvironment,
+  mailProviderNameFromEnvironment,
+} from './index.js';
 
 const INVALID_MAIL_PROVIDER_PATTERN = /invalid MAIL_PROVIDER/;
 const MISSING_RESEND_API_KEY_PATTERN = /RESEND_API_KEY/;
@@ -56,6 +60,26 @@ describe('mailProviderFromEnvironment', () => {
     expect(() =>
       mailProviderFromEnvironment({ MAIL_PROVIDER: 'smtp', SMTP_PASSWORD: 'hunter2' }),
     ).toThrow(expect.not.stringMatching(LEAKED_SMTP_PASSWORD_PATTERN));
+  });
+});
+
+/**
+ * Composition roots branch on this name to withhold capabilities (such as invitation delivery)
+ * from the non-delivering console default, so it must report exactly what was configured.
+ */
+describe('mailProviderNameFromEnvironment', () => {
+  it('reports the console default when nothing is configured', () => {
+    expect(mailProviderNameFromEnvironment({})).toBe('console');
+  });
+
+  it('reports the configured transport name', () => {
+    expect(mailProviderNameFromEnvironment({ MAIL_PROVIDER: 'smtp' })).toBe('smtp');
+  });
+
+  it('rejects an unknown provider name instead of silently defaulting', () => {
+    expect(() => mailProviderNameFromEnvironment({ MAIL_PROVIDER: 'carrier-pigeon' })).toThrow(
+      INVALID_MAIL_PROVIDER_PATTERN,
+    );
   });
 });
 
