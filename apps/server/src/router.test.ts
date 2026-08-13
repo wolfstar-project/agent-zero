@@ -25,6 +25,7 @@ import {
   publishEvidence,
   publishIssueValidation,
   runTask,
+  statusTokenFromEnvironment,
   taskInput,
   tasks,
   type WebhookOutcome,
@@ -35,6 +36,14 @@ const MODE_ERROR = /mode/i;
 
 function sign(body: string): string {
   return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`;
+}
+
+/** A GitHub delivery for the router: raw body plus the headers GitHub would send. */
+function githubDelivery(event: string, body: string, signature = sign(body)) {
+  return {
+    body,
+    headers: { 'x-github-event': event, 'x-hub-signature-256': signature },
+  };
 }
 
 function reviewPayload(overrides: Record<string, unknown> = {}): string {
@@ -163,32 +172,41 @@ describe('runTask', () => {
 });
 
 describe('ingestWebhook', () => {
-  const options = () => ({ secret, checkoutPath: checkout });
+  const options = () => ({
+    providers: [{ kind: 'github' as const, secret }],
+    checkoutPath: checkout,
+  });
+
+  it('rejects a delivery no configured provider recognizes', async () => {
+    const body = reviewPayload();
+    await expect(
+      ingestWebhook({ body, headers: { 'x-gitlab-event': 'Note Hook' } }, options()),
+    ).resolves.toEqual({
+      status: 'rejected',
+      reason: 'No configured provider recognizes this delivery',
+    });
+    expect(tasks.size).toBe(0);
+  });
 
   it('rejects a forged signature before parsing the payload', async () => {
     const body = reviewPayload();
     await expect(
-      ingestWebhook(
-        { event: 'pull_request_review', body, signature: 'sha256=deadbeef' },
-        options(),
-      ),
+      ingestWebhook(githubDelivery('pull_request_review', body, 'sha256=deadbeef'), options()),
     ).resolves.toEqual({ status: 'rejected', reason: 'Invalid webhook signature' });
     expect(tasks.size).toBe(0);
   });
 
   it('rejects a body that is not JSON', async () => {
-    const body = 'not json';
     const outcome = await ingestWebhook(
-      { event: 'pull_request_review', body, signature: sign(body) },
+      githubDelivery('pull_request_review', 'not json'),
       options(),
     );
     expect(outcome).toEqual({ status: 'rejected', reason: 'Webhook body is not valid JSON' });
   });
 
   it('ignores an event that carries no claim to validate', async () => {
-    const body = reviewPayload({ state: 'approved' });
     const outcome = await ingestWebhook(
-      { event: 'pull_request_review', body, signature: sign(body) },
+      githubDelivery('pull_request_review', reviewPayload({ state: 'approved' })),
       options(),
     );
     expect(outcome.status).toBe('ignored');
@@ -196,23 +214,23 @@ describe('ingestWebhook', () => {
   });
 
   it('ignores its own account so a run cannot answer itself', async () => {
-    const body = reviewPayload({ user: { login: 'agent-zero[bot]' } });
     const outcome = await ingestWebhook(
-      { event: 'pull_request_review', body, signature: sign(body) },
+      githubDelivery('pull_request_review', reviewPayload({ user: { login: 'agent-zero[bot]' } })),
       { ...options(), ignoreAuthors: ['agent-zero[bot]'] },
     );
     expect(outcome.status).toBe('ignored');
   });
 
   it('runs an authenticated review in observe mode and never writes', async () => {
-    const body = reviewPayload();
     const outcome = await ingestWebhook(
-      { event: 'pull_request_review', body, signature: sign(body) },
+      githubDelivery('pull_request_review', reviewPayload()),
       options(),
     );
     expect(outcome.status).toBe('accepted');
-    if (outcome.status !== 'accepted' || !('pullRequest' in outcome)) return;
-    expect(outcome.pullRequest).toEqual({
+    if (outcome.status !== 'accepted' || !('changeRequest' in outcome)) return;
+    expect(outcome.provider).toBe('github');
+    expect(outcome.changeRequest).toEqual({
+      provider: 'github',
       owner: 'acme',
       repo: 'app',
       number: 7,
@@ -222,6 +240,29 @@ describe('ingestWebhook', () => {
     expect(outcome.result.runner.writable).toBe(false);
     expect(outcome.result.changedFiles).toEqual([]);
     expect(outcome.result.summary).toContain('github:acme/app#7');
+  });
+
+  it('accepts deliveries from a second configured provider in the same deployment', async () => {
+    const body = JSON.stringify({
+      object_kind: 'note',
+      user: { username: 'alice' },
+      project: { path_with_namespace: 'acme/app' },
+      object_attributes: {
+        id: 11,
+        note: 'load() can return null',
+        noteable_type: 'MergeRequest',
+      },
+      merge_request: { iid: 7, last_commit: { id: 'a'.repeat(40) } },
+    });
+    const outcome = await ingestWebhook(
+      { body, headers: { 'x-gitlab-event': 'Note Hook', 'x-gitlab-token': secret } },
+      { ...options(), providers: [...options().providers, { kind: 'gitlab' as const, secret }] },
+    );
+    expect(outcome.status).toBe('accepted');
+    if (outcome.status !== 'accepted' || !('changeRequest' in outcome)) return;
+    expect(outcome.provider).toBe('gitlab');
+    expect(outcome.changeRequest.baseSha).toBeUndefined();
+    expect(outcome.result.summary).toContain('gitlab:acme/app!7');
   });
 
   it('ignores proactive pull-request events until repository policy enables them', async () => {
@@ -234,9 +275,7 @@ describe('ingestWebhook', () => {
         head: { sha: 'a'.repeat(40) },
       },
     });
-    await expect(
-      ingestWebhook({ event: 'pull_request', body, signature: sign(body) }, options()),
-    ).resolves.toEqual({
+    await expect(ingestWebhook(githubDelivery('pull_request', body), options())).resolves.toEqual({
       status: 'ignored',
       reason: 'Proactive review is disabled by repository policy',
     });
@@ -257,10 +296,7 @@ describe('ingestWebhook', () => {
         head: { sha: 'a'.repeat(40) },
       },
     });
-    const outcome = await ingestWebhook(
-      { event: 'pull_request', body, signature: sign(body) },
-      options(),
-    );
+    const outcome = await ingestWebhook(githubDelivery('pull_request', body), options());
     expect(outcome.status).toBe('accepted');
     if (outcome.status !== 'accepted') return;
     expect(outcome.result.runner.writable).toBe(false);
@@ -284,18 +320,28 @@ function issuePayload(overrides: Record<string, unknown> = {}): string {
   });
 }
 
+/** A GitHub `issues` delivery, optionally carrying a delivery identifier for dedup tests. */
+function issuesDelivery(body: string, delivery?: string) {
+  return {
+    body,
+    headers: {
+      'x-github-event': 'issues',
+      'x-hub-signature-256': sign(body),
+      ...(delivery ? { 'x-github-delivery': delivery } : {}),
+    },
+  };
+}
+
 describe('ingestWebhook issue tasks', () => {
   const options = () => ({
-    secret,
+    providers: [{ kind: 'github' as const, secret }],
     checkoutPath: checkout,
     deliveries: new Map<string, Promise<WebhookOutcome>>(),
   });
 
   it('ignores issue events until repository policy enables them', async () => {
     const body = issuePayload();
-    await expect(
-      ingestWebhook({ event: 'issues', body, signature: sign(body) }, options()),
-    ).resolves.toEqual({
+    await expect(ingestWebhook(issuesDelivery(body), options())).resolves.toEqual({
       status: 'ignored',
       reason: 'Issue tasks are disabled by repository policy',
     });
@@ -309,9 +355,10 @@ describe('ingestWebhook issue tasks', () => {
       'utf8',
     );
     const body = issuePayload({ labels: [{ name: 'bug' }] });
-    await expect(
-      ingestWebhook({ event: 'issues', body, signature: sign(body) }, options()),
-    ).resolves.toEqual({ status: 'ignored', reason: 'No actionable issue task in this event' });
+    await expect(ingestWebhook(issuesDelivery(body), options())).resolves.toEqual({
+      status: 'ignored',
+      reason: 'No actionable issue task in this event',
+    });
     expect(tasks.size).toBe(0);
   });
 
@@ -323,10 +370,7 @@ describe('ingestWebhook issue tasks', () => {
     );
     await bindCheckout();
     const body = issuePayload();
-    const outcome = await ingestWebhook(
-      { event: 'issues', body, signature: sign(body) },
-      options(),
-    );
+    const outcome = await ingestWebhook(issuesDelivery(body), options());
     expect(outcome.status).toBe('accepted');
     if (outcome.status !== 'accepted' || !('issue' in outcome)) return;
     expect(outcome.issue).toEqual({ owner: 'acme', repo: 'app', number: 12 });
@@ -351,10 +395,10 @@ describe('ingestWebhook issue tasks', () => {
     );
     await bindCheckout();
     const body = issuePayload();
-    const outcome = await ingestWebhook(
-      { event: 'issues', body, signature: sign(body) },
-      { ...options(), github: { token: 'ghs_token_value' } },
-    );
+    const outcome = await ingestWebhook(issuesDelivery(body), {
+      ...options(),
+      github: { token: 'ghs_token_value' },
+    });
     expect(outcome.status).toBe('accepted');
     if (outcome.status !== 'accepted' || !('validationComment' in outcome)) return;
     expect(outcome.validationComment).toEqual({
@@ -371,10 +415,7 @@ describe('ingestWebhook issue tasks', () => {
     );
     await bindCheckout('https://github.com/donor/library.git');
     const body = issuePayload();
-    const outcome = await ingestWebhook(
-      { event: 'issues', body, signature: sign(body) },
-      options(),
-    );
+    const outcome = await ingestWebhook(issuesDelivery(body), options());
     expect(outcome).toEqual({
       status: 'rejected',
       reason: expect.stringContaining('checkout tracks donor/library') as unknown,
@@ -389,10 +430,7 @@ describe('ingestWebhook issue tasks', () => {
       'utf8',
     );
     const body = issuePayload();
-    const outcome = await ingestWebhook(
-      { event: 'issues', body, signature: sign(body) },
-      options(),
-    );
+    const outcome = await ingestWebhook(issuesDelivery(body), options());
     expect(outcome).toEqual({
       status: 'rejected',
       reason: expect.stringContaining('trusted origin repository') as unknown,
@@ -409,7 +447,7 @@ describe('ingestWebhook issue tasks', () => {
     await bindCheckout();
     const body = issuePayload();
     const shared = options();
-    const request = { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-1' };
+    const request = issuesDelivery(body, 'delivery-guid-1');
     const first = await ingestWebhook(request, shared);
     const second = await ingestWebhook(request, shared);
     expect(first.status).toBe('accepted');
@@ -426,8 +464,8 @@ describe('ingestWebhook issue tasks', () => {
     await bindCheckout();
     const body = issuePayload();
     const shared = options();
-    const first = await ingestWebhook({ event: 'issues', body, signature: sign(body) }, shared);
-    const second = await ingestWebhook({ event: 'issues', body, signature: sign(body) }, shared);
+    const first = await ingestWebhook(issuesDelivery(body), shared);
+    const second = await ingestWebhook(issuesDelivery(body), shared);
     expect(second).toBe(first);
     expect(tasks.size).toBe(1);
   });
@@ -441,7 +479,7 @@ describe('ingestWebhook issue tasks', () => {
     await bindCheckout();
     const deliveryClaims = new PersistentDeliveryClaimStore(memoryStorage(), []);
     const body = issuePayload();
-    const request = { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-2' };
+    const request = issuesDelivery(body, 'delivery-guid-2');
     const first = await ingestWebhook(request, { ...options(), deliveryClaims });
     // A fresh in-process registry simulates a restarted or different server instance.
     const second = await ingestWebhook(request, { ...options(), deliveryClaims });
@@ -463,10 +501,10 @@ describe('ingestWebhook issue tasks', () => {
       release: async () => undefined,
     };
     const body = issuePayload();
-    const outcome = await ingestWebhook(
-      { event: 'issues', body, signature: sign(body), delivery: 'delivery-guid-3' },
-      { ...options(), deliveryClaims },
-    );
+    const outcome = await ingestWebhook(issuesDelivery(body, 'delivery-guid-3'), {
+      ...options(),
+      deliveryClaims,
+    });
     expect(outcome).toEqual({
       status: 'ignored',
       reason: 'This delivery is already claimed by an in-flight run',
@@ -802,6 +840,7 @@ function recordingFetch(): {
 
 describe('publishEvidence', () => {
   const target = {
+    provider: 'github' as const,
     owner: 'acme',
     repo: 'app',
     number: 7,
@@ -835,5 +874,33 @@ describe('publishEvidence', () => {
     ).resolves.toEqual({ published: true });
     expect(bodies[0]).toMatchObject({ head_sha: target.headSha, status: 'completed' });
     expect(bodies[0]?.conclusion).not.toBe('success');
+  });
+
+  it('surfaces an explicit degradation on a provider without a neutral state', async () => {
+    const result = await runTask({ repository: checkout, feedback: 'x', mode: 'observe' });
+    const { fetch, bodies } = recordingFetch();
+    const outcome = await publishEvidence({ ...target, provider: 'gitlab' as const }, result.id, {
+      token: 'glpat_token_value',
+      fetch,
+    });
+    expect(outcome.published).toBe(true);
+    expect(outcome.reason).toContain('no neutral state');
+    expect(bodies[0]?.state).toBe('success');
+  });
+
+  it('resolves independent credentials for the two Bitbucket products', () => {
+    const originalCloud = process.env.BITBUCKET_CLOUD_TOKEN;
+    const originalDataCenter = process.env.BITBUCKET_DATA_CENTER_TOKEN;
+    try {
+      process.env.BITBUCKET_CLOUD_TOKEN = 'cloud-credential';
+      process.env.BITBUCKET_DATA_CENTER_TOKEN = 'data-center-credential';
+      expect(statusTokenFromEnvironment('bitbucket-cloud')).toBe('cloud-credential');
+      expect(statusTokenFromEnvironment('bitbucket-data-center')).toBe('data-center-credential');
+    } finally {
+      if (originalCloud === undefined) delete process.env.BITBUCKET_CLOUD_TOKEN;
+      else process.env.BITBUCKET_CLOUD_TOKEN = originalCloud;
+      if (originalDataCenter === undefined) delete process.env.BITBUCKET_DATA_CENTER_TOKEN;
+      else process.env.BITBUCKET_DATA_CENTER_TOKEN = originalDataCenter;
+    }
   });
 });

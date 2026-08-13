@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { GitHubPullRequests, isSafeBranchName } from './pulls.js';
+import { GitHubPullRequests, isSafeBranchName } from './github-pulls.js';
 
 interface RecordedRequest {
   method: string;

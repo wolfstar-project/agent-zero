@@ -3,9 +3,9 @@
 Agent Zero is organized as a dependency-directed monorepo. The core decides what should happen; adapters decide how external systems communicate with it; the runner controls what is allowed to happen to a checkout.
 
 ```text
-GitHub adapter ─┐
-CLI adapter ────┼──> agent runtime ──> runner boundary ──> isolated checkout
-oRPC server ────┘        │
+Source-control adapters ─┐
+CLI adapter ─────────────┼──> agent runtime ──> runner boundary ──> isolated checkout
+oRPC server ─────────────┘        │
                          ├──> model abstraction ──> provider
                          └──> shared contracts
 
@@ -15,7 +15,7 @@ Nuxt dashboard ───> operational interface ──> auth adapter ──> ses
 ## Dependency direction
 
 - `shared` contains stable data contracts and must not import feature packages.
-- `config`, `models`, `github`, and `runner` implement focused capabilities around shared contracts.
+- `config`, `models`, `source-control`, and `runner` implement focused capabilities around shared contracts.
 - `agent` composes policies and state transitions without knowing HTTP or terminal details.
 - `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
 - `apps/server` is an entry-point adapter and composition root. Like `cli`, it may depend on the runtime; the runtime must not depend on it.
@@ -26,7 +26,7 @@ If a change creates a reverse dependency, move the shared contract inward instea
 
 ## Execution boundary
 
-Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A transport handler, GitHub adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
+Only `packages/runner` may execute commands or mutate a target repository at runtime. The boundary is responsible for validating working directories, arguments, timeouts, output limits, and execution mode. A transport handler, source-control adapter, model provider, or state transition must request runner work through typed contracts rather than invoking a shell directly.
 
 `observe` is the default mode. It can inspect and report but cannot write. Enabling `fix` requires both an explicit mode and repository policy permission.
 
@@ -58,13 +58,13 @@ Transport concerns stop here: headers, status mapping, and request objects never
 
 ## Issue-to-PR workflow
 
-A scoped GitHub issue can become a verified, review-ready pull request without ever widening the runtime's authority. The entry point is the same authenticated webhook path: an `issues` event is parsed in `packages/github` and produces a task only when repository policy has opted in (`issues.enabled`) and the issue carries the `issues.requireLabel` label, so arbitrary issue text can never start a run. The issue's title and body travel to the runtime as bounded, untrusted feedback with trigger `issue` — data to validate, never instructions — and the run mode comes only from repository policy, never from the wire.
+A scoped GitHub issue can become a verified, review-ready pull request without ever widening the runtime's authority. The entry point is the same authenticated webhook path: an `issues` event is parsed in `packages/source-control` and produces a task only when repository policy has opted in (`issues.enabled`) and the issue carries the `issues.requireLabel` label, so arbitrary issue text can never start a run. The issue's title and body travel to the runtime as bounded, untrusted feedback with trigger `issue` — data to validate, never instructions — and the run mode comes only from repository policy, never from the wire.
 
 The run itself is the ordinary lifecycle. During planning the model records verifiable acceptance criteria for the issue alongside its plan; the runtime bounds them and carries them into the task result and evidence bundle. Writes still require an explicit write mode, `autofix.enabled`, confidence, an allowed change-risk class, and — by default, like proactive work — an isolated runner. High-impact changes stop at `needs-human` exactly as before.
 
 The validation verdict is reported back where the work was requested. Unless `issues.validationComment` is disabled, a finished run posts one comment on the issue, composed by `prepareIssueValidationComment` from the persisted evidence alone: **confirmed** when repository evidence supports the report, **not confirmed** with every rejection reason when it does not, **inconclusive** when a human should decide. A run that failed before reaching a verdict posts nothing rather than something misleading, and the `GitHubIssueComments` adapter can only add a comment — it has no path to label, edit, or close an issue. The comment claims a fix exists only when the run was actually verified.
 
-Publication has a single home: `prepareIssuePullRequest` in `packages/github` decides whether a finished run has earned a pull request, and composes it when it has. It refuses any run that is not `completed`, not `accepted`, not verified by the repository's own checks, changed no files, or proposes a high-impact change, so a pull request can never claim success its evidence does not support — the body _is_ the rendered evidence, including the acceptance criteria. The composition root in `apps/server` then reads the verified file contents through a read-only runner and hands them to the `GitHubPullRequests` adapter, which publishes them as a commit on a fresh `issues.branchPrefix` branch through the Git data API and opens the pull request against the default branch. The branch name is assembled only from operator policy, the issue number, and the task identifier; an existing ref is never force-updated; and the default branch is never committed to. A failed publication never fails the run — the evidence is already persisted — it is reported as the reason no pull request exists.
+Publication has a single home: `prepareIssuePullRequest` in `packages/source-control` decides whether a finished run has earned a pull request, and composes it when it has. It refuses any run that is not `completed`, not `accepted`, not verified by the repository's own checks, changed no files, or proposes a high-impact change, so a pull request can never claim success its evidence does not support — the body _is_ the rendered evidence, including the acceptance criteria. The composition root in `apps/server` then reads the verified file contents through a read-only runner and hands them to the `GitHubPullRequests` adapter, which publishes them as a commit on a fresh `issues.branchPrefix` branch through the Git data API and opens the pull request against the default branch. The branch name is assembled only from operator policy, the issue number, and the task identifier; an existing ref is never force-updated; and the default branch is never committed to. A failed publication never fails the run — the evidence is already persisted — it is reported as the reason no pull request exists.
 
 ## Authentication boundary
 
@@ -106,7 +106,7 @@ Validation lives in `packages/agent/src/validation.ts` and is independent of any
 
 `TaskResult.verified` is derived in exactly one place, at the point a run produces its terminal result: it requires a completed state, an applied change, and every executed check passing. No branch can assert verification it did not earn, which is what makes "a failed verification is never presented as success" a property of the code rather than a convention.
 
-`EvidenceBundle` and its Markdown renderer live in `packages/shared` because both the GitHub adapter and the CLI consume them, and because rendering is a pure function over contracts with no I/O. Terminal states map deterministically onto GitHub check conclusions in `packages/github`.
+`EvidenceBundle` and its Markdown renderer live in `packages/shared` because both the source-control adapters and the CLI consume them, and because rendering is a pure function over contracts with no I/O. Terminal states map deterministically onto a provider-neutral run outcome in `packages/source-control`, which each provider adapter translates into its own status vocabulary — explicitly noting any conclusion the platform cannot express (see `docs/source-control-providers.md`).
 
 ## Adding a capability
 

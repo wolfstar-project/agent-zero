@@ -9,7 +9,7 @@ import {
   type RunMode,
 } from '@agent-zero/shared';
 
-import { assertSafeBranchName } from './pulls.js';
+import { assertSafeBranchName } from './github-pulls.js';
 
 /** Webhook event name the issue-to-PR workflow understands. */
 export const supportedIssueEvents = ['issues'] as const;

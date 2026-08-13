@@ -1,5 +1,5 @@
 {
-  "name": "@agent-zero/github",
+  "name": "@agent-zero/source-control",
   "version": "0.4.0",
   "type": "module",
   "main": "./dist/index.cjs",

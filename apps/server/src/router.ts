@@ -2,21 +2,6 @@ import { createHash } from 'node:crypto';
 
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
-import {
-  GitHubChecks,
-  GitHubIssueComments,
-  GitHubPullRequests,
-  issueBranchName,
-  issueInputFromTask,
-  parseIssueTask,
-  parseReviewEvent,
-  prepareIssuePullRequest,
-  prepareIssueValidationComment,
-  reviewInputFromEvent,
-  verifyWebhook,
-  type BranchFile,
-  type IssueTask,
-} from '@agent-zero/github';
 import { modelFromEnvironment } from '@agent-zero/models';
 import {
   createRunner,
@@ -33,10 +18,27 @@ import {
   secretValuesFromEnvironment,
   taskId,
   type IssueRef,
-  type PullRequestRef,
   type ReviewInput,
   type TaskResult,
 } from '@agent-zero/shared';
+import {
+  createProvider,
+  GitHubIssueComments,
+  GitHubPullRequests,
+  issueBranchName,
+  issueInputFromTask,
+  parseIssueTask,
+  prepareIssuePullRequest,
+  prepareIssueValidationComment,
+  providerForDelivery,
+  readHeader,
+  reviewInputFromEvent,
+  type BranchFile,
+  type ChangeRequestRef,
+  type IssueTask,
+  type ProviderKind,
+  type WebhookHeaders,
+} from '@agent-zero/source-control';
 import { z } from 'zod';
 
 import {
@@ -251,20 +253,25 @@ export async function decideApproval(
 }
 
 export interface WebhookRequest {
-  event: string;
+  /** The raw request body, exactly as received; signatures verify these bytes. */
   body: string;
-  signature: string | undefined;
-  /** GitHub's `X-GitHub-Delivery` identifier, used to recognize redeliveries of the same event. */
-  delivery?: string;
+  headers: WebhookHeaders;
+}
+
+/** One source-control provider a deployment accepts webhooks from, with its own secret. */
+export interface ProviderWebhookConfig {
+  kind: ProviderKind;
+  secret: string;
 }
 
 export interface WebhookOptions {
-  secret: string;
+  /** Providers this deployment listens to. One deployment may connect several. */
+  providers: readonly ProviderWebhookConfig[];
   checkoutPath: string;
   ignoreAuthors?: readonly string[];
   store?: TaskStore;
   scheduler?: TaskScheduler;
-  /** Credentials for publishing an issue run's verified changes as a pull request. */
+  /** Credentials for publishing a GitHub issue run's verified changes as a pull request. */
   github?: { token: string | undefined; fetch?: typeof globalThis.fetch };
   /** In-flight delivery-key claims for issue events; defaults to a process-wide registry. */
   deliveries?: Map<string, Promise<WebhookOutcome>>;
@@ -278,7 +285,12 @@ export interface WebhookOptions {
 export type WebhookOutcome =
   | { status: 'rejected'; reason: string }
   | { status: 'ignored'; reason: string }
-  | { status: 'accepted'; result: TaskResult; pullRequest: PullRequestRef }
+  | {
+      status: 'accepted';
+      result: TaskResult;
+      provider: ProviderKind;
+      changeRequest: ChangeRequestRef;
+    }
   | {
       status: 'accepted';
       result: TaskResult;
@@ -291,12 +303,27 @@ export type WebhookOutcome =
       validationComment: { posted: boolean; reason: string | null };
     };
 
+/**
+ * The GitHub issue-to-PR workflow currently only exists on the GitHub adapter: it depends on the
+ * Git data API for branch and pull-request creation and has no equivalent implemented for the
+ * other providers yet. It is dispatched here, ahead of the provider-neutral review-event path,
+ * because it is not part of the shared `SourceControlProvider` review-event contract.
+ */
 export async function ingestWebhook(
   request: WebhookRequest,
   options: WebhookOptions,
 ): Promise<WebhookOutcome> {
-  if (!verifyWebhook(request.body, request.signature, options.secret))
+  const kinds = options.providers.map((provider) => provider.kind);
+  const provider = providerForDelivery(request.headers, kinds);
+  if (!provider)
+    return { status: 'rejected', reason: 'No configured provider recognizes this delivery' };
+  const secret = options.providers.find((entry) => entry.kind === provider.kind)?.secret ?? '';
+
+  if (!provider.verifyWebhook({ body: request.body, headers: request.headers }, secret))
     return { status: 'rejected', reason: 'Invalid webhook signature' };
+
+  const eventName = provider.eventName(request.headers);
+  if (eventName === undefined) return { status: 'ignored', reason: 'The delivery names no event' };
 
   let payload: unknown;
   try {
@@ -305,10 +332,11 @@ export async function ingestWebhook(
     return { status: 'rejected', reason: 'Webhook body is not valid JSON' };
   }
 
-  if (request.event === 'issues') return ingestIssueEvent(request, payload, options);
+  if (provider.kind === 'github' && eventName === 'issues')
+    return ingestIssueEvent(request, eventName, payload, options);
 
-  const event = parseReviewEvent(
-    request.event,
+  const event = provider.parseReviewEvent(
+    eventName,
     payload,
     options.ignoreAuthors ? { ignoreAuthors: options.ignoreAuthors } : {},
   );
@@ -330,7 +358,12 @@ export async function ingestWebhook(
     reviewInputFromEvent(event, { checkoutPath: options.checkoutPath, mode }),
     runOptions,
   );
-  return { status: 'accepted', result, pullRequest: event.pullRequest };
+  return {
+    status: 'accepted',
+    result,
+    provider: provider.kind,
+    changeRequest: event.changeRequest,
+  };
 }
 
 /** Process-wide issue delivery claims, bounded so redelivery tracking cannot grow without limit. */
@@ -338,7 +371,8 @@ const defaultDeliveries = new Map<string, Promise<WebhookOutcome>>();
 const MAX_DELIVERY_CLAIMS = 10_000;
 
 /**
- * Run one scoped issue task and, when the run earns it, publish the result as a pull request.
+ * Run one scoped GitHub issue task and, when the run earns it, publish the result as a pull
+ * request.
  *
  * The issue text is untrusted input: it becomes feedback for the runtime to validate, the run mode
  * comes only from repository policy, and policy must opt in (`issues.enabled` plus the required
@@ -350,6 +384,7 @@ const MAX_DELIVERY_CLAIMS = 10_000;
  */
 async function ingestIssueEvent(
   request: WebhookRequest,
+  eventName: string,
   payload: unknown,
   options: WebhookOptions,
 ): Promise<WebhookOutcome> {
@@ -357,7 +392,7 @@ async function ingestIssueEvent(
   if (!config.issues.enabled)
     return { status: 'ignored', reason: 'Issue tasks are disabled by repository policy' };
 
-  const task = parseIssueTask('issues', payload, {
+  const task = parseIssueTask(eventName, payload, {
     requireLabel: config.issues.requireLabel,
     ...(options.ignoreAuthors ? { ignoreAuthors: options.ignoreAuthors } : {}),
   });
@@ -370,7 +405,7 @@ async function ingestIssueEvent(
   // The claim is registered before the work starts, so a concurrent redelivery shares the
   // in-flight outcome rather than racing a second run past the check above.
   const deliveries = options.deliveries ?? defaultDeliveries;
-  const key = issueDeliveryKey(request);
+  const key = issueDeliveryKey(request, eventName);
   const claimed = deliveries.get(key);
   if (claimed) return claimed;
 
@@ -530,10 +565,10 @@ export async function publishIssueValidation(
  * The idempotency key for one issue delivery. GitHub's delivery identifier is preferred; without
  * one, a redelivered event still carries a byte-identical body, so its digest recognizes it.
  */
-function issueDeliveryKey(request: WebhookRequest): string {
-  if (request.delivery !== undefined && request.delivery.length > 0)
-    return `delivery:${request.delivery}`;
-  return `payload:${createHash('sha256').update(`${request.event}\n${request.body}`).digest('hex')}`;
+function issueDeliveryKey(request: WebhookRequest, eventName: string): string {
+  const delivery = readHeader(request.headers, 'x-github-delivery');
+  if (delivery !== undefined && delivery.length > 0) return `delivery:${delivery}`;
+  return `payload:${createHash('sha256').update(`${eventName}\n${request.body}`).digest('hex')}`;
 }
 
 export interface OpenIssuePullRequestOptions {
@@ -617,27 +652,48 @@ export async function openIssuePullRequest(
 
 export interface PublishOptions {
   token: string | undefined;
+  /** API base URL, required for self-hosted providers. */
+  baseUrl?: string;
   fetch?: typeof globalThis.fetch;
   store?: TaskStore;
 }
 
+const statusTokenVariables: Record<ProviderKind, string> = {
+  github: 'GITHUB_TOKEN',
+  gitlab: 'GITLAB_TOKEN',
+  'bitbucket-cloud': 'BITBUCKET_CLOUD_TOKEN',
+  'bitbucket-data-center': 'BITBUCKET_DATA_CENTER_TOKEN',
+  gitea: 'GITEA_TOKEN',
+};
+
+/** The status credential for one provider, from its fixed environment variable. */
+export function statusTokenFromEnvironment(kind: ProviderKind): string | undefined {
+  return process.env[statusTokenVariables[kind]];
+}
+
 export function githubTokenFromEnvironment(): string | undefined {
-  return process.env.GITHUB_TOKEN;
+  return statusTokenFromEnvironment('github');
 }
 
 export async function publishEvidence(
-  target: PullRequestRef,
+  target: ChangeRequestRef,
   taskIdentifier: string,
   options: PublishOptions,
 ): Promise<{ published: boolean; reason?: string }> {
-  if (!options.token) return { published: false, reason: 'GITHUB_TOKEN is not configured' };
+  if (!options.token)
+    return {
+      published: false,
+      reason: `${statusTokenVariables[target.provider]} is not configured`,
+    };
   const task = await (options.store ?? defaultStore).get(taskIdentifier);
   if (!task?.evidence) return { published: false, reason: `Unknown task: ${taskIdentifier}` };
-  await new GitHubChecks({
+  const publisher = createProvider(target.provider).statusPublisher({
     token: options.token,
+    ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
     ...(options.fetch ? { fetch: options.fetch } : {}),
-  }).publish(target, task.evidence);
-  return { published: true };
+  });
+  const publication = await publisher.publish(target, task.evidence);
+  return { published: true, ...(publication.degraded ? { reason: publication.degraded } : {}) };
 }
 
 /**
@@ -665,8 +721,10 @@ function checkoutRepositoryMismatch(
 /**
  * Read each changed file's final content through the run's own boundary.
  *
- * The bytes are captured raw and stored as base64: a string read would replace invalid UTF-8
- * sequences, so a verified binary change would be published with corrupted contents.
+ * The snapshot is captured the moment a run finishes, while the runner's lease is still held, so a
+ * later publication reads exactly what the run verified rather than whatever the checkout holds by
+ * the time someone gets around to publishing it — a window where the working tree could have been
+ * mutated and the change would be published with corrupted contents.
  */
 async function snapshotChangedFiles(
   runner: Runner,

@@ -9,12 +9,13 @@ import { deliveryClaimStore, taskStore } from '../../utils/store.js';
 /**
  * The production GitHub webhook entry point at `POST /webhooks/github`.
  *
- * This route only adapts transport: it maps headers and body onto the webhook contract and
- * injects the deployment's durable stores. Signature verification, policy checks, delivery
- * claims, and everything that can execute repository work stay behind `ingestWebhook`, and the
- * durable `deliveryClaimStore` is what lets a redelivered issue event observe the recorded
- * outcome across restarts and other instances instead of starting a duplicate run. Without a
- * configured secret or checkout the route fails closed and ingests nothing.
+ * This route only adapts transport: it maps headers and body onto the provider-neutral webhook
+ * contract and injects the deployment's durable stores. Signature verification, provider
+ * routing, policy checks, delivery claims, and everything that can execute repository work stay
+ * behind `ingestWebhook`, and the durable `deliveryClaimStore` is what lets a redelivered issue
+ * event observe the recorded outcome across restarts and other instances instead of starting a
+ * duplicate run. Without a configured secret or checkout the route fails closed and ingests
+ * nothing.
  */
 const route: EventHandlerWithFetch = defineHandler(async (event) => {
   try {
@@ -23,16 +24,13 @@ const route: EventHandlerWithFetch = defineHandler(async (event) => {
     const checkoutPath = process.env.AGENT_ZERO_CHECKOUT_PATH;
     if (!checkoutPath) return json(503, { error: 'AGENT_ZERO_CHECKOUT_PATH is not configured' });
 
-    const delivery = event.req.headers.get('x-github-delivery');
     const outcome = await ingestWebhook(
       {
-        event: event.req.headers.get('x-github-event') ?? '',
         body: await event.req.text(),
-        signature: event.req.headers.get('x-hub-signature-256') ?? undefined,
-        ...(delivery ? { delivery } : {}),
+        headers: Object.fromEntries(event.req.headers.entries()),
       },
       {
-        secret,
+        providers: [{ kind: 'github', secret }],
         checkoutPath,
         store: taskStore,
         deliveryClaims: deliveryClaimStore,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { GitHubIssueComments } from './comments.js';
+import { GitHubIssueComments } from './github-comments.js';
 
 interface RecordedRequest {
   method: string;

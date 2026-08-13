@@ -8,7 +8,7 @@ import {
   prepareIssuePullRequest,
   prepareIssueValidationComment,
   VALIDATION_COMMENT_MARKER,
-} from './issues.js';
+} from './github-issues.js';
 
 function payload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {

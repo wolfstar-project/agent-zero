@@ -284,9 +284,6 @@ importers:
       '@agent-zero/config':
         specifier: workspace:*
         version: 0.3.0
-      '@agent-zero/github':
-        specifier: workspace:*
-        version: 0.3.0
       '@agent-zero/models':
         specifier: workspace:*
         version: 0.3.0
@@ -294,6 +291,9 @@ importers:
         specifier: workspace:*
         version: 0.3.0
       '@agent-zero/shared':
+        specifier: workspace:*
+        version: 0.3.0
+      '@agent-zero/source-control':
         specifier: workspace:*
         version: 0.3.0
       '@orpc/server':
@@ -611,7 +611,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
 
-  packages/github:
+  packages/source-control:
     dependencies:
       '@agent-zero/shared':
         specifier: workspace:*
