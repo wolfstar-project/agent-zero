@@ -321,8 +321,8 @@ export interface PublishOptions {
 const statusTokenVariables: Record<ProviderKind, string> = {
   github: 'GITHUB_TOKEN',
   gitlab: 'GITLAB_TOKEN',
-  'bitbucket-cloud': 'BITBUCKET_TOKEN',
-  'bitbucket-data-center': 'BITBUCKET_TOKEN',
+  'bitbucket-cloud': 'BITBUCKET_CLOUD_TOKEN',
+  'bitbucket-data-center': 'BITBUCKET_DATA_CENTER_TOKEN',
   gitea: 'GITEA_TOKEN',
 };
 

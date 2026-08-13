@@ -78,13 +78,17 @@ rejected before its payload is parsed.
 Status publishing reads one fixed environment variable per provider; credentials are sent only
 as an `Authorization` header and are redacted from any error raised.
 
-| Provider              | Variable          | Notes                                    |
-| --------------------- | ----------------- | ---------------------------------------- |
-| GitHub                | `GITHUB_TOKEN`    | Checks API                               |
-| GitLab                | `GITLAB_TOKEN`    | `baseUrl` for GitLab Self-Managed        |
-| Bitbucket Cloud       | `BITBUCKET_TOKEN` | access token with repository write scope |
-| Bitbucket Data Center | `BITBUCKET_TOKEN` | `baseUrl` required                       |
-| Gitea / Forgejo       | `GITEA_TOKEN`     | `baseUrl` required                       |
+| Provider              | Variable                      | Notes                                    |
+| --------------------- | ----------------------------- | ---------------------------------------- |
+| GitHub                | `GITHUB_TOKEN`                | Checks API                               |
+| GitLab                | `GITLAB_TOKEN`                | `baseUrl` for GitLab Self-Managed        |
+| Bitbucket Cloud       | `BITBUCKET_CLOUD_TOKEN`       | access token with repository write scope |
+| Bitbucket Data Center | `BITBUCKET_DATA_CENTER_TOKEN` | `baseUrl` required                       |
+| Gitea / Forgejo       | `GITEA_TOKEN`                 | `baseUrl` required                       |
+
+The two Bitbucket products keep separate variables because a deployment may connect both with
+distinct credentials; a shared variable would force one publication path to authenticate with
+the other product's token.
 
 ## Conformance
 

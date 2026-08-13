@@ -15,6 +15,7 @@ import {
   listTasks,
   publishEvidence,
   runTask,
+  statusTokenFromEnvironment,
   taskInput,
   tasks,
 } from './router.js';
@@ -358,5 +359,21 @@ describe('publishEvidence', () => {
     expect(outcome.published).toBe(true);
     expect(outcome.reason).toContain('no neutral state');
     expect(bodies[0]?.state).toBe('success');
+  });
+
+  it('resolves independent credentials for the two Bitbucket products', () => {
+    const originalCloud = process.env.BITBUCKET_CLOUD_TOKEN;
+    const originalDataCenter = process.env.BITBUCKET_DATA_CENTER_TOKEN;
+    try {
+      process.env.BITBUCKET_CLOUD_TOKEN = 'cloud-credential';
+      process.env.BITBUCKET_DATA_CENTER_TOKEN = 'data-center-credential';
+      expect(statusTokenFromEnvironment('bitbucket-cloud')).toBe('cloud-credential');
+      expect(statusTokenFromEnvironment('bitbucket-data-center')).toBe('data-center-credential');
+    } finally {
+      if (originalCloud === undefined) delete process.env.BITBUCKET_CLOUD_TOKEN;
+      else process.env.BITBUCKET_CLOUD_TOKEN = originalCloud;
+      if (originalDataCenter === undefined) delete process.env.BITBUCKET_DATA_CENTER_TOKEN;
+      else process.env.BITBUCKET_DATA_CENTER_TOKEN = originalDataCenter;
+    }
   });
 });
