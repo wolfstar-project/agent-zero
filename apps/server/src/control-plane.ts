@@ -1,4 +1,7 @@
+import { createHash, randomUUID } from 'node:crypto';
+
 import {
+  now,
   redactSecrets,
   secretValuesFromEnvironment,
   type EvidenceBundle,
@@ -12,9 +15,27 @@ export type {
   TaskApproval,
 } from '../shared/dashboard.js';
 
+/**
+ * One changed file's verified content, or null when the change deleted the file.
+ *
+ * The content is base64 of the file's exact bytes, not decoded text: a snapshot passes through
+ * JSON persistence and back into Git blob creation, and a string decode would silently replace
+ * invalid UTF-8 sequences, publishing different bytes than the run verified.
+ */
+export interface ChangedFileSnapshot {
+  path: string;
+  contentBase64: string | null;
+}
+
 /** Durable, deliberately narrow task history. Review input and checkout paths are never stored. */
 export interface StoredTask extends DashboardTask {
   evidence?: EvidenceBundle;
+  /**
+   * Immutable contents of the run's changed files, captured through the run's own boundary the
+   * moment it finished. Publication reads from this snapshot, never from the live checkout, so a
+   * mutation after verification cannot ride along under the run's evidence.
+   */
+  changedFileSnapshot?: ChangedFileSnapshot[];
 }
 
 export interface TaskStore {
@@ -30,6 +51,12 @@ export interface KeyValueStorage {
   setItem(key: string, value: unknown): Promise<void>;
   getKeys(base?: string): Promise<string[]>;
   removeItem?(key: string): Promise<void>;
+  /**
+   * Write the record only when the key is absent, atomically when the driver can promise it.
+   * Returns whether this caller created the record. Drivers without a conditional-write
+   * primitive omit this method and callers fall back to a read-then-write claim.
+   */
+  setItemIfAbsent?(key: string, value: unknown): Promise<boolean>;
 }
 
 const TASK_PREFIX = 'tasks:';
@@ -57,6 +84,114 @@ export class PersistentTaskStore implements TaskStore {
   async save(task: StoredTask): Promise<void> {
     await this.storage.setItem(`${TASK_PREFIX}${task.id}`, sanitizeTask(task, this.secrets));
   }
+}
+
+/** The answer to one delivery-claim attempt: sole ownership, or what the earlier claim decided. */
+export type DeliveryClaim =
+  | { claimed: true }
+  /** `outcome` is null while the earlier claim is still in flight or was lost mid-run. */
+  | { claimed: false; outcome: unknown };
+
+/**
+ * Durable, atomically claimed webhook-delivery outcomes.
+ *
+ * A claim is taken before any work starts and survives process restarts, other instances, and
+ * in-memory eviction, so a redelivered event observes the recorded outcome instead of starting
+ * a duplicate run.
+ */
+export interface DeliveryClaimStore {
+  /** Atomically claim a delivery key, or report the standing claim's recorded outcome. */
+  claim(key: string): Promise<DeliveryClaim>;
+  /** Record the delivery's final outcome under this caller's claim so redeliveries replay it. */
+  complete(key: string, outcome: unknown): Promise<void>;
+  /** Discard an unfinished claim so a redelivery may retry after a transport failure. */
+  release(key: string): Promise<void>;
+}
+
+const DELIVERY_PREFIX = 'deliveries:';
+
+interface DeliveryClaimRecord {
+  claimedAt: string;
+  outcome: unknown;
+}
+
+/**
+ * Delivery claims persisted through the same provider-neutral storage layer as task records.
+ *
+ * The claim marker is written before the work it guards. Drivers that expose
+ * {@link KeyValueStorage.setItemIfAbsent} make the claim an atomic conditional create across
+ * instances. Drivers without one never get a bare write-then-read (which is last-writer-wins, so
+ * a later writer would read back its own token and claim alongside the earlier winner): the claim
+ * runs a splitter instead. Each contender first records itself in a contender register, then
+ * treats an existing marker as a closed door, writes the marker, and owns the delivery only when
+ * the register still holds its own token. Any interleaving that could have produced a second
+ * owner is instead observed as a closed door or an overwritten register, so at most one contender
+ * ever claims; under a pathological interleaving every contender may lose, which reports the
+ * standing (unfinished) claim — the same safe refusal as a claim lost mid-run — rather than
+ * starting duplicate work.
+ */
+export class PersistentDeliveryClaimStore implements DeliveryClaimStore {
+  constructor(
+    private readonly storage: KeyValueStorage,
+    private readonly secrets: readonly string[] = secretValuesFromEnvironment(),
+  ) {}
+
+  async claim(key: string): Promise<DeliveryClaim> {
+    const storageKey = deliveryStorageKey(key);
+    const marker: DeliveryClaimRecord = { claimedAt: now(), outcome: null };
+    if (this.storage.setItemIfAbsent) {
+      if (await this.storage.setItemIfAbsent(storageKey, marker)) return { claimed: true };
+      return { claimed: false, outcome: await this.recordedOutcome(storageKey) };
+    }
+    // Splitter arbitration for drivers without a conditional create. Order is load-bearing:
+    // register first, then check the door, then close it, then read the register back. A winner's
+    // read-back proves no other contender registered after it; any such contender must have
+    // registered before the winner closed the door and would therefore have lost the read-back
+    // itself, or registered after and seen the door closed. Two contenders can never both win.
+    const token = randomUUID();
+    const contenderKey = contenderStorageKey(storageKey);
+    await this.storage.setItem(contenderKey, token);
+    const existing = await this.storage.getItem(storageKey);
+    if (isDeliveryClaimRecord(existing)) return { claimed: false, outcome: existing.outcome };
+    await this.storage.setItem(storageKey, marker);
+    const lastContender = await this.storage.getItem(contenderKey);
+    if (lastContender === token) return { claimed: true };
+    return { claimed: false, outcome: await this.recordedOutcome(storageKey) };
+  }
+
+  async complete(key: string, outcome: unknown): Promise<void> {
+    const record: DeliveryClaimRecord = {
+      claimedAt: now(),
+      outcome: redactDeep(outcome, this.secrets),
+    };
+    await this.storage.setItem(deliveryStorageKey(key), record);
+  }
+
+  async release(key: string): Promise<void> {
+    const storageKey = deliveryStorageKey(key);
+    // The contender register goes first so a retry never reads a stale token as its own loss.
+    await this.storage.removeItem?.(contenderStorageKey(storageKey));
+    await this.storage.removeItem?.(storageKey);
+  }
+
+  private async recordedOutcome(storageKey: string): Promise<unknown> {
+    const record = await this.storage.getItem(storageKey);
+    return isDeliveryClaimRecord(record) ? record.outcome : null;
+  }
+}
+
+/** Delivery keys embed caller-supplied identifiers; hashing keeps every byte storage-safe. */
+function deliveryStorageKey(key: string): string {
+  return `${DELIVERY_PREFIX}${createHash('sha256').update(key).digest('hex')}`;
+}
+
+/** The splitter's contender register for one delivery; the hex digest cannot collide with it. */
+function contenderStorageKey(storageKey: string): string {
+  return `${storageKey}:contender`;
+}
+
+function isDeliveryClaimRecord(value: unknown): value is DeliveryClaimRecord {
+  return isRecord(value) && typeof value.claimedAt === 'string' && 'outcome' in value;
 }
 
 /** In-memory adapter used by embedded callers and tests; production Nitro routes use storage. */
@@ -186,12 +321,17 @@ export class TaskScheduler {
 }
 
 function sanitizeTask(task: StoredTask, secrets: readonly string[]): StoredTask {
-  const serialized = JSON.stringify(task, (_key, value: unknown) =>
-    typeof value === 'string' ? redactSecrets(value, secrets) : value,
-  );
-  const value: unknown = JSON.parse(serialized);
+  const value = redactDeep(task, secrets);
   if (!isStoredTask(value)) throw new Error('Refusing to persist an invalid task record');
   return value;
+}
+
+/** Redact every string in a JSON-serialisable value before it is persisted. */
+function redactDeep(value: unknown, secrets: readonly string[]): unknown {
+  const serialized = JSON.stringify(value ?? null, (_key, entry: unknown) =>
+    typeof entry === 'string' ? redactSecrets(entry, secrets) : entry,
+  );
+  return JSON.parse(serialized) as unknown;
 }
 
 function isStoredTask(value: unknown): value is StoredTask {

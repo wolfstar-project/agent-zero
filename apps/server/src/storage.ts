@@ -32,6 +32,18 @@ export class FileKeyValueStorage implements KeyValueStorage {
     await writeFile(this.pathFor(key), JSON.stringify(value), 'utf8');
   }
 
+  /** Exclusive create (`wx`) is atomic on the filesystem, so exactly one writer wins the key. */
+  async setItemIfAbsent(key: string, value: unknown): Promise<boolean> {
+    await mkdir(this.directory, { recursive: true });
+    try {
+      await writeFile(this.pathFor(key), JSON.stringify(value), { encoding: 'utf8', flag: 'wx' });
+      return true;
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'EEXIST') return false;
+      throw error;
+    }
+  }
+
   async getKeys(base = ''): Promise<string[]> {
     let entries: string[];
     try {
@@ -53,6 +65,10 @@ export class FileKeyValueStorage implements KeyValueStorage {
     if (!SAFE_KEY.test(key)) throw new Error(`Refusing to address storage with an unsafe key`);
     return join(this.directory, `${encodeKey(key)}${SUFFIX}`);
   }
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }
 
 // `:` is not a portable filename character on Windows, so it is the one byte we transliterate.

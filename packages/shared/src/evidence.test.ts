@@ -22,6 +22,7 @@ const result: TaskResult = {
     rejectionReasons: [],
   },
   plan: ['Guard the null return'],
+  acceptanceCriteria: [],
   checks: [{ command: 'pnpm run test', exitCode: 0, stdout: 'ok', stderr: '', durationMs: 12 }],
   changedFiles: ['src/user.ts'],
   attempts: 1,
@@ -51,6 +52,14 @@ describe('evidenceFromResult', () => {
 
   it('records the absence of a source instead of inventing one', () => {
     expect(evidenceFromResult(result, { mode: 'observe' }).source).toBeNull();
+  });
+
+  it('records the issue an issue task worked on, and its absence otherwise', () => {
+    const issue = { owner: 'acme', repo: 'app', number: 12 };
+    const snapshot = evidenceFromResult(result, { mode: 'fix', trigger: 'issue', issue });
+    expect(snapshot.issue).toEqual(issue);
+    expect(snapshot.issue).not.toBe(issue);
+    expect(evidenceFromResult(result, { mode: 'observe' }).issue).toBeNull();
   });
 });
 
@@ -132,6 +141,19 @@ describe('renderEvidenceMarkdown', () => {
       summary: 'x'.repeat(5_000),
     };
     expect(renderEvidenceMarkdown(noisy, { maxLength: 500 }).length).toBeLessThanOrEqual(500);
+  });
+
+  it('labels an issue task and renders its acceptance criteria', () => {
+    const issueBundle: EvidenceBundle = {
+      ...bundle,
+      trigger: 'issue',
+      issue: { owner: 'acme', repo: 'app', number: 12 },
+      acceptanceCriteria: ['The loader guards its null return before dereferencing'],
+    };
+    const report = renderEvidenceMarkdown(issueBundle);
+    expect(report).toContain('## Agent Zero — issue task accepted');
+    expect(report).toContain('### Acceptance criteria');
+    expect(report).toContain('The loader guards its null return before dereferencing');
   });
 
   it('keeps a table cell from breaking the surrounding row', () => {

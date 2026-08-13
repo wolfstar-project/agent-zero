@@ -15,6 +15,30 @@ export {
   type ReviewEvent,
   type SupportedEvent,
 } from './events.js';
+export { GitHubIssueComments, type GitHubIssueCommentsOptions } from './comments.js';
+export {
+  issueBranchName,
+  issueInputFromTask,
+  parseIssueTask,
+  prepareIssuePullRequest,
+  prepareIssueValidationComment,
+  supportedIssueEvents,
+  VALIDATION_COMMENT_MARKER,
+  type IssueTask,
+  type IssueValidationComment,
+  type ParseIssueOptions,
+  type PullRequestReadiness,
+} from './issues.js';
+export {
+  assertSafeBranchName,
+  GitHubPullRequests,
+  isSafeBranchName,
+  type BranchFile,
+  type GitHubPullRequestsOptions,
+  type OpenPullRequestOptions,
+  type PublishBranchOptions,
+  type RepositoryTarget,
+} from './pulls.js';
 
 /**
  * Verify a webhook signature in constant time.

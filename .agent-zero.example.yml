@@ -8,6 +8,18 @@ mode: observe
 proactive:
   enabled: false
 
+# Turn scoped GitHub issues into verified pull requests. Opt-in twice: enable it here and label
+# the issue with requireLabel. Verified changes are published on a fresh branchPrefix branch and
+# opened as a pull request carrying acceptance criteria and evidence; the default branch is never
+# committed to.
+issues:
+  enabled: false
+  requireLabel: agent-zero
+  branchPrefix: agent-zero/
+  # Report the validation verdict back on the issue as a comment: confirmed with evidence, not
+  # confirmed with the rejection reasons, or inconclusive for a human. Report-only.
+  validationComment: true
+
 # Commands used to verify a change. Leave empty to discover this repository's own
 # lint, typecheck, test, and build scripts. Commands run without a shell, so
 # operators such as &&, |, ;, and $() are rejected.
