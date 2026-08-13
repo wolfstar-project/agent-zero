@@ -137,10 +137,20 @@ describe('path boundary', () => {
     await expect(runner.exists('src/missing.ts')).resolves.toBe(false);
   });
 
+  it('reads exact bytes, preserving content that is not valid UTF-8', async () => {
+    const bytes = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0x80, 0x00]);
+    await writeFile(join(root, 'src', 'image.png'), bytes);
+    const runner = new LocalRunner(root);
+    await expect(runner.readBytes('src/image.png')).resolves.toEqual(Buffer.from(bytes));
+    // The string API would have replaced the invalid sequences; the byte API must not.
+    expect(new TextEncoder().encode(await runner.read('src/image.png'))).not.toEqual(bytes);
+  });
+
   it('rejects paths outside the repository', async () => {
     const runner = new LocalRunner(root);
     await expect(runner.read('../secret')).rejects.toThrow('Path escapes repository');
     await expect(runner.read('/etc/passwd')).rejects.toThrow('Path escapes repository');
+    await expect(runner.readBytes('../secret')).rejects.toThrow('Path escapes repository');
   });
 
   it('refuses to read or write git metadata', async () => {
@@ -504,6 +514,71 @@ describe('git inspection', () => {
       git: { exitCode: 128, stdout: '', stderr: 'not a git repository' },
     });
     await expect(new LocalRunner(root, { process }).context()).resolves.toContain('FILES');
+  });
+});
+
+function remoteProcess(stdout: string, exitCode = 0): ProcessRunner {
+  return async (program, args) =>
+    program === 'git' && args.join(' ') === 'remote get-url origin'
+      ? { exitCode, stdout, stderr: '' }
+      : { exitCode: 0, stdout: '', stderr: '' };
+}
+
+describe('originRepository', () => {
+  it('parses the owner and repository from an HTTPS origin', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('https://github.com/acme/app.git\n'),
+    });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('parses an scp-style SSH origin', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('git@github.com:acme/app.git') });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('parses an ssh:// origin without the .git suffix', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('ssh://git@github.com/acme/app'),
+    });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
+  });
+
+  it('reports no identity when the checkout has no origin remote', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('', 2) });
+    await expect(runner.originRepository()).resolves.toBeNull();
+  });
+
+  it('reports no identity for an ambiguous multi-line answer', async () => {
+    const runner = new LocalRunner(root, {
+      process: remoteProcess('https://github.com/acme/app.git\nhttps://github.com/evil/app.git\n'),
+    });
+    await expect(runner.originRepository()).resolves.toBeNull();
+  });
+
+  it('reports no identity for a URL that does not name exactly owner/repo', async () => {
+    for (const url of ['https://github.com/acme', 'https://github.com/a/b/c', '/srv/git/app'])
+      await expect(
+        new LocalRunner(root, { process: remoteProcess(url) }).originRepository(),
+      ).resolves.toBeNull();
+  });
+
+  it('reports no identity for a remote hosted anywhere other than GitHub', async () => {
+    for (const url of [
+      'https://attacker.example/acme/app.git',
+      'git@attacker.example:acme/app.git',
+      'ssh://git@attacker.example/acme/app.git',
+      'https://github.com.attacker.example/acme/app.git',
+      'git@gitlab.com:acme/app.git',
+    ])
+      await expect(
+        new LocalRunner(root, { process: remoteProcess(url) }).originRepository(),
+      ).resolves.toBeNull();
+  });
+
+  it('accepts a GitHub host regardless of letter case', async () => {
+    const runner = new LocalRunner(root, { process: remoteProcess('git@GitHub.com:acme/app.git') });
+    await expect(runner.originRepository()).resolves.toEqual({ owner: 'acme', repo: 'app' });
   });
 });
 

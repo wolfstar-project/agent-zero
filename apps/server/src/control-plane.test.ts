@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MemoryTaskStore,
+  PersistentDeliveryClaimStore,
   PersistentTaskStore,
   TaskQueueQuotaError,
   TaskScheduler,
@@ -41,6 +42,72 @@ class RecordingStorage implements KeyValueStorage {
   async getKeys(base = ''): Promise<string[]> {
     return [...this.values.keys()].filter((key) => key.startsWith(base));
   }
+  async removeItem(key: string): Promise<void> {
+    this.values.delete(key);
+  }
+}
+
+/** A driver that offers the atomic conditional write; the base class exercises the fallback. */
+class AtomicRecordingStorage extends RecordingStorage {
+  async setItemIfAbsent(key: string, value: unknown): Promise<boolean> {
+    if (this.values.has(key)) return false;
+    this.values.set(key, value);
+    return true;
+  }
+}
+
+/**
+ * A conditional-write-less driver that holds the first `contenders` absence checks at a barrier,
+ * so every contender observes the key absent before any of them writes — the exact interleaving
+ * a naive read-then-write claim resolves by granting the delivery to all of them.
+ */
+class RacingStorage extends RecordingStorage {
+  private waiting: (() => void)[] = [];
+  private held = 0;
+  constructor(private readonly contenders: number) {
+    super();
+  }
+
+  override async getItem(key: string): Promise<unknown> {
+    if (this.held < this.contenders && !this.values.has(key)) {
+      this.held += 1;
+      await new Promise<void>((resolve) => {
+        this.waiting.push(resolve);
+        if (this.waiting.length >= this.contenders) for (const release of this.waiting) release();
+      });
+    }
+    return super.getItem(key);
+  }
+}
+
+/**
+ * Parks the first delivery-marker write until released: the parked contender has already observed
+ * the delivery absent, and it resumes (overwriting the winner's marker and reading back) only
+ * after another contender claimed end to end. `parked` resolves once the contender is stalled.
+ */
+class ParkedWriteStorage extends RecordingStorage {
+  private resolveParked!: () => void;
+  readonly parked = new Promise<void>((resolve) => {
+    this.resolveParked = resolve;
+  });
+  private releaseGate!: () => void;
+  private readonly gate = new Promise<void>((resolve) => {
+    this.releaseGate = resolve;
+  });
+  private held = false;
+
+  release(): void {
+    this.releaseGate();
+  }
+
+  override async setItem(key: string, value: unknown): Promise<void> {
+    if (!this.held && key.startsWith('deliveries:') && !key.endsWith(':contender')) {
+      this.held = true;
+      this.resolveParked();
+      await this.gate;
+    }
+    await super.setItem(key, value);
+  }
 }
 
 describe('task persistence', () => {
@@ -68,6 +135,81 @@ describe('task persistence', () => {
     await store.save(task);
     task.status = 'failed';
     await expect(store.get('az_1')).resolves.toMatchObject({ status: 'queued' });
+  });
+});
+
+describe('PersistentDeliveryClaimStore', () => {
+  for (const [driver, storage] of [
+    ['a conditional-write driver', () => new AtomicRecordingStorage()],
+    ['the splitter fallback', () => new RecordingStorage()],
+  ] as const) {
+    it(`grants a claim exactly once and replays the completed outcome via ${driver}`, async () => {
+      const store = new PersistentDeliveryClaimStore(storage(), []);
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+      // The claim is standing but unfinished, so there is no outcome to replay yet.
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+        claimed: false,
+        outcome: null,
+      });
+      await store.complete('delivery:guid-1', { status: 'ignored', reason: 'recorded' });
+      await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+        claimed: false,
+        outcome: { status: 'ignored', reason: 'recorded' },
+      });
+    });
+  }
+
+  it('grants exactly one claim when concurrent contenders both observe the key absent', async () => {
+    // Two instances race the fallback: both absence checks return null before either write lands.
+    // The splitter must grant at most one of them the delivery, never both.
+    const store = new PersistentDeliveryClaimStore(new RacingStorage(2), []);
+    const outcomes = await Promise.all([
+      store.claim('delivery:guid-race'),
+      store.claim('delivery:guid-race'),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.claimed)).toHaveLength(1);
+  });
+
+  it('refuses the contender whose marker write lands after the winner already claimed', async () => {
+    // The schedule write-then-read arbitration resolved by granting BOTH contenders: one
+    // contender observes the delivery absent and stalls before its marker write, the winner
+    // claims end to end, and only then does the stalled contender overwrite the winner's marker
+    // and read back. The splitter's contender register makes the late writer lose instead.
+    const storage = new ParkedWriteStorage();
+    const store = new PersistentDeliveryClaimStore(storage, []);
+    const late = store.claim('delivery:guid-race');
+    await storage.parked;
+    await expect(store.claim('delivery:guid-race')).resolves.toEqual({ claimed: true });
+    storage.release();
+    await expect(late).resolves.toEqual({ claimed: false, outcome: null });
+  });
+
+  it('keeps distinct deliveries independent', async () => {
+    const store = new PersistentDeliveryClaimStore(new AtomicRecordingStorage(), []);
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+    await expect(store.claim('delivery:guid-2')).resolves.toEqual({ claimed: true });
+  });
+
+  it('releases an unfinished claim so a redelivery may retry', async () => {
+    const store = new PersistentDeliveryClaimStore(new AtomicRecordingStorage(), []);
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+    await store.release('delivery:guid-1');
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({ claimed: true });
+  });
+
+  it('redacts credentials before an outcome is persisted', async () => {
+    const storage = new AtomicRecordingStorage();
+    const store = new PersistentDeliveryClaimStore(storage, ['provider-secret-value']);
+    await store.claim('delivery:guid-1');
+    await store.complete('delivery:guid-1', {
+      status: 'rejected',
+      reason: 'token=provider-secret-value',
+    });
+    expect(JSON.stringify([...storage.values.values()])).not.toContain('provider-secret-value');
+    await expect(store.claim('delivery:guid-1')).resolves.toEqual({
+      claimed: false,
+      outcome: { status: 'rejected', reason: 'token=[redacted]' },
+    });
   });
 });
 

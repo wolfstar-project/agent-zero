@@ -8,6 +8,7 @@ const runner: Runner = {
   context: async () => '',
   reviewFiles: async () => [],
   read: async () => '',
+  readBytes: async () => new Uint8Array(),
   exists: async () => false,
   write: async () => undefined,
   check: async (command) => ({

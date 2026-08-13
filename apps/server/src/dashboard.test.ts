@@ -26,6 +26,7 @@ function finished(totalTokens: number, costUsd: number): TaskResult {
     verified: true,
     finding: null,
     plan: [],
+    acceptanceCriteria: [],
     checks: [],
     changedFiles: [],
     attempts: 1,

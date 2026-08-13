@@ -1,4 +1,10 @@
-export { AgentZero, classifyChangeRisk, scopeChanges, type AgentDependencies } from './agent.js';
+export {
+  AgentZero,
+  classifyChangeRisk,
+  sanitizeAcceptanceCriteria,
+  scopeChanges,
+  type AgentDependencies,
+} from './agent.js';
 export {
   canTransition,
   InvalidTransitionError,

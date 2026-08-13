@@ -20,6 +20,7 @@ export {
 export { renderFeedback, reviewInputFromEvent, sourceLabel } from './input.js';
 export { allProviders, createProvider, providerForDelivery } from './registry.js';
 export { timingSafeStringEqual, verifyHmacSha256 } from './signatures.js';
+export { readHeader } from './untrusted.js';
 export {
   bitbucketCloudProvider,
   parseBitbucketCloudReviewEvent,
@@ -40,6 +41,33 @@ export {
   type GitHubChecksOptions,
   type SupportedEvent,
 } from './providers/github.js';
+export {
+  GitHubIssueComments,
+  type GitHubIssueCommentsOptions,
+} from './providers/github-comments.js';
+export {
+  issueBranchName,
+  issueInputFromTask,
+  parseIssueTask,
+  prepareIssuePullRequest,
+  prepareIssueValidationComment,
+  supportedIssueEvents,
+  VALIDATION_COMMENT_MARKER,
+  type IssueTask,
+  type IssueValidationComment,
+  type ParseIssueOptions,
+  type PullRequestReadiness,
+} from './providers/github-issues.js';
+export {
+  assertSafeBranchName,
+  GitHubPullRequests,
+  isSafeBranchName,
+  type BranchFile,
+  type GitHubPullRequestsOptions,
+  type OpenPullRequestOptions,
+  type PublishBranchOptions,
+  type RepositoryTarget,
+} from './providers/github-pulls.js';
 export { gitlabProvider, parseGitLabReviewEvent } from './providers/gitlab.js';
 export {
   conformanceCases,
