@@ -128,14 +128,18 @@ export function useOrganizations() {
   async function removeMember(memberIdOrEmail: string) {
     const organizationId = activeOrganization.value?.id;
     if (!organizationId) return;
-    await run(async (authClient) => {
+    // Only refresh after a successful removal: refreshMembers() runs through `run()` too, which
+    // clears `error` at its start, so an unconditional refresh would wipe out a failed removal's
+    // error the moment the refresh itself succeeds.
+    const removed = await run(async (authClient) => {
       const { error: apiError } = await authClient.organization.removeMember({
         memberIdOrEmail,
         organizationId,
       });
       throwOnApiError(apiError);
+      return true;
     });
-    await refreshMembers();
+    if (removed) await refreshMembers();
   }
 
   return {
