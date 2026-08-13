@@ -42,5 +42,3 @@ export {
 export { dashboardOverview, type DashboardOverview } from './dashboard.js';
 export { rpcRouter, type RpcContext, type RpcRouter } from './orpc/router.js';
 export { FileKeyValueStorage } from './storage.js';
-export { createAuthApp } from './auth-app.js';
-export { authOptionsFromEnvironment, type AuthInstanceOptions } from '@agent-zero/auth';

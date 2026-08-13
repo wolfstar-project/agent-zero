@@ -1,6 +1,9 @@
 export {
+  authBetterAuthOptions,
+  authDatabaseOptionsFromEnvironment,
   authOptionsFromEnvironment,
   createAuth,
+  type AuthDatabaseOptions,
   type AuthInstance,
   type AuthInstanceOptions,
   type Session,

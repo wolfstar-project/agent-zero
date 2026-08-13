@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { authOptionsFromEnvironment } from './auth.js';
+import {
+  authBetterAuthOptions,
+  authDatabaseOptionsFromEnvironment,
+  authOptionsFromEnvironment,
+} from './auth.js';
+import { defaultAuthConfig } from './config.js';
 
 const completeEnvironment = {
   BETTER_AUTH_SECRET: 'a-very-secret-value',
@@ -61,5 +66,51 @@ describe('authOptionsFromEnvironment', () => {
 
     expect(message).toMatch(MISSING_URL_MESSAGE);
     expect(message).not.toContain(completeEnvironment.BETTER_AUTH_SECRET);
+  });
+});
+
+describe('authDatabaseOptionsFromEnvironment', () => {
+  it('reads the database connection string without requiring signing or origin variables', () => {
+    const options = authDatabaseOptionsFromEnvironment({
+      AUTH_DATABASE_URL: completeEnvironment.AUTH_DATABASE_URL,
+    });
+
+    expect(options.databaseUrl).toBe(completeEnvironment.AUTH_DATABASE_URL);
+    expect(options.github).toBeUndefined();
+  });
+
+  it('refuses to start without AUTH_DATABASE_URL', () => {
+    expect(() => authDatabaseOptionsFromEnvironment({})).toThrow('AUTH_DATABASE_URL');
+  });
+});
+
+describe('authBetterAuthOptions', () => {
+  it('omits secret, baseURL, and trustedOrigins for a host that resolves them itself', () => {
+    const options = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+
+    expect(options).not.toHaveProperty('secret');
+    expect(options).not.toHaveProperty('baseURL');
+    expect(options).not.toHaveProperty('trustedOrigins');
+    expect(options.emailAndPassword).toMatchObject({ enabled: true, disableSignUp: true });
+  });
+
+  it('enables a GitHub social provider only when credentials are supplied', () => {
+    const withoutGithub = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    expect(withoutGithub.socialProviders).toBeUndefined();
+
+    const withGithub = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      config: defaultAuthConfig,
+      github: { clientId: 'id', clientSecret: 'secret' },
+    });
+    expect(withGithub.socialProviders).toMatchObject({
+      github: { clientId: 'id', clientSecret: 'secret' },
+    });
   });
 });

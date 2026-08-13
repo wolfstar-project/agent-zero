@@ -4,7 +4,6 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../agent" },
-    { "path": "../auth" },
     { "path": "../config" },
     { "path": "../github" },
     { "path": "../models" },

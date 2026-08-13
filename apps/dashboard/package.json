@@ -12,7 +12,7 @@
     "i18n:report:fix": "node scripts/remove-unused-translations.ts",
     "i18n:schema": "node scripts/generate-i18n-schema.ts",
     "i18n:status": "node scripts/i18n-status.ts",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app shared test",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app modules server shared test",
     "start": "node .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
     "test": "vitest run",
@@ -24,10 +24,16 @@
     "typecheck": "nuxt prepare && vue-tsc -b --noEmit && tsc --project tsconfig.json --pretty false --noEmit && tsc --project tsconfig.e2e.json --pretty false --noEmit"
   },
   "dependencies": {
+    "@agent-zero/api": "workspace:*",
     "@agent-zero/auth": "workspace:*",
+    "@agent-zero/shared": "workspace:*",
     "@onmax/nuxt-better-auth": "^0.0.7",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
     "better-auth": "^1.6.26",
     "nuxt": "^4.5.2",
+    "vite-hub": "^0.0.3",
     "vue-i18n": "^11.4.8"
   },
   "devDependencies": {

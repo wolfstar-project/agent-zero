@@ -7,27 +7,34 @@ import type { AuthConfig, GithubOauthCredentials } from './config.js';
 import { createAuthDatabase } from './database.js';
 import { schema } from './schema.js';
 
-/** Everything the Better Auth instance needs that is not policy. */
-export interface AuthInstanceOptions {
+/** Everything Better Auth's policy shape needs that isn't signing or origin configuration. */
+export interface AuthDatabaseOptions {
   /** Postgres connection string holding users and sessions. */
   readonly databaseUrl: string;
+  readonly config: AuthConfig;
+  readonly github?: GithubOauthCredentials;
+}
+
+/** Everything the Better Auth instance needs that is not policy. */
+export interface AuthInstanceOptions extends AuthDatabaseOptions {
   /** Signing secret. Must be supplied by the caller; there is deliberately no default. */
   readonly secret: string;
   /** Public origin the auth server is reachable at. */
   readonly baseUrl: string;
   /** Origins allowed to complete a credentialed round trip, typically the dashboard. */
   readonly trustedOrigins: readonly string[];
-  readonly config: AuthConfig;
-  readonly github?: GithubOauthCredentials;
 }
 
 /**
- * Build a Better Auth instance from explicit options.
+ * Build the database, policy, and provider portion of the Better Auth options.
  *
- * A factory rather than a module-level singleton, so that tests and alternative composition roots
- * can construct an isolated instance without reaching into the environment.
+ * Deliberately excludes `secret`, `baseURL`, and `trustedOrigins`: a same-origin host (a Nuxt
+ * module hosting Better Auth in-process, for example) resolves those itself and must not have a
+ * second, potentially divergent source for them.
  */
-export function createAuth(options: AuthInstanceOptions) {
+export function authBetterAuthOptions(
+  options: AuthDatabaseOptions,
+): Pick<BetterAuthOptions, 'database' | 'emailAndPassword' | 'session' | 'socialProviders'> {
   const { config } = options;
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
@@ -36,11 +43,8 @@ export function createAuth(options: AuthInstanceOptions) {
     { provider: 'pg', schema },
   );
 
-  return betterAuth({
+  return {
     database,
-    secret: options.secret,
-    baseURL: options.baseUrl,
-    trustedOrigins: [...options.trustedOrigins],
     emailAndPassword: {
       enabled: config.enablePasswordLogin,
       minPasswordLength: config.minimumPasswordLength,
@@ -52,6 +56,22 @@ export function createAuth(options: AuthInstanceOptions) {
     ...(options.github
       ? { socialProviders: { github: { ...options.github, disableSignUp: !config.enableSignup } } }
       : {}),
+  };
+}
+
+/**
+ * Build a standalone Better Auth instance from explicit options.
+ *
+ * A factory rather than a module-level singleton, so that tests and alternative composition roots
+ * can construct an isolated instance without reaching into the environment. Kept for callers that
+ * own their own signing secret and origin rather than delegating them to a host module.
+ */
+export function createAuth(options: AuthInstanceOptions) {
+  return betterAuth({
+    ...authBetterAuthOptions(options),
+    secret: options.secret,
+    baseURL: options.baseUrl,
+    trustedOrigins: [...options.trustedOrigins],
   });
 }
 
@@ -66,6 +86,23 @@ function requireEnvironmentValue(
 }
 
 /**
+ * Resolve `authBetterAuthOptions` options from the environment.
+ *
+ * The error messages name the variable but never echo its value, so a misconfigured deployment
+ * cannot leak a secret or a connection string into a crash log.
+ */
+export function authDatabaseOptionsFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): AuthDatabaseOptions {
+  const github = githubCredentialsFromEnvironment(environment);
+  return {
+    databaseUrl: requireEnvironmentValue(environment, 'AUTH_DATABASE_URL'),
+    config: authConfigFromEnvironment(environment),
+    ...(github ? { github } : {}),
+  };
+}
+
+/**
  * Resolve `createAuth` options from the environment.
  *
  * The error messages name the variable but never echo its value, so a misconfigured deployment
@@ -75,15 +112,12 @@ export function authOptionsFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthInstanceOptions {
   const dashboardOrigin = requireEnvironmentValue(environment, 'AUTH_DASHBOARD_ORIGIN');
-  const github = githubCredentialsFromEnvironment(environment);
 
   return {
-    databaseUrl: requireEnvironmentValue(environment, 'AUTH_DATABASE_URL'),
+    ...authDatabaseOptionsFromEnvironment(environment),
     secret: requireEnvironmentValue(environment, 'BETTER_AUTH_SECRET'),
     baseUrl: requireEnvironmentValue(environment, 'BETTER_AUTH_URL'),
     trustedOrigins: [dashboardOrigin],
-    config: authConfigFromEnvironment(environment),
-    ...(github ? { github } : {}),
   };
 }
 
