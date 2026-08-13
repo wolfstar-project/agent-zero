@@ -42,6 +42,7 @@ jobs:
             safety
             server
             shared
+            source-control
             test
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |
