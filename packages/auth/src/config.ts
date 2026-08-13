@@ -10,6 +10,12 @@ export const MINIMUM_PASSWORD_LENGTH = 8;
 /** How long a session stays valid without re-authentication. */
 export const SESSION_MAXIMUM_AGE_SECONDS = 60 * 60 * 24 * 7;
 
+/** How long an unaccepted organization invitation stays valid. */
+export const INVITATION_EXPIRES_IN_SECONDS = 60 * 60 * 48;
+
+/** Upper bound on members in a single organization. */
+export const ORGANIZATION_MEMBERSHIP_LIMIT = 100;
+
 /** Capabilities the deployment exposes on its sign-in surface. */
 export interface AuthConfig {
   /** Whether new accounts may be created through the sign-in page. */
@@ -18,8 +24,19 @@ export interface AuthConfig {
   readonly enablePasswordLogin: boolean;
   /** Whether the GitHub OAuth button is offered. */
   readonly enableGithubOauth: boolean;
+  /** Whether organizations, memberships and invitations are exposed at all. */
+  readonly enableOrganizations: boolean;
+  /**
+   * Whether any signed-in user may create an organization.
+   *
+   * Separate from {@link enableOrganizations} so an operator can run a deployment where
+   * organizations exist but only pre-provisioned ones do.
+   */
+  readonly allowUserToCreateOrganization: boolean;
   readonly minimumPasswordLength: number;
   readonly sessionMaximumAgeSeconds: number;
+  readonly invitationExpiresInSeconds: number;
+  readonly organizationMembershipLimit: number;
 }
 
 /**
@@ -30,8 +47,15 @@ export const defaultAuthConfig: AuthConfig = {
   enableSignup: false,
   enablePasswordLogin: true,
   enableGithubOauth: false,
+  // Organizations stay off until an operator asks for them: enabling them changes what every
+  // authenticated request is scoped to, which is not something a deployment should acquire by
+  // upgrading.
+  enableOrganizations: false,
+  allowUserToCreateOrganization: false,
   minimumPasswordLength: MINIMUM_PASSWORD_LENGTH,
   sessionMaximumAgeSeconds: SESSION_MAXIMUM_AGE_SECONDS,
+  invitationExpiresInSeconds: INVITATION_EXPIRES_IN_SECONDS,
+  organizationMembershipLimit: ORGANIZATION_MEMBERSHIP_LIMIT,
 };
 
 /** GitHub OAuth credentials, present only when both halves are configured. */
@@ -66,9 +90,15 @@ export function githubCredentialsFromEnvironment(
 export function authConfigFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthConfig {
+  const enableOrganizations = environment.AUTH_ENABLE_ORGANIZATIONS === 'true';
   return {
     ...defaultAuthConfig,
     enableSignup: environment.AUTH_ENABLE_SIGNUP === 'true',
     enableGithubOauth: githubCredentialsFromEnvironment(environment) !== undefined,
+    enableOrganizations,
+    // Gated on the feature itself, so a deployment that never turned organizations on cannot
+    // advertise creation through a stale variable.
+    allowUserToCreateOrganization:
+      enableOrganizations && environment.AUTH_ALLOW_ORGANIZATION_CREATION === 'true',
   };
 }

@@ -23,13 +23,12 @@ export default defineConfig({
           alias: {
             '~': fileURLToPath(new URL('./app', import.meta.url)),
             '~~': rootDir,
-            '#shared': fileURLToPath(new URL('./shared', import.meta.url)),
           },
         },
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['test/unit/**/*.{test,spec}.ts', '{app,config,shared}/**/*.{test,spec}.ts'],
+          include: ['test/unit/**/*.{test,spec}.ts', '{app,config}/**/*.{test,spec}.ts'],
         },
       },
       await defineVitestProject({

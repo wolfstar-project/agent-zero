@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent Zero i18n locale file (dashboard.json)",
+  "description": "Schema for dashboard.json. Generated from en/dashboard.json — do not edit manually.",
+  "type": "object",
+  "properties": {
+    "dashboard": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "object",
+          "properties": {
+            "eyebrow": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "nav": {
+          "type": "object",
+          "properties": {
+            "aria": {
+              "type": "string"
+            },
+            "control": {
+              "type": "string"
+            },
+            "tasks": {
+              "type": "string"
+            },
+            "runners": {
+              "type": "string"
+            },
+            "models": {
+              "type": "string"
+            },
+            "approvals": {
+              "type": "string"
+            },
+            "findings": {
+              "type": "string"
+            },
+            "repositories": {
+              "type": "string"
+            },
+            "policies": {
+              "type": "string"
+            },
+            "integrations": {
+              "type": "string"
+            },
+            "audit": {
+              "type": "string"
+            },
+            "settings": {
+              "type": "string"
+            },
+            "collapse": {
+              "type": "string"
+            },
+            "expand": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "aria": {
+              "type": "string"
+            },
+            "activeRunners": {
+              "type": "string"
+            },
+            "queuedTasks": {
+              "type": "string"
+            },
+            "awaitingApproval": {
+              "type": "string"
+            },
+            "tokens": {
+              "type": "string"
+            },
+            "recordedCost": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "queue": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "order": {
+              "type": "string"
+            },
+            "columns": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "updated": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "emptyTitle": {
+              "type": "string"
+            },
+            "emptyBody": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "queued": {
+              "type": "string"
+            },
+            "running": {
+              "type": "string"
+            },
+            "completed": {
+              "type": "string"
+            },
+            "needs-human": {
+              "type": "string"
+            },
+            "failed": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "timeline": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "events": {
+              "type": "string"
+            },
+            "empty": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "inspector": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "created": {
+              "type": "string"
+            },
+            "attempts": {
+              "type": "string"
+            },
+            "tokens": {
+              "type": "string"
+            },
+            "verified": {
+              "type": "string"
+            },
+            "yes": {
+              "type": "string"
+            },
+            "no": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "emptyTitle": {
+              "type": "string"
+            },
+            "emptyBody": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

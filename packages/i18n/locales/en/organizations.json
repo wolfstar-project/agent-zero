@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schemas/organizations.schema.json",
+  "organizations": {
+    "title": "Organizations",
+    "subtitle": "Members and invitations for the selected organization.",
+    "noneSelected": "Select an organization to manage its members.",
+    "switcher": {
+      "label": "Organization"
+    },
+    "roles": {
+      "member": "Member",
+      "admin": "Admin",
+      "owner": "Owner"
+    },
+    "members": {
+      "title": "Members",
+      "empty": "This organization has no members yet.",
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "actions": "Actions",
+      "remove": "Remove"
+    },
+    "invite": {
+      "title": "Invite a member",
+      "email": "Email",
+      "role": "Role",
+      "submit": "Send invitation",
+      "submitPending": "Sending…",
+      "sent": "Invitation sent to {email}."
+    },
+    "accept": {
+      "title": "Organization invitation",
+      "pending": "Accepting your invitation…",
+      "accepted": "You have joined the organization.",
+      "failed": "This invitation is no longer valid. It may have expired or already been used.",
+      "continue": "Go to dashboard"
+    },
+    "errors": {
+      "generic": "That organization action could not be completed."
+    }
+  }
+}

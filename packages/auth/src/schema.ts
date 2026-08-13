@@ -38,6 +38,9 @@ export const session = pgTable(
       .notNull()
       // Signing out a deleted account must not leave a usable session behind.
       .references(() => user.id, { onDelete: 'cascade' }),
+    // Which organization the session is currently acting in. Written by the organization plugin
+    // when the user switches context; null means no organization is selected.
+    activeOrganizationId: text('active_organization_id'),
     ...timestampColumns,
   },
   (table) => [
@@ -79,5 +82,67 @@ export const verification = pgTable(
   (table) => [index('verification_identifier_idx').on(table.identifier)],
 );
 
+export const organization = pgTable(
+  'organization',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    logo: text('logo'),
+    // Better Auth stores this as a JSON-encoded string, not as a jsonb column.
+    metadata: text('metadata'),
+    ...timestampColumns,
+  },
+  // The slug addresses an organization in URLs, so collisions have to be rejected by the database
+  // rather than by whichever request happened to check first.
+  (table) => [uniqueIndex('organization_slug_unique').on(table.slug)],
+);
+
+export const member = pgTable(
+  'member',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      // A deleted account must not keep conferring access to an organization.
+      .references(() => user.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    ...timestampColumns,
+  },
+  (table) => [
+    // One membership per user per organization: a duplicate row would make role changes
+    // order-dependent and could silently re-grant a revoked role.
+    uniqueIndex('member_organization_user_unique').on(table.organizationId, table.userId),
+    index('member_user_id_idx').on(table.userId),
+  ],
+);
+
+export const invitation = pgTable(
+  'invitation',
+  {
+    id: text('id').primaryKey(),
+    organizationId: text('organization_id')
+      .notNull()
+      .references(() => organization.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    role: text('role'),
+    status: text('status').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    inviterId: text('inviter_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    ...timestampColumns,
+  },
+  (table) => [
+    index('invitation_organization_id_idx').on(table.organizationId),
+    // Accepting an invitation is a lookup by email; without this it degrades to a scan as the
+    // table accumulates expired rows.
+    index('invitation_email_idx').on(table.email),
+  ],
+);
+
 /** The object shape the Better Auth Drizzle adapter resolves models against. */
-export const schema = { user, session, account, verification };
+export const schema = { user, session, account, verification, organization, member, invitation };

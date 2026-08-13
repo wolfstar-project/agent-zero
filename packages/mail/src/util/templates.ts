@@ -1,0 +1,49 @@
+/**
+ * Template registry.
+ *
+ * Every message the product can send is declared here with its Maizzle template and subject, so
+ * that adding a template is one edit and callers address messages by id rather than by file path.
+ */
+
+/** Data each template interpolates. Keyed by template id so `sendEmail` can check the context. */
+export interface MailTemplateContext {
+  readonly organizationInvitation: {
+    /** Display name of the organization the recipient is being invited to. */
+    readonly organizationName: string;
+    /** Who sent the invitation, shown so the recipient can judge whether it is expected. */
+    readonly inviterName: string;
+    /** Absolute URL that accepts the invitation. Carries a single-use token. */
+    readonly acceptUrl: string;
+  };
+  readonly emailVerification: {
+    readonly name: string;
+    readonly verifyUrl: string;
+  };
+  readonly passwordReset: {
+    readonly name: string;
+    readonly resetUrl: string;
+  };
+}
+
+export type MailTemplateId = keyof MailTemplateContext;
+
+interface MailTemplateDefinition {
+  /** Path relative to this package's `emails/` directory. */
+  readonly file: string;
+  readonly subject: string;
+}
+
+export const mailTemplates: Readonly<Record<MailTemplateId, MailTemplateDefinition>> = {
+  organizationInvitation: {
+    file: 'OrganizationInvitation.vue',
+    subject: 'You have been invited to an organization',
+  },
+  emailVerification: {
+    file: 'EmailVerification.vue',
+    subject: 'Confirm your email address',
+  },
+  passwordReset: {
+    file: 'PasswordReset.vue',
+    subject: 'Reset your password',
+  },
+};

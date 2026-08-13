@@ -38,6 +38,10 @@
       "cache": false,
       "outputs": []
     },
+    "i18n:schema": {
+      "cache": false,
+      "outputs": []
+    },
     "i18n:status": {
       "cache": false,
       "outputs": []
