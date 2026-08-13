@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsdown",
     "clean": "tsc -b --clean",
-    "dev": "node --import tsx --watch src/index.ts",
+    "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/index.ts",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src",
     "start": "node dist/index.js",
     "test": "vitest run src --passWithNoTests",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@agent-zero/auth": "workspace:*",
+    "@agent-zero/mail": "workspace:*",
     "@agent-zero/shared": "workspace:*",
     "@hono/node-server": "^1.19.17",
     "hono": "^4.13.1"

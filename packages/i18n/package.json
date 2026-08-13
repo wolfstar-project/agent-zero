@@ -1,0 +1,50 @@
+{
+  "name": "@agent-zero/i18n",
+  "version": "0.3.0",
+  "files": [
+    "dist",
+    "locales",
+    "schemas"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "tsc -b --clean",
+    "i18n:check": "node scripts/compare-translations.ts",
+    "i18n:check:fix": "node scripts/compare-translations.ts --fix",
+    "i18n:report": "node scripts/find-invalid-translations.ts",
+    "i18n:report:fix": "node scripts/remove-unused-translations.ts",
+    "i18n:schema": "node scripts/generate-i18n-schema.ts",
+    "i18n:status": "node scripts/i18n-status.ts",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src scripts",
+    "test": "vitest run src --passWithNoTests",
+    "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "@lunariajs/core": "https://pkg.pr.new/lunariajs/lunaria/@lunariajs/core@904b935",
+    "vue-i18n-extract": "2.0.7"
+  },
+  "devDependencies": {
+    "oxlint": "^1.44.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,6 +1,7 @@
 import process from 'node:process';
 
 import { authOptionsFromEnvironment, createAuth } from '@agent-zero/auth';
+import { createMailer, mailProviderNameFromEnvironment } from '@agent-zero/mail';
 import { redactSecrets, secretValuesFromEnvironment } from '@agent-zero/shared';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -37,7 +38,31 @@ function resolvePort(value: string | undefined): number {
 }
 
 const options = authOptionsFromEnvironment();
-const auth = createAuth(options);
+
+// This process is the composition root for authentication, so it is where the mail transport is
+// bound and injected. `packages/auth` declares the delivery contract structurally and never
+// imports `@agent-zero/mail`, which keeps one capability package from depending on another.
+//
+// The transport is only injected when the configured provider actually delivers: the console
+// default logs an envelope instead of sending, so wiring it in would satisfy `createAuth`'s
+// startup guard while every invitation silently reached nobody. Withholding the callback lets
+// that guard fail startup when organizations are enabled without a real transport.
+const sendMail = createMailer();
+const deliversMail = mailProviderNameFromEnvironment() !== 'console';
+
+const auth = createAuth({
+  ...options,
+  ...(deliversMail
+    ? {
+        sendInvitationEmail: ({ to, organizationName, inviterName, acceptUrl }) =>
+          sendMail({
+            to,
+            templateId: 'organizationInvitation',
+            context: { organizationName, inviterName, acceptUrl },
+          }),
+      }
+    : {}),
+});
 
 const app = new Hono();
 

@@ -1,11 +1,26 @@
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { organization } from 'better-auth/plugins';
 
 import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './config.js';
 import type { AuthConfig, GithubOauthCredentials } from './config.js';
 import { createAuthDatabase } from './database.js';
 import { schema } from './schema.js';
+
+/**
+ * Delivers an organization invitation.
+ *
+ * Declared structurally rather than imported from `@agent-zero/mail`: this package owns
+ * authentication policy, and taking a dependency on the mail package would make one capability
+ * package depend on another. The composition root supplies the implementation.
+ */
+export type SendInvitationEmail = (invitation: {
+  readonly to: string;
+  readonly organizationName: string;
+  readonly inviterName: string;
+  readonly acceptUrl: string;
+}) => Promise<void>;
 
 /** Everything the Better Auth instance needs that is not policy. */
 export interface AuthInstanceOptions {
@@ -17,8 +32,15 @@ export interface AuthInstanceOptions {
   readonly baseUrl: string;
   /** Origins allowed to complete a credentialed round trip, typically the dashboard. */
   readonly trustedOrigins: readonly string[];
+  /** Dashboard origin invitation links point at, so a recipient lands on the UI, not the API. */
+  readonly dashboardUrl: string;
   readonly config: AuthConfig;
   readonly github?: GithubOauthCredentials;
+  /**
+   * How invitations are delivered. Required when organizations are enabled: without it an
+   * invitation would be created that nobody is ever told about.
+   */
+  readonly sendInvitationEmail?: SendInvitationEmail;
 }
 
 /**
@@ -29,6 +51,12 @@ export interface AuthInstanceOptions {
  */
 export function createAuth(options: AuthInstanceOptions) {
   const { config } = options;
+
+  // Fail at construction rather than at the first invitation: a deployment that enables
+  // organizations without a transport would accept invitations and silently never deliver them.
+  if (config.enableOrganizations && !options.sendInvitationEmail)
+    throw new Error('organizations are enabled but no sendInvitationEmail was provided');
+
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
   const database: BetterAuthOptions['database'] = drizzleAdapter(
@@ -52,7 +80,42 @@ export function createAuth(options: AuthInstanceOptions) {
     ...(options.github
       ? { socialProviders: { github: { ...options.github, disableSignUp: !config.enableSignup } } }
       : {}),
+    plugins: config.enableOrganizations
+      ? [
+          organization({
+            allowUserToCreateOrganization: config.allowUserToCreateOrganization,
+            membershipLimit: config.organizationMembershipLimit,
+            invitationExpiresIn: config.invitationExpiresInSeconds,
+            sendInvitationEmail: async (data) => {
+              // Checked in the guard above; narrowing here keeps the callback total.
+              const send = options.sendInvitationEmail;
+              if (!send) return;
+              await send({
+                to: data.email,
+                organizationName: data.organization.name,
+                // Better Auth exposes the inviter as a member record wrapping the user.
+                inviterName: data.inviter.user.name,
+                acceptUrl: invitationAcceptUrl(options.dashboardUrl, data.id),
+              });
+            },
+          }),
+        ]
+      : [],
   });
+}
+
+/**
+ * Build the link an invitation email points at.
+ *
+ * Resolved against the dashboard origin rather than the auth server's: the recipient needs the UI
+ * that can accept the invitation, and `URL` keeps a misconfigured origin from silently producing
+ * a relative link.
+ */
+function invitationAcceptUrl(dashboardUrl: string, invitationId: string): string {
+  return new URL(
+    `/organizations/accept-invitation/${encodeURIComponent(invitationId)}`,
+    dashboardUrl,
+  ).toString();
 }
 
 /** Missing configuration is a deployment error, not something to paper over with a default. */
@@ -82,6 +145,8 @@ export function authOptionsFromEnvironment(
     secret: requireEnvironmentValue(environment, 'BETTER_AUTH_SECRET'),
     baseUrl: requireEnvironmentValue(environment, 'BETTER_AUTH_URL'),
     trustedOrigins: [dashboardOrigin],
+    // The same origin the dashboard is served from, so invitation links resolve to the UI.
+    dashboardUrl: dashboardOrigin,
     config: authConfigFromEnvironment(environment),
     ...(github ? { github } : {}),
   };
