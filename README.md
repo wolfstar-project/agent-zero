@@ -17,13 +17,14 @@
 
 ## Overview
 
-Agent Zero runs one trustworthy loop: ingest review feedback or inspect a pull-request diff proactively, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
+Agent Zero runs one trustworthy loop: ingest review feedback, inspect a pull-request diff proactively, or take on a scoped GitHub issue, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
 
 Feedback is never treated as truth merely because it came from a human or an AI reviewer.
 
 - **Evidence over assertion** &ndash; every fix carries the commands that verified it.
 - **Proactive, not speculative** &ndash; diff review reports the highest-priority finding only when checkout evidence supports it.
 - **Confidence and impact gates** &ndash; automatic fixes require confidence, an allowed change-risk class, repository permission, and verification.
+- **Issues become reviewable pull requests** &ndash; a labeled, repository-scoped issue can be investigated, implemented on an isolated branch, verified, and published as a pull request that carries its acceptance criteria and evidence; never as a direct commit.
 - **`observe` by default** &ndash; the safe mode inspects and reports, and never writes to a target repository.
 - **One execution boundary** &ndash; `packages/runner` is the only code allowed to run commands or mutate a checkout.
 - **Adapters at the edges** &ndash; the runtime stays independent of HTTP, GitHub, terminal UI, and model providers.
@@ -219,7 +220,9 @@ model:
   outputCostPerMillionTokens: 10
 ```
 
-`observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive/autonomous work) an isolated runner. High-impact changes always require human approval.
+`observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive, issue, or autonomous work) an isolated runner. High-impact changes always require human approval.
+
+Issue-to-PR work is opt-in twice: `issues.enabled` must be true and the issue must carry the `issues.requireLabel` label, so arbitrary issue text can never start a run. Issue text is untrusted input for the runtime to validate — never instructions. The run first decides from repository evidence whether the issue actually reports a real problem, and (unless `issues.validationComment` is disabled) posts that verdict back on the issue: confirmed with its evidence, not confirmed with every rejection reason, or inconclusive for a human. A pull request is opened only when the run completed, its changes were applied, and every repository check passed. Verified changes are published to a fresh `issues.branchPrefix` branch (never force-updated, never the default branch), and the pull request body is the run's evidence: acceptance criteria, plan, checks, and lifecycle.
 
 ---
 

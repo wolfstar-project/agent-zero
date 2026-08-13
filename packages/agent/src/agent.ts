@@ -14,6 +14,7 @@ import {
   isRepositoryRelativePath,
   now,
   taskId,
+  truncateHead,
   truncateTail,
   type CheckResult,
   type ChangeRisk,
@@ -120,6 +121,7 @@ export class AgentZero {
 
     run.emit('planning', 'Recording an evidence-backed plan', 1);
     run.plan = [...decision.plan];
+    run.acceptanceCriteria = sanitizeAcceptanceCriteria(decision.acceptanceCriteria);
 
     const refusal = this.authorize(input, finding, changeRisk, checks);
     if (refusal) return run.finish(refusal.state, refusal.summary);
@@ -138,6 +140,7 @@ export class AgentZero {
         changeRisk = classifyChangeRisk(decision.changeRisk, decision.changes);
         run.recordChangeRisk(changeRisk);
         run.plan = [...decision.plan];
+        run.acceptanceCriteria = sanitizeAcceptanceCriteria(decision.acceptanceCriteria);
         const repairRefusal = this.authorize(input, finding, changeRisk, checks);
         if (repairRefusal) return run.finish(repairRefusal.state, repairRefusal.summary);
       }
@@ -216,13 +219,14 @@ export class AgentZero {
         summary: 'The execution boundary is read-only, so no change could be applied.',
       };
     if (
-      (input.mode === 'autonomous' || input.trigger === 'proactive') &&
+      (input.mode === 'autonomous' || input.trigger === 'proactive' || input.trigger === 'issue') &&
       config.autofix.requireIsolated &&
       !runner.describe().isolated
     )
       return {
         state: 'needs-human',
-        summary: 'Repository policy requires an isolated runner for proactive or autonomous fixes.',
+        summary:
+          'Repository policy requires an isolated runner for proactive, issue, or autonomous fixes.',
       };
     if (checks.length === 0)
       return {
@@ -255,6 +259,7 @@ class Run {
   readonly events: TaskEvent[] = [];
   private readonly machine = new LifecycleMachine();
   plan: string[] = [];
+  acceptanceCriteria: string[] = [];
   checks: CheckResult[] = [];
   changedFiles: string[] = [];
   attempts = 0;
@@ -333,6 +338,7 @@ class Run {
       verified,
       finding: this.finding,
       plan: [...this.plan],
+      acceptanceCriteria: [...this.acceptanceCriteria],
       checks: [...this.checks],
       changedFiles: [...this.changedFiles],
       attempts: this.attempts,
@@ -419,6 +425,24 @@ export function classifyChangeRisk(
   return RISK_RANK[declared] >= RISK_RANK[inferred] ? declared : inferred;
 }
 
+const MAX_ACCEPTANCE_CRITERIA = 20;
+const MAX_CRITERION_LENGTH = 500;
+
+/**
+ * Bound the model's acceptance criteria before they become durable evidence.
+ *
+ * Criteria are untrusted model output rendered into reports and pull-request bodies, so they are
+ * trimmed, emptied entries are dropped, and both count and length are capped.
+ */
+export function sanitizeAcceptanceCriteria(criteria: readonly string[] | undefined): string[] {
+  if (!criteria) return [];
+  return criteria
+    .map((criterion) => criterion.trim())
+    .filter((criterion) => criterion.length > 0)
+    .slice(0, MAX_ACCEPTANCE_CRITERIA)
+    .map((criterion) => truncateHead(criterion, MAX_CRITERION_LENGTH));
+}
+
 const LEADING_DOT_SLASH = /^\.\//;
 
 function normalizePath(path: string): string {
@@ -427,6 +451,7 @@ function normalizePath(path: string): string {
 
 function describeFeedback(input: ReviewInput): string {
   if (input.trigger === 'proactive') return 'the pull-request diff proactively';
+  if (input.trigger === 'issue') return 'the issue task';
   const items = input.items?.length ?? 0;
   if (items === 0) return '1 feedback item';
   return `${String(items)} feedback item(s)`;

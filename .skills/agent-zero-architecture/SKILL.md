@@ -12,7 +12,7 @@ Keep dependency direction explicit while changing the monorepo.
 - `shared`: stable contracts only, plus pure functions over them (evidence rendering, redaction, path predicates).
 - `config`: configuration, repository policy, and check discovery. Pure; the agent supplies what it read through the runner.
 - `models`: provider-independent model contracts and provider adapters.
-- `github`: GitHub-specific translation, event parsing, and Checks API behavior.
+- `github`: GitHub-specific translation, event parsing, Checks API behavior, and issue-to-PR publication (branch and pull-request creation through the Git data API).
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
