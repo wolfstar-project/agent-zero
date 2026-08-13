@@ -1,8 +1,9 @@
-// Runtime side effect: patches `.route()` onto the oRPC builder so procedures below can declare
-// the HTTP method, path, and OpenAPI metadata that `OpenAPIHandler` reads at serve time. The
-// RPC transport at `/rpc/**` ignores this metadata entirely and keeps working unchanged.
-// oxlint-disable-next-line import/no-unassigned-import -- registers `.route()` via prototype patch
-import '@orpc/openapi/extensions/route';
+// `openapi(meta)` builds the same metadata plugin `.route()` sugars over (see
+// `@orpc/openapi/extensions/route`), but as a real import a bundler can't tree-shake away. The
+// prototype-patching `.route()` extension depends on a bare side-effect import surviving whatever
+// bundler serves this router — Nitro's production build silently drops it, so procedures would
+// build fine but lose all `/api/v1/**` routing at runtime. `.meta(openapi(...))` has no such risk.
+import { openapi } from '@orpc/openapi';
 import { ORPCError, os } from '@orpc/server';
 import { z } from 'zod';
 
@@ -17,6 +18,7 @@ import {
   listTasks,
   taskInput,
 } from '../operations.js';
+import { requestLoggerStorage } from './logging.js';
 
 export interface RpcContext {
   store: TaskStore;
@@ -32,28 +34,45 @@ const procedure = os.$context<RpcContext>();
 const authenticated = procedure.use(({ context, next }) => {
   const principal = context.principal;
   if (!principal) throw new ORPCError('UNAUTHORIZED', { message: 'Authentication required' });
+  // `getStore()` reads the AsyncLocalStorage directly rather than the throwing `useLogger()`
+  // helper: it is `undefined` outside an active request, which is exactly the case for tests that
+  // call procedures through `createRouterClient` without the transport's `EvlogHandlerPlugin`.
+  requestLoggerStorage?.getStore()?.set({ principal: principal.name });
   return next({ context: { principal } });
 });
 
 export const rpcRouter = {
   health: procedure
-    .route({
-      method: 'GET',
-      path: '/health',
-      tags: ['System'],
-      summary: 'Report control-plane health',
-    })
+    .meta(
+      openapi({
+        method: 'GET',
+        path: '/health',
+        tags: ['System'],
+        summary: 'Report control-plane health',
+      }),
+    )
     .handler(() => health()),
   tasks: {
     list: procedure
-      .route({ method: 'GET', path: '/tasks', tags: ['Tasks'], summary: 'List task history' })
+      .meta(
+        openapi({ method: 'GET', path: '/tasks', tags: ['Tasks'], summary: 'List task history' }),
+      )
       .handler(({ context }) => listTasks(context.store)),
     get: procedure
-      .route({ method: 'GET', path: '/tasks/{id}', tags: ['Tasks'], summary: 'Get a task by id' })
+      .meta(
+        openapi({
+          method: 'GET',
+          path: '/tasks/{id}',
+          tags: ['Tasks'],
+          summary: 'Get a task by id',
+        }),
+      )
       .input(z.object({ id: z.string().min(1) }))
       .handler(({ input, context }) => getStoredTask(input.id, context.store)),
     create: authenticated
-      .route({ method: 'POST', path: '/tasks', tags: ['Tasks'], summary: 'Queue a task run' })
+      .meta(
+        openapi({ method: 'POST', path: '/tasks', tags: ['Tasks'], summary: 'Queue a task run' }),
+      )
       .input(taskInput)
       .handler(({ input, context }) => {
         if (!context.mayTargetRepository?.(input.repository))
@@ -69,12 +88,14 @@ export const rpcRouter = {
   },
   approvals: {
     decide: authenticated
-      .route({
-        method: 'PATCH',
-        path: '/tasks/{taskId}/approval',
-        tags: ['Approvals'],
-        summary: 'Record a human approval decision',
-      })
+      .meta(
+        openapi({
+          method: 'PATCH',
+          path: '/tasks/{taskId}/approval',
+          tags: ['Approvals'],
+          summary: 'Record a human approval decision',
+        }),
+      )
       .input(approvalInput)
       .handler(({ input, context }) =>
         decideApproval(

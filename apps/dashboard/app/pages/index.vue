@@ -13,10 +13,12 @@
       <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 lg:flex">
         <span class="label-upper">{{ $t('dashboard.header.mode') }}</span>
       </div>
-      <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 sm:flex">
-        <Icon aria-hidden="true" class="h-3.5 w-3.5 text-muted" name="lucide:clock-3" />
-        <span class="mono text-ink">{{ now.toISOString().slice(0, 19) }}Z</span>
-      </div>
+      <ClientOnly>
+        <div class="hidden h-9 items-center gap-2 border border-line bg-raised px-3 sm:flex">
+          <Icon aria-hidden="true" class="h-3.5 w-3.5 text-muted" name="lucide:clock-3" />
+          <span class="mono text-ink">{{ now.toISOString().slice(0, 19) }}Z</span>
+        </div>
+      </ClientOnly>
       <LocaleSwitcher />
       <ClientOnly>
         <ColorModeToggle />

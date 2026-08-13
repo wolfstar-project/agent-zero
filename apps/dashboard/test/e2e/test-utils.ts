@@ -2,53 +2,50 @@ import { expect, test as base } from '@nuxt/test-utils/playwright';
 import type { ConsoleMessage, Page } from '@playwright/test';
 
 /**
- * Origin the dashboard talks to for authentication. Must match the `siteUrl` default in
- * `config/auth.ts`, since `apps/server` is a separate service and is not started for e2e.
+ * Fixed credentials for the e2e suite's own throwaway account.
+ *
+ * The Playwright preview server (`start:playwright:webserver`) runs `server/auth.config.ts` with
+ * `AUTH_E2E_MEMORY=true`, which swaps the Postgres adapter for an in-memory one and enables
+ * signup, so the suite can create and sign in this account itself without a live database.
  */
-const AUTH_ORIGIN = 'http://localhost:3001';
-
-const AUTHENTICATED_SESSION = {
-  user: {
-    id: 'user_e2e',
-    email: 'operator@example.test',
-    name: 'Operator',
-    emailVerified: true,
-    image: null,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  },
-  session: {
-    id: 'session_e2e',
-    token: 'token_e2e',
-    userId: 'user_e2e',
-    expiresAt: '2099-01-01T00:00:00.000Z',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  },
+const TEST_USER = {
+  email: 'e2e-operator@example.test',
+  password: 'e2e-test-password-not-a-secret',
+  name: 'Operator',
 };
 
 /**
- * Stand in for `apps/auth-server`.
+ * Establish (or clear) a real Better Auth session for the current browser context.
  *
- * The adapter owns a database and a signing secret, so booting it for e2e would make the suite
- * depend on mutable external state. Intercepting its origin keeps the run deterministic while
- * still exercising the real client-side route protection.
+ * Session resolution now happens server-side during SSR, from the request cookie, so a
+ * browser-network interception (as when the adapter lived on a separate, unmocked origin) can no
+ * longer fake a signed-in visitor: the server would still render the signed-out page before any
+ * client-side mock could apply. Signing up (or, once the account already exists from an earlier
+ * test against the same in-memory server, signing in) through the real `/api/auth/**` endpoints
+ * is what makes the session cookie real. `page.context().request` shares its cookie jar with
+ * `page`, so the cookie set by these calls is what a following `goto` sends.
  */
 export async function mockAuthSession(page: Page, signedIn: boolean): Promise<void> {
-  await page.route(`${AUTH_ORIGIN}/api/auth/**`, async (route) => {
-    const path = new URL(route.request().url()).pathname;
+  if (!signedIn) {
+    await page.context().clearCookies();
+    return;
+  }
 
-    if (path.endsWith('/get-session')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(signedIn ? AUTHENTICATED_SESSION : null),
-      });
-      return;
-    }
-
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  const api = page.context().request;
+  const signUp = await api.post('/api/auth/sign-up/email', {
+    data: TEST_USER,
+    failOnStatusCode: false,
   });
+  if (signUp.ok()) return;
+
+  const signIn = await api.post('/api/auth/sign-in/email', {
+    data: { email: TEST_USER.email, password: TEST_USER.password },
+    failOnStatusCode: false,
+  });
+  if (!signIn.ok())
+    throw new Error(
+      `Could not establish an e2e session: sign-up ${signUp.status()}, sign-in ${signIn.status()}`,
+    );
 }
 
 const hydrationMismatchPatterns = [

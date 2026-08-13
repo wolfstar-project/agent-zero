@@ -102,15 +102,39 @@ importers:
 
   apps/dashboard:
     dependencies:
+      '@agent-zero/api':
+        specifier: workspace:*
+        version: 0.3.0
       '@agent-zero/auth':
         specifier: workspace:*
         version: 0.3.0
+      '@agent-zero/shared':
+        specifier: workspace:*
+        version: 0.3.0
+      '@nestjs/common':
+        specifier: '>=11.1.28'
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nuxt/kit':
+        specifier: ^4.4.2
+        version: 4.5.2(magic-string@1.1.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
       '@onmax/nuxt-better-auth':
         specifier: ^0.0.7
-        version: 0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))
+        version: 0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
+      '@orpc/evlog':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
+      '@orpc/openapi':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26
+      '@orpc/server':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/zod':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(zod@4.4.3)
       '@prisma/client':
         specifier: ^5.0.0 || ^6.0.0 || ^7.0.0
         version: 5.22.0(prisma@7.9.1)
@@ -126,24 +150,48 @@ importers:
       '@vue/server-renderer':
         specifier: 3.x
         version: 3.5.41
+      ai:
+        specifier: '>=6.0.168 <8.0.0'
+        version: 7.0.58(zod@4.4.3)
       better-auth:
         specifier: ^1.6.26
-        version: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
+        version: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
+      crossws:
+        specifier: '>=0.3.4'
+        version: 0.4.10
       drizzle-kit:
         specifier: '>=0.31.4'
         version: 0.31.10
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)
+        version: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
+      evlog:
+        specifier: ^2.26.0
+        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      express:
+        specifier: '>=5.2.1'
+        version: 5.2.1
+      h3:
+        specifier: ^1.15.11
+        version: 1.15.11
+      hono:
+        specifier: '>=4.12.30'
+        version: 4.13.1
       mongodb:
         specifier: ^6.0.0 || ^7.0.0
         version: 7.5.0
       mysql2:
         specifier: ^3.0.0
         version: 3.15.3
+      nitropack:
+        specifier: ^2.13.4
+        version: 2.13.4
       nuxt:
         specifier: ^4.5.2
         version: 4.5.2(@types/node@24.13.3)(rolldown@1.2.3)
+      ofetch:
+        specifier: ^1.5.1
+        version: 2.0.0-alpha.3
       pg:
         specifier: ^8.0.0
         version: 8.23.0
@@ -163,14 +211,20 @@ importers:
         specifier: ~1.2.1
         version: 1.2.3
       vite:
-        specifier: ^6.0.0 || ^7.0.0 || ^8.0.0
+        specifier: ^7.0.0 || ^8.0.0
         version: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+      vite-hub:
+        specifier: ^0.0.3
+        version: 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       vue:
         specifier: ^3.0.0
         version: 3.5.41
       vue-i18n:
         specifier: ^11.4.8
         version: 11.4.8(vue@3.5.41)
+      zod:
+        specifier: '>=4.3.5'
+        version: 4.4.3
     devDependencies:
       '@iconify-json/lucide':
         specifier: ^1.2.123
@@ -226,88 +280,6 @@ importers:
       vue-tsc:
         specifier: ^3.1.2
         version: 3.3.9(typescript@6.0.3-bridge.12.tsgo.7.0.2)
-
-  apps/server:
-    dependencies:
-      '@agent-zero/api':
-        specifier: workspace:*
-        version: 0.3.0
-      '@agent-zero/shared':
-        specifier: workspace:*
-        version: 0.3.0
-      '@orpc/openapi':
-        specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26
-      '@orpc/server':
-        specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26(crossws@0.4.10)
-      '@orpc/zod':
-        specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26(zod@4.4.3)
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.13
-      '@types/node':
-        specifier: ^20.19.0 || >=22.12.0
-        version: 24.13.3
-      '@vercel/queue':
-        specifier: ^0.3.0
-        version: 0.4.0
-      crossws:
-        specifier: '>=0.3.4'
-        version: 0.4.10
-      dotenv:
-        specifier: '*'
-        version: 17.4.2
-      esbuild:
-        specifier: ^0.27.0 || ^0.28.0
-        version: 0.27.7
-      giget:
-        specifier: '*'
-        version: 3.3.1
-      happy-dom:
-        specifier: '*'
-        version: 20.11.2
-      jiti:
-        specifier: ^2.7.0
-        version: 2.7.0
-      nitro:
-        specifier: ^3.0.260610-beta
-        version: 3.0.260610-beta(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      rollup:
-        specifier: ^4.61.1
-        version: 4.62.4
-      terser:
-        specifier: ^5.16.0
-        version: 5.49.2
-      tsx:
-        specifier: ^4.8.1
-        version: 4.23.11
-      vite-hub:
-        specifier: ^0.0.3
-        version: 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      yaml:
-        specifier: ^2.4.2
-        version: 2.9.0
-      zod:
-        specifier: '>=4.3.5'
-        version: 4.4.3
-    devDependencies:
-      oxlint:
-        specifier: ^1.44.0
-        version: 1.77.0(oxlint-tsgolint@7.0.2001)
-      oxlint-tsgolint:
-        specifier: ^7.0.2001
-        version: 7.0.2001
-      typescript:
-        specifier: ^5.9.2
-        version: typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
-      vite:
-        specifier: ^8.2.1
-        version: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2)
 
   packages/agent:
     dependencies:
@@ -381,9 +353,18 @@ importers:
       '@arethetypeswrong/core':
         specifier: ^0.18.1
         version: 0.18.5
+      '@nestjs/common':
+        specifier: '>=11.1.28'
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nuxt/kit':
+        specifier: ^4.4.2
+        version: 4.5.2(magic-string@1.1.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
       '@orpc/contract':
         specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26
+        version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/evlog':
+        specifier: 2.0.0-beta.26
+        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
       '@orpc/openapi':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26
@@ -396,18 +377,45 @@ importers:
       '@types/node':
         specifier: ^18.0.0 || ^20.0.0 || >=22.0.0
         version: 24.13.3
+      ai:
+        specifier: '>=6.0.168 <8.0.0'
+        version: 7.0.58(zod@4.4.3)
       crossws:
         specifier: '>=0.3.4'
         version: 0.4.10
+      evlog:
+        specifier: ^2.26.0
+        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      express:
+        specifier: '>=5.2.1'
+        version: 5.2.1
+      h3:
+        specifier: ^1.15.11
+        version: 2.0.1-rc.25(crossws@0.4.10)
       happy-dom:
         specifier: '*'
         version: 20.11.2
+      hono:
+        specifier: '>=4.12.30'
+        version: 4.13.1
+      nitropack:
+        specifier: ^2.13.4
+        version: 2.13.4
+      ofetch:
+        specifier: ^1.5.1
+        version: 2.0.0-alpha.3
       publint:
         specifier: ^0.3.8
         version: 0.3.23
+      react:
+        specifier: '>=19.2.7'
+        version: 19.2.8
       tsx:
         specifier: '*'
         version: 4.23.11
+      vite:
+        specifier: ^7.0.0 || ^8.0.0
+        version: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -3518,6 +3526,11 @@ packages:
 
   '@orpc/contract@2.0.0-beta.26':
     resolution: {integrity: sha512-tTeJBN0s+weE67t6Xyjt7pCnSaytWrUase4VdyajjjtWba2wxqIwMHITyvSKohmLVwym6LYAoGLqXF4ORgwHYQ==}
+
+  '@orpc/evlog@2.0.0-beta.26':
+    resolution: {integrity: sha512-B1p78kDkYDaFngs+Dnz55wIbWGtL5yNN18taP+03RZqF42mwtoc5I4Mjbp/q+7YVlRAppQuFeB1JiRAqjtzP8w==}
+    peerDependencies:
+      evlog: '>=2.18.1'
 
   '@orpc/json-schema@2.0.0-beta.26':
     resolution: {integrity: sha512-BBPsT4QvfhgS9CvVV6GGhG5CFAo61fSCP7dLIRXNd9IYQib0qmW56rLJ7U0Ro5yryoO5YrSCzV0aTD6eMX/W/A==}
@@ -8041,24 +8054,6 @@ packages:
     resolution: {integrity: sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  env-runner@0.1.16:
-    resolution: {integrity: sha512-2LRJM4P2KLX6J83QZZrMqvgCDt/D5ea7wPcI3yYiy5cG/9rX5QwdwZFx0D7ktWnjdRyZxYjttGGorb5nFqb1CA==}
-    hasBin: true
-    peerDependencies:
-      '@netlify/runtime': ^4.1.23
-      '@vercel/queue': '>=0.2.0'
-      miniflare: ^4.20260515.0
-      wrangler: ^4.0.0
-    peerDependenciesMeta:
-      '@netlify/runtime':
-        optional: true
-      '@vercel/queue':
-        optional: true
-      miniflare:
-        optional: true
-      wrangler:
-        optional: true
-
   environment@1.1.0:
     resolution: {integrity: sha512-xUtoPkMggbz0MPyPiIWr1Kp4aeWJjDZ6SMvURhimjdZgsRuDplF5/s9hcgGhyXMhs+6vpnuoiZ2kFiu3FMnS8Q==}
     engines: {node: '>=18'}
@@ -8230,6 +8225,66 @@ packages:
   eventsource@3.0.7:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
+
+  evlog@2.26.0:
+    resolution: {integrity: sha512-5/UrfWGJEIuPdOk2m2lBqxJcDoH+71bejl/D1U4q42A/+UPPZ11h35GvVdzn6HTMfnkfbBiRIfLBR5C8Osg47g==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@nestjs/common': '>=11.1.28'
+      '@nuxt/kit': ^4.4.2
+      '@orpc/server': '>=1.14.8'
+      '@tanstack/start-client-core': ^1.170.14
+      ai: '>=6.0.168 <8.0.0'
+      elysia: '>=1.4.29'
+      eve: '>=0.30.0'
+      express: '>=5.2.1'
+      fastify: '>=5.10.0'
+      h3: ^1.15.11
+      hono: '>=4.12.30'
+      next: '>=16.2.10'
+      nitro: ^3.0.260311-beta
+      nitropack: ^2.13.4
+      ofetch: ^1.5.1
+      react: '>=19.2.7'
+      react-router: '>=7.18.1'
+      vite: ^7.0.0 || ^8.0.0
+    peerDependenciesMeta:
+      '@nestjs/common':
+        optional: true
+      '@nuxt/kit':
+        optional: true
+      '@orpc/server':
+        optional: true
+      '@tanstack/start-client-core':
+        optional: true
+      ai:
+        optional: true
+      elysia:
+        optional: true
+      eve:
+        optional: true
+      express:
+        optional: true
+      fastify:
+        optional: true
+      h3:
+        optional: true
+      hono:
+        optional: true
+      next:
+        optional: true
+      nitro:
+        optional: true
+      nitropack:
+        optional: true
+      ofetch:
+        optional: true
+      react:
+        optional: true
+      react-router:
+        optional: true
+      vite:
+        optional: true
 
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
@@ -8838,16 +8893,6 @@ packages:
 
   h3@1.15.11:
     resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
-
-  h3@2.0.1-rc.22:
-    resolution: {integrity: sha512-Esv0DMIuPkCTSWCA0vO73vcTqwzH1wjSrAO1TXNu/K3up1sZHa9EKMapbmxCDYBeymC3fVTk4qxp7ogQWQ+KgA==}
-    engines: {node: '>=20.11.1'}
-    hasBin: true
-    peerDependencies:
-      crossws: ^0.4.1
-    peerDependenciesMeta:
-      crossws:
-        optional: true
 
   h3@2.0.1-rc.25:
     resolution: {integrity: sha512-uIK++Up28xDt4n0+bSWfVssRivNXpUmMmA6CCiK6j9+utLcBMcFK97Gn9PlSZwAPW9oLy3CjGJ4ag40CY9YYtQ==}
@@ -10050,40 +10095,6 @@ packages:
     resolution: {integrity: sha512-eonl3sLUha+S1GzTPxychyhnUzKyeQkZ7jLjKrBagJgPla13F+uQ71HgpFefyHgqrjEbCPkDArxYsjY8/+gLKA==}
     engines: {node: '>= 0.4.0'}
 
-  nf3@0.3.23:
-    resolution: {integrity: sha512-RWVLAWozmVD3AaDmaU3qMGB3v+yNlH5d9qqStI4e/WLlNQVnJ4YErGDbYCIrGFyrHdbF6I6Baf0Ae6c7tFYmSg==}
-
-  nitro@3.0.260610-beta:
-    resolution: {integrity: sha512-KPb4L5yaF/Rx/xoGMpgHRJvZhbhGiqbRKOwwPLCH9jKTKTsEUHLjnJas85AeCzaswqa8Wi52eQBtRsODC4PS0Q==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      '@vercel/queue': ^0.3.0
-      dotenv: '*'
-      giget: '*'
-      jiti: ^2.7.0
-      rollup: ^4.61.1
-      vite: ^7 || ^8
-      xml2js: ^0.6.2
-      zephyr-agent: ^0.2.0
-    peerDependenciesMeta:
-      '@vercel/queue':
-        optional: true
-      dotenv:
-        optional: true
-      giget:
-        optional: true
-      jiti:
-        optional: true
-      rollup:
-        optional: true
-      vite:
-        optional: true
-      xml2js:
-        optional: true
-      zephyr-agent:
-        optional: true
-
   nitropack@2.13.4:
     resolution: {integrity: sha512-tX7bT6zxNeMwkc6hxHiZeUoTOjVrcjoh1Z3cmxOlodIqjl4HISgqfGOmkWSayky3Nv9Z5+KQH52F8nmXJY5AAA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -11191,9 +11202,6 @@ packages:
 
   rou3@0.7.12:
     resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
-
-  rou3@0.8.1:
-    resolution: {integrity: sha512-ePa+XGk00/3HuCqrEnK3LxJW7I0SdNg6EFzKUJG73hMAdDcOUC/i/aSz7LSDwLrGr33kal/rqOGydzwl6U7zBA==}
 
   rou3@0.9.1:
     resolution: {integrity: sha512-z/sSmzvtwMDDnxsPVhfWMuG6F6mbmhFDXoVqLmMfbpDD9qfV3GDmSQpf0+W296/ZDIpW2wcMmBfpVFzcnOi/nA==}
@@ -13971,16 +13979,16 @@ snapshots:
   '@cbor-extract/cbor-extract-win32-x64@2.2.2':
     optional: true
 
-  '@chat-adapter/shared@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)':
+  '@chat-adapter/shared@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)':
     dependencies:
-      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@chat-adapter/telegram@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)':
+  '@chat-adapter/telegram@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)':
     dependencies:
-      '@chat-adapter/shared': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
-      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
+      '@chat-adapter/shared': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -15444,6 +15452,7 @@ snapshots:
       - cac
       - commander
       - magicast
+      - srvx
       - supports-color
 
   '@nuxt/devalue@2.0.2': {}
@@ -15704,6 +15713,7 @@ snapshots:
       - oxc-parser
       - react-native-b4a
       - sqlite3
+      - srvx
       - supports-color
       - typescript
       - unloader
@@ -15929,11 +15939,11 @@ snapshots:
 
   '@one-ini/wasm@0.1.1': {}
 
-  '@onmax/nuxt-better-auth@0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))':
+  '@onmax/nuxt-better-auth@0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))':
     dependencies:
       '@better-auth/cli': 1.5.0-beta.13(@better-fetch/fetch@1.1.21)(@opentelemetry/api@1.9.1)(better-call@1.2.1(zod@4.4.3))(drizzle-kit@0.31.10)(jose@6.2.8)(kysely@0.28.17)(mongodb@7.5.0)(mysql2@3.15.3)(nanostores@1.4.2)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
       '@nuxt/kit': 4.4.8
-      better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
+      better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
       defu: 6.1.7
       h3: 1.15.11
       jiti: 2.7.0
@@ -16035,55 +16045,59 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.43.0': {}
 
-  '@orpc/client@2.0.0-beta.26':
+  '@orpc/client@2.0.0-beta.26(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@orpc/shared': 2.0.0-beta.26
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standardserver/core': 0.7.1
       '@standardserver/fetch': 0.7.1
       '@standardserver/peer': 0.7.1
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
 
-  '@orpc/contract@2.0.0-beta.26':
+  '@orpc/contract@2.0.0-beta.26(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@orpc/client': 2.0.0-beta.26
-      '@orpc/shared': 2.0.0-beta.26
+      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standard-schema/spec': 1.1.0
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
 
-  '@orpc/json-schema@2.0.0-beta.26(crossws@0.4.10)':
+  '@orpc/evlog@2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))':
     dependencies:
-      '@orpc/client': 2.0.0-beta.26
-      '@orpc/contract': 2.0.0-beta.26
+      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
-      '@orpc/shared': 2.0.0-beta.26
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@standardserver/core': 0.7.1
+      evlog: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+    transitivePeerDependencies:
+      - fastify
+
+  '@orpc/json-schema@2.0.0-beta.26(@opentelemetry/api@1.9.1)(crossws@0.4.10)':
+    dependencies:
+      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/contract': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standard-schema/spec': 1.1.0
       json-schema-typed: 8.0.2
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - fastify
 
   '@orpc/openapi@2.0.0-beta.26':
     dependencies:
       '@hey-api/spec-types': 0.0.0-next-20260408030107
-      '@orpc/client': 2.0.0-beta.26
-      '@orpc/contract': 2.0.0-beta.26
-      '@orpc/json-schema': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/contract': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/json-schema': 2.0.0-beta.26(@opentelemetry/api@1.9.1)(crossws@0.4.10)
       '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
-      '@orpc/shared': 2.0.0-beta.26
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standardserver/core': 0.7.1
       '@standardserver/fetch': 0.7.1
       rou3: 0.9.1
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - fastify
 
   '@orpc/server@2.0.0-beta.26(crossws@0.4.10)':
     dependencies:
-      '@orpc/client': 2.0.0-beta.26
-      '@orpc/contract': 2.0.0-beta.26
-      '@orpc/shared': 2.0.0-beta.26
+      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/contract': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
+      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standardserver/aws-lambda': 0.7.1
       '@standardserver/core': 0.7.1
       '@standardserver/fastify': 0.7.1
@@ -16093,22 +16107,21 @@ snapshots:
       cookie: 2.0.1
       crossws: 0.4.10
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - fastify
 
-  '@orpc/shared@2.0.0-beta.26':
+  '@orpc/shared@2.0.0-beta.26(@opentelemetry/api@1.9.1)':
     dependencies:
+      '@opentelemetry/api': 1.9.1
       '@standardserver/shared': 0.7.1
       radash: 12.1.1
       type-fest: 5.8.0
 
   '@orpc/zod@2.0.0-beta.26(zod@4.4.3)':
     dependencies:
-      '@orpc/json-schema': 2.0.0-beta.26(crossws@0.4.10)
+      '@orpc/json-schema': 2.0.0-beta.26(@opentelemetry/api@1.9.1)(crossws@0.4.10)
       json-schema-typed: 8.0.2
       zod: 4.4.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - fastify
 
   '@oxc-parser/binding-android-arm-eabi@0.131.0':
@@ -17710,8 +17723,9 @@ snapshots:
       '@vercel/oidc': 3.2.0
       mixpart: 0.0.5-alpha.1
 
-  '@vercel/queue@0.4.0':
+  '@vercel/queue@0.4.0(@opentelemetry/api@1.9.1)':
     dependencies:
+      '@opentelemetry/api': 1.9.1
       '@vercel/oidc': 3.2.0
       minimatch: 10.2.6
       mixpart: 0.0.6
@@ -17810,31 +17824,32 @@ snapshots:
       d3-time-format: 4.1.0
       internmap: 2.0.3
 
-  '@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab)':
+  '@vite-hub/agent@0.0.3(d117436c8bc15e3d76b3f6ccef95b0fa)':
     dependencies:
       '@ai-sdk/gateway': 4.0.26(zod@4.4.3)
       '@ai-sdk/harness': 1.0.39(ws@8.21.3)(zod@4.4.3)
       '@ai-sdk/harness-codex': 1.0.41(zod@4.4.3)
-      '@chat-adapter/telegram': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
+      '@chat-adapter/telegram': 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)
       '@libsql/client': 0.17.4
       '@standard-schema/spec': 1.1.0
       '@types/json-schema': 7.0.15
       '@vercel/nft': 1.10.2(rollup@4.62.4)
-      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/blob': 0.0.3(26c08193ff73d74b9992f6236ab263f3)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/email': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/markdown-template': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/rate-limit': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/runtime': 0.0.3
       '@vite-hub/schedule': 0.0.3(@vite-hub/kv@0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35)
-      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))
+      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(vue@3.5.41)
       ai: 7.0.19(zod@4.4.3)
-      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3)
+      chat: 4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3)
       comark: 0.5.1
       effect: 4.0.0-beta.99
       esbuild: 0.27.7
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
     transitivePeerDependencies:
       - '@asciidev/box-sdk'
       - '@cfworker/json-schema'
@@ -17848,13 +17863,12 @@ snapshots:
       - supports-color
       - unstorage
       - utf-8-validate
-      - vue
 
-  '@vite-hub/auth@0.0.3(@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/auth@0.0.3(@vite-hub/agent@0.0.3(d117436c8bc15e3d76b3f6ccef95b0fa))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
-      '@vite-hub/agent': 0.0.3(65798f536b21fa737609d6ea615e66ab)
+      '@vite-hub/agent': 0.0.3(d117436c8bc15e3d76b3f6ccef95b0fa)
       '@vite-hub/runtime': 0.0.3
-      better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41)
+      better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41)
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
@@ -17867,7 +17881,7 @@ snapshots:
       - solid-js
       - svelte
 
-  '@vite-hub/blob@0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/blob@0.0.3(26c08193ff73d74b9992f6236ab263f3)':
     dependencies:
       '@aws-sdk/client-s3': 3.1106.0
       '@aws-sdk/lib-storage': 3.1106.0(@aws-sdk/client-s3@3.1106.0)
@@ -17879,7 +17893,7 @@ snapshots:
       aws4fetch: 1.0.20
       defu: 6.1.7
       esbuild: 0.27.7
-      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3)
+      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@netlify/blobs@10.7.12)(@opentelemetry/api@1.9.1)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(h3@1.15.11)(hono@4.13.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))(vue@3.5.41)(zod@4.4.3)
       h3: 2.0.1-rc.25(crossws@0.4.10)
       pathe: 2.0.3
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
@@ -17904,11 +17918,11 @@ snapshots:
       pathe: 2.0.3
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
 
-  '@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
       '@libsql/client': 0.17.4
       drizzle-kit: 0.31.10
-      drizzle-orm: 0.45.2(@libsql/client@0.17.4)
+      drizzle-orm: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
       esbuild: 0.28.2
       h3: 2.0.1-rc.25(crossws@0.4.10)
       pathe: 2.0.3
@@ -17938,7 +17952,7 @@ snapshots:
     dependencies:
       '@vite-hub/runtime': 0.0.3
       defu: 6.1.7
-      unstorage: 2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(db0@0.3.4)(uploadthing@7.7.4)
+      unstorage: 2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(mongodb@7.5.0)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -17957,7 +17971,6 @@ snapshots:
       - idb-keyval
       - ioredis
       - lru-cache
-      - mongodb
       - ofetch
 
   '@vite-hub/markdown-template@0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
@@ -18046,23 +18059,23 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@vite-hub/workflow@0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35)':
+  '@vite-hub/workflow@0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))':
     dependencies:
       '@vercel/functions': 3.9.1
-      '@vite-hub/database': 0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/database': 0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/runtime': 0.0.3
-      '@workflow/builders': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       defu: 6.1.7
       esbuild: 0.28.2
       h3: 2.0.1-rc.25(crossws@0.4.10)
       pathe: 2.0.3
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
-      workflow: 5.0.0-beta.35
+      workflow: 5.0.0-beta.35(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-web-identity'
       - ws
 
-  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(vue@3.5.41)':
     dependencies:
       '@vercel/nft': 1.10.2(rollup@4.62.4)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
@@ -18081,6 +18094,7 @@ snapshots:
       mrmime: 2.0.1
       ofetch: 1.5.1
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+      vue: 3.5.41
     transitivePeerDependencies:
       - '@asciidev/box-sdk'
       - '@cfworker/json-schema'
@@ -18092,7 +18106,7 @@ snapshots:
       - supports-color
       - unstorage
 
-  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
+  '@vite-hub/workspace@0.0.3(@vite-hub/shell@0.0.3)(ai@7.0.19(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(vue@3.5.41)':
     dependencies:
       '@vercel/nft': 1.10.2(rollup@4.62.4)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
@@ -18111,6 +18125,7 @@ snapshots:
       mrmime: 2.0.1
       ofetch: 1.5.1
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+      vue: 3.5.41
     transitivePeerDependencies:
       - '@asciidev/box-sdk'
       - '@cfworker/json-schema'
@@ -18468,30 +18483,29 @@ snapshots:
       '@whatwg-node/promise-helpers': 1.3.2
       tslib: 2.8.1
 
-  '@workflow/astro@5.0.0-beta.35':
+  '@workflow/astro@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/rollup': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/rollup': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
-      '@workflow/vite': 5.0.0-beta.35
+      '@workflow/vite': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       exsolve: 1.1.1
       pathe: 2.0.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/builders@5.0.0-beta.35':
+  '@workflow/builders@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/core': 5.0.0-beta.35
+      '@workflow/core': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.11
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
       '@workflow/utils': 5.0.0-beta.6
-      '@workflow/world-local': 5.0.0-beta.29
-      '@workflow/world-vercel': 5.0.0-beta.31
+      '@workflow/world-local': 5.0.0-beta.29(@opentelemetry/api@1.9.1)
+      '@workflow/world-vercel': 5.0.0-beta.31(@opentelemetry/api@1.9.1)
       builtin-modules: 5.0.0
       chalk: 5.6.2
       enhanced-resolve: 5.19.0
@@ -18500,26 +18514,25 @@ snapshots:
       json5: 2.2.3
       tinyglobby: 0.2.17
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/cli@5.0.0-beta.35(react@19.2.8)':
+  '@workflow/cli@5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)':
     dependencies:
       '@oclif/core': 4.11.4
       '@oclif/plugin-help': 6.2.37
       '@swc/core': 1.15.3
       '@vercel/cli-auth': 0.0.1
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/core': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/core': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.11
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
       '@workflow/utils': 5.0.0-beta.6
-      '@workflow/web': 5.0.0-beta.35(react@19.2.8)
+      '@workflow/web': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
       '@workflow/world': 5.0.0-beta.21
-      '@workflow/world-local': 5.0.0-beta.29
-      '@workflow/world-vercel': 5.0.0-beta.31
+      '@workflow/world-local': 5.0.0-beta.29(@opentelemetry/api@1.9.1)
+      '@workflow/world-vercel': 5.0.0-beta.31(@opentelemetry/api@1.9.1)
       boxen: 8.0.1
       builtin-modules: 5.0.0
       chalk: 5.6.2
@@ -18538,15 +18551,15 @@ snapshots:
       xdg-app-paths: 5.1.0
       zod: 4.3.6
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/core@5.0.0-beta.35':
+  '@workflow/core@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
       '@aws-sdk/credential-provider-web-identity': 3.972.49
       '@jridgewell/trace-mapping': 0.3.31
+      '@opentelemetry/api': 1.9.1
       '@standard-schema/spec': 1.0.0
       '@types/ms': 2.1.0
       '@vercel/functions': 3.9.1(@aws-sdk/credential-provider-web-identity@3.972.49)
@@ -18554,8 +18567,8 @@ snapshots:
       '@workflow/serde': 5.0.0-beta.2
       '@workflow/utils': 5.0.0-beta.6
       '@workflow/world': 5.0.0-beta.21
-      '@workflow/world-local': 5.0.0-beta.29
-      '@workflow/world-vercel': 5.0.0-beta.31
+      '@workflow/world-local': 5.0.0-beta.29(@opentelemetry/api@1.9.1)
+      '@workflow/world-vercel': 5.0.0-beta.31(@opentelemetry/api@1.9.1)
       debug: 4.4.3
       devalue: 5.8.1
       ms: 2.1.3
@@ -18565,7 +18578,6 @@ snapshots:
       ulid: 3.0.2
       zod: 4.3.6
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - supports-color
       - ws
 
@@ -18580,11 +18592,10 @@ snapshots:
       '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@swc/cli': 0.8.1(@swc/core@1.15.3)
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
       pathe: 2.0.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
@@ -18592,54 +18603,50 @@ snapshots:
   '@workflow/next@5.0.0-beta.35':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/core': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/core': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
       chokidar: 4.0.3
       semver: 7.7.4
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/nitro@5.0.0-beta.35(react@19.2.8)':
+  '@workflow/nitro@5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/core': 5.0.0-beta.35
-      '@workflow/rollup': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/core': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/rollup': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
-      '@workflow/vite': 5.0.0-beta.35
-      '@workflow/web': 5.0.0-beta.35(react@19.2.8)
+      '@workflow/vite': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/web': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
       exsolve: 1.0.8
       pathe: 2.0.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/nuxt@5.0.0-beta.35(react@19.2.8)':
+  '@workflow/nuxt@5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)':
     dependencies:
       '@nuxt/kit': 4.4.8
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/nitro': 5.0.0-beta.35(react@19.2.8)
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/nitro': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - magicast
       - supports-color
       - ws
 
-  '@workflow/rollup@5.0.0-beta.35':
+  '@workflow/rollup@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
       exsolve: 1.0.7
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
@@ -18650,18 +18657,17 @@ snapshots:
 
   '@workflow/serde@5.0.0-beta.2': {}
 
-  '@workflow/sveltekit@5.0.0-beta.35':
+  '@workflow/sveltekit@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
       '@swc/core': 1.15.3
-      '@workflow/builders': 5.0.0-beta.35
-      '@workflow/rollup': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/rollup': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/swc-plugin': 5.0.0-beta.5(@swc/core@1.15.3)
-      '@workflow/vite': 5.0.0-beta.35
+      '@workflow/vite': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       exsolve: 1.1.1
       fs-extra: 11.4.0
       pathe: 2.0.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
@@ -18676,27 +18682,26 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  '@workflow/vite@5.0.0-beta.35':
+  '@workflow/vite@5.0.0-beta.35(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@workflow/builders': 5.0.0-beta.35
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - supports-color
       - ws
 
-  '@workflow/web@5.0.0-beta.35(react@19.2.8)':
+  '@workflow/web@5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)':
     dependencies:
-      '@workflow/world-local': 5.0.0-beta.29
+      '@workflow/world-local': 5.0.0-beta.29(@opentelemetry/api@1.9.1)
       express: 5.2.1
       swr: 2.5.0(react@19.2.8)
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - supports-color
 
-  '@workflow/world-local@5.0.0-beta.29':
+  '@workflow/world-local@5.0.0-beta.29(@opentelemetry/api@1.9.1)':
     dependencies:
-      '@vercel/queue': 0.4.0
+      '@opentelemetry/api': 1.9.1
+      '@vercel/queue': 0.4.0(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.11
       '@workflow/utils': 5.0.0-beta.6
       '@workflow/world': 5.0.0-beta.21
@@ -18704,21 +18709,18 @@ snapshots:
       ulid: 3.0.2
       undici: 7.28.0
       zod: 4.3.6
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
 
-  '@workflow/world-vercel@5.0.0-beta.31':
+  '@workflow/world-vercel@5.0.0-beta.31(@opentelemetry/api@1.9.1)':
     dependencies:
+      '@opentelemetry/api': 1.9.1
       '@vercel/oidc': 3.2.0
-      '@vercel/queue': 0.4.0
+      '@vercel/queue': 0.4.0(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.11
       '@workflow/world': 5.0.0-beta.21
       cbor-x: 1.6.0
       ulid: 3.0.2
       undici: 7.28.0
       zod: 4.3.6
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
 
   '@workflow/world@5.0.0-beta.21':
     dependencies:
@@ -19213,7 +19215,7 @@ snapshots:
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
 
-  better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41):
+  better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41):
     dependencies:
       '@better-auth/core': 1.6.26(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.8)(kysely@0.29.4)(nanostores@1.4.2)
       '@better-auth/drizzle-adapter': 1.6.26(@better-auth/core@1.6.26(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.8)(kysely@0.29.4)(nanostores@1.4.2))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))
@@ -19230,7 +19232,7 @@ snapshots:
       better-call: 1.3.7(zod@4.4.3)
       defu: 6.1.7
       drizzle-kit: 0.31.10
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)
+      drizzle-orm: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
       jose: 6.2.8
       kysely: 0.29.4
       mongodb: 7.5.0
@@ -19516,7 +19518,7 @@ snapshots:
 
   character-entities@2.0.2: {}
 
-  chat@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35)(zod@4.4.3):
+  chat@4.35.0(ai@7.0.19(zod@4.4.3))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))(zod@4.4.3):
     dependencies:
       '@workflow/serde': 4.1.0-beta.2
       ai: 7.0.19(zod@4.4.3)
@@ -19526,7 +19528,7 @@ snapshots:
       remark-stringify: 11.0.0
       remend: 1.3.0
       unified: 11.0.5
-      workflow: 5.0.0-beta.35
+      workflow: 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
@@ -19883,11 +19885,15 @@ snapshots:
 
   date-fns@4.1.0: {}
 
-  db0@0.3.4: {}
-
-  db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mysql2@3.15.3):
+  db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3):
     dependencies:
-      drizzle-orm: 0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)
+      '@libsql/client': 0.17.4
+      drizzle-orm: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
+      mysql2: 3.15.3
+
+  db0@0.3.4(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3):
+    dependencies:
+      drizzle-orm: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
       mysql2: 3.15.3
 
   debug@4.4.3:
@@ -20064,8 +20070,6 @@ snapshots:
       pg: 8.23.0
       prisma: 7.9.1
 
-  drizzle-orm@0.45.2: {}
-
   drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1):
     dependencies:
       '@electric-sql/pglite': 0.4.3
@@ -20079,36 +20083,6 @@ snapshots:
       postgres: 3.4.9
       prisma: 7.9.1
       sql.js: 1.14.1
-
-  drizzle-orm@0.45.2(@libsql/client@0.17.4):
-    dependencies:
-      '@libsql/client': 0.17.4
-
-  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1):
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@prisma/client': 5.22.0(prisma@7.9.1)
-      kysely: 0.29.4
-      mysql2: 3.15.3
-      pg: 8.23.0
-      prisma: 7.9.1
-
-  drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1):
-    dependencies:
-      '@opentelemetry/api': 1.9.1
-      '@prisma/client': 5.22.0(prisma@7.9.1)
-      mysql2: 3.15.3
-      pg: 8.23.0
-      prisma: 7.9.1
-
-  drizzle-orm@0.45.2(@prisma/client@5.22.0(prisma@7.9.1))(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1):
-    dependencies:
-      '@prisma/client': 5.22.0(prisma@7.9.1)
-      kysely: 0.29.4
-      mysql2: 3.15.3
-      pg: 8.23.0
-      prisma: 7.9.1
-    optional: true
 
   dropbox@10.44.0: {}
 
@@ -20218,14 +20192,6 @@ snapshots:
   env-paths@2.2.1: {}
 
   env-paths@3.0.0: {}
-
-  env-runner@0.1.16(@vercel/queue@0.4.0):
-    dependencies:
-      '@vercel/queue': 0.4.0
-      crossws: 0.4.10(srvx@0.11.22)
-      exsolve: 1.1.1
-      httpxy: 0.5.5
-      srvx: 0.11.22
 
   environment@1.1.0: {}
 
@@ -20529,6 +20495,29 @@ snapshots:
     dependencies:
       eventsource-parser: 3.1.0
 
+  evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)):
+    dependencies:
+      '@nestjs/common': 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nuxt/kit': 4.5.2(magic-string@1.1.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
+      ai: 7.0.58(zod@4.4.3)
+      express: 5.2.1
+      h3: 1.15.11
+      hono: 4.13.1
+      nitropack: 2.13.4
+      react: 19.2.8
+      vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+
+  evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)):
+    dependencies:
+      '@nestjs/common': 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nuxt/kit': 4.5.2(magic-string@1.1.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
+      ai: 7.0.58(zod@4.4.3)
+      express: 5.2.1
+      hono: 4.13.1
+      nitropack: 2.13.4
+      react: 19.2.8
+      vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
+
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -20743,7 +20732,7 @@ snapshots:
     dependencies:
       filename-reserved-regex: 4.0.0
 
-  files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3):
+  files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@netlify/blobs@10.7.12)(@opentelemetry/api@1.9.1)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(h3@1.15.11)(hono@4.13.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))(vue@3.5.41)(zod@4.4.3):
     dependencies:
       '@aws-sdk/client-s3': 3.1106.0
       '@aws-sdk/lib-storage': 3.1106.0(@aws-sdk/client-s3@3.1106.0)
@@ -20754,7 +20743,9 @@ snapshots:
       '@google-cloud/storage': 7.21.0
       '@googleapis/drive': 20.2.0
       '@microsoft/microsoft-graph-client': 3.0.7(@azure/identity@4.13.1)
+      '@nestjs/common': 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@netlify/blobs': 10.7.12
+      '@opentelemetry/api': 1.9.1
       '@supabase/storage-js': 2.112.2
       '@vercel/blob': 2.7.0
       ai: 6.0.228(zod@4.4.3)
@@ -20763,9 +20754,14 @@ snapshots:
       commander: 15.0.0
       dropbox: 10.44.0
       google-auth-library: 10.9.1
+      h3: 1.15.11
+      hono: 4.13.1
       picomatch: 4.0.5
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
       safe-regex2: 5.1.1
-      uploadthing: 7.7.4
+      uploadthing: 7.7.4(express@5.2.1)(h3@1.15.11)
+      vue: 3.5.41
       zod: 4.4.3
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.30.0(zod@4.4.3)
@@ -21181,12 +21177,6 @@ snapshots:
       radix3: 1.1.2
       ufo: 1.6.4
       uncrypto: 0.1.3
-
-  h3@2.0.1-rc.22(crossws@0.4.10(srvx@0.11.22)):
-    dependencies:
-      crossws: 0.4.10(srvx@0.11.22)
-      rou3: 0.8.1
-      srvx: 0.11.22
 
   h3@2.0.1-rc.25(crossws@0.4.10):
     dependencies:
@@ -21783,7 +21773,7 @@ snapshots:
       '@parcel/watcher-wasm': 2.6.0
       citty: 0.2.2
       consola: 3.4.2
-      crossws: 0.4.10(srvx@0.11.22)
+      crossws: 0.4.10
       defu: 6.1.7
       get-port-please: 3.2.0
       h3: 1.15.11
@@ -21796,6 +21786,8 @@ snapshots:
       ufo: 1.6.4
       untun: 0.2.2
       uqr: 0.1.3
+    transitivePeerDependencies:
+      - srvx
 
   load-esm@1.0.3: {}
 
@@ -22449,58 +22441,6 @@ snapshots:
 
   netmask@2.1.1: {}
 
-  nf3@0.3.23: {}
-
-  nitro@3.0.260610-beta(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)):
-    dependencies:
-      consola: 3.4.2
-      crossws: 0.4.10(srvx@0.11.22)
-      db0: 0.3.4
-      dotenv: 17.4.2
-      env-runner: 0.1.16(@vercel/queue@0.4.0)
-      giget: 3.3.1
-      h3: 2.0.1-rc.22(crossws@0.4.10(srvx@0.11.22))
-      hookable: 6.1.1
-      jiti: 2.7.0
-      nf3: 0.3.23
-      ocache: 0.1.5
-      ofetch: 2.0.0-alpha.3
-      ohash: 2.0.11
-      rolldown: 1.2.3
-      rollup: 4.62.4
-      srvx: 0.11.22
-      unenv: 2.0.0-rc.24
-      unstorage: 2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(db0@0.3.4)(uploadthing@7.7.4)
-      vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/keyvault-secrets'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@electric-sql/pglite'
-      - '@libsql/client'
-      - '@netlify/runtime'
-      - '@planetscale/database'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - better-sqlite3
-      - chokidar
-      - drizzle-orm
-      - idb-keyval
-      - ioredis
-      - lru-cache
-      - miniflare
-      - mongodb
-      - mysql2
-      - ofetch
-      - sqlite3
-      - wrangler
-
   nitropack@2.13.4:
     dependencies:
       '@cloudflare/kv-asset-handler': 0.4.2
@@ -22522,7 +22462,7 @@ snapshots:
       cookie-es: 2.0.1
       croner: 10.0.1
       crossws: 0.3.5
-      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mysql2@3.15.3)
+      db0: 0.3.4(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3)
       defu: 6.1.7
       destr: 2.0.5
       dot-prop: 10.2.0
@@ -22568,7 +22508,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       unimport: 6.4.0(rolldown@1.2.3)
       unplugin-utils: 0.3.2
-      unstorage: 1.17.5(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mysql2@3.15.3))(ioredis@5.11.1)
+      unstorage: 1.17.5(db0@0.3.4(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(ioredis@5.11.1)
       untyped: 2.0.0
       unwasm: 0.5.3
       youch: 4.1.1
@@ -22603,6 +22543,7 @@ snapshots:
       - oxc-parser
       - react-native-b4a
       - sqlite3
+      - srvx
       - supports-color
       - unloader
       - uploadthing
@@ -22810,6 +22751,7 @@ snapshots:
       - sass
       - sass-embedded
       - sqlite3
+      - srvx
       - stylelint
       - stylus
       - sugarss
@@ -23934,8 +23876,6 @@ snapshots:
 
   rou3@0.7.12: {}
 
-  rou3@0.8.1: {}
-
   rou3@0.9.1: {}
 
   router@2.2.0:
@@ -24967,11 +24907,11 @@ snapshots:
       ofetch: 1.5.1
       ufo: 1.6.4
 
-  unstorage@1.17.5(db0@0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mysql2@3.15.3))(ioredis@5.11.1):
+  unstorage@1.17.5(db0@0.3.4(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(ioredis@5.11.1):
     dependencies:
       anymatch: 3.1.3
       chokidar: 5.0.0
-      db0: 0.3.4(drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1))(mysql2@3.15.3)
+      db0: 0.3.4(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3)
       destr: 2.0.5
       h3: 1.15.11
       ioredis: 5.11.1
@@ -24980,13 +24920,14 @@ snapshots:
       ofetch: 1.5.1
       ufo: 1.6.4
 
-  unstorage@2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(db0@0.3.4)(uploadthing@7.7.4):
+  unstorage@2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(mongodb@7.5.0)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11)):
     dependencies:
       '@azure/identity': 4.13.1
       '@azure/storage-blob': 12.33.0
       '@netlify/blobs': 10.7.12
-      db0: 0.3.4
-      uploadthing: 7.7.4
+      db0: 0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3)
+      mongodb: 7.5.0
+      uploadthing: 7.7.4(express@5.2.1)(h3@1.15.11)
 
   untun@0.2.2: {}
 
@@ -25013,13 +24954,15 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  uploadthing@7.7.4:
+  uploadthing@7.7.4(express@5.2.1)(h3@1.15.11):
     dependencies:
       '@effect/platform': 0.90.3(effect@3.17.7)
       '@standard-schema/spec': 1.0.0-beta.4
       '@uploadthing/mime-types': 0.3.6
       '@uploadthing/shared': 7.1.10
       effect: 3.17.7
+      express: 5.2.1
+      h3: 1.15.11
 
   uqr@0.1.3: {}
 
@@ -25084,13 +25027,13 @@ snapshots:
       '@netlify/blobs': 10.7.12
       '@supabase/storage-js': 2.112.2
       '@vercel/sandbox': 1.10.2
-      '@vite-hub/agent': 0.0.3(65798f536b21fa737609d6ea615e66ab)
-      '@vite-hub/auth': 0.0.3(@vite-hub/agent@0.0.3(65798f536b21fa737609d6ea615e66ab))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      '@vite-hub/blob': 0.0.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(files-sdk@2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/agent': 0.0.3(d117436c8bc15e3d76b3f6ccef95b0fa)
+      '@vite-hub/auth': 0.0.3(@vite-hub/agent@0.0.3(d117436c8bc15e3d76b3f6ccef95b0fa))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/blob': 0.0.3(26c08193ff73d74b9992f6236ab263f3)
       '@vite-hub/box': 0.0.3(@cloudflare/sandbox@0.8.14)(@vercel/sandbox@1.10.2)
       '@vite-hub/browser': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/cli': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      '@vite-hub/database': 0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      '@vite-hub/database': 0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/email': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/env': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/kv': 0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
@@ -25102,19 +25045,19 @@ snapshots:
       '@vite-hub/schedule': 0.0.3(@vite-hub/kv@0.0.3(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       '@vite-hub/shell': 0.0.3
       '@vite-hub/source': 0.0.3(zod@4.4.3)
-      '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35)
-      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      '@workflow/builders': 5.0.0-beta.35
+      '@vite-hub/workflow': 0.0.3(@vite-hub/database@0.0.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(@workflow/builders@5.0.0-beta.35)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1))
+      '@vite-hub/workspace': 0.0.3(@vite-hub/shell@0.0.3)(ai@6.0.228(zod@4.4.3))(vite@8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(vue@3.5.41)
+      '@workflow/builders': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       ai: 6.0.228(zod@4.4.3)
       box-typescript-sdk-gen: 1.19.1
       drizzle-kit: 0.31.10
-      drizzle-orm: 0.45.2
+      drizzle-orm: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
       dropbox: 10.44.0
-      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@netlify/blobs@10.7.12)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(uploadthing@7.7.4)(zod@4.4.3)
+      files-sdk: 2.2.3(@aws-sdk/client-s3@3.1106.0)(@aws-sdk/lib-storage@3.1106.0(@aws-sdk/client-s3@3.1106.0))(@aws-sdk/s3-presigned-post@3.1106.0)(@aws-sdk/s3-request-presigner@3.1106.0)(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@google-cloud/storage@7.21.0)(@googleapis/drive@20.2.0)(@microsoft/microsoft-graph-client@3.0.7(@azure/identity@4.13.1))(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@netlify/blobs@10.7.12)(@opentelemetry/api@1.9.1)(@supabase/storage-js@2.112.2)(@vercel/blob@2.7.0)(ai@6.0.228(zod@4.4.3))(box-typescript-sdk-gen@1.19.1)(dropbox@10.44.0)(google-auth-library@10.9.1)(h3@1.15.11)(hono@4.13.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))(vue@3.5.41)(zod@4.4.3)
       google-auth-library: 10.9.1
-      uploadthing: 7.7.4
+      uploadthing: 7.7.4(express@5.2.1)(h3@1.15.11)
       vite: 8.2.1(@types/node@24.13.3)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
-      workflow: 5.0.0-beta.35
+      workflow: 5.0.0-beta.35(@opentelemetry/api@1.9.1)
     transitivePeerDependencies:
       - '@ai-sdk/harness-claude-code'
       - '@ai-sdk/mcp'
@@ -25134,19 +25077,14 @@ snapshots:
       - '@chat-adapter/discord'
       - '@cloudflare/workers-types'
       - '@deno/kv'
-      - '@electric-sql/pglite'
       - '@farmfe/core'
-      - '@libsql/client'
       - '@libsql/client-wasm'
       - '@lynx-js/react'
       - '@neondatabase/serverless'
-      - '@nestjs/common'
       - '@op-engineering/op-sqlite'
       - '@openai/agents'
       - '@opencode-ai/sdk'
-      - '@opentelemetry/api'
       - '@planetscale/database'
-      - '@prisma/client'
       - '@rspack/core'
       - '@sveltejs/kit'
       - '@swc/helpers'
@@ -25154,7 +25092,6 @@ snapshots:
       - '@tanstack/solid-start'
       - '@tidbcloud/serverless'
       - '@types/better-sqlite3'
-      - '@types/pg'
       - '@types/sql.js'
       - '@upstash/redis'
       - '@vercel/blob'
@@ -25180,22 +25117,16 @@ snapshots:
       - disk
       - encoding
       - expo-sqlite
-      - express
       - fastify
       - firebase-admin
       - gel
-      - h3
-      - hono
       - idb-keyval
       - ioredis
       - katex
       - knex
       - koa
-      - kysely
       - lru-cache
       - magicast
-      - mongodb
-      - mysql2
       - next
       - node-appwrite
       - nodemailer
@@ -25203,16 +25134,10 @@ snapshots:
       - openai
       - openworkflow
       - oxc-parser
-      - pg
       - pocketbase
-      - postgres
-      - prisma
-      - react
-      - react-dom
       - react-native-b4a
       - shiki
       - solid-js
-      - sql.js
       - sqlite3
       - ssh2
       - ssh2-sftp-client
@@ -25224,8 +25149,6 @@ snapshots:
       - unloader
       - unstorage
       - utf-8-validate
-      - vitest
-      - vue
       - webdav
       - ws
 
@@ -25607,23 +25530,23 @@ snapshots:
 
   wordwrap@1.0.0: {}
 
-  workflow@5.0.0-beta.35:
+  workflow@5.0.0-beta.35(@opentelemetry/api@1.9.1):
     dependencies:
-      '@workflow/astro': 5.0.0-beta.35
-      '@workflow/cli': 5.0.0-beta.35(react@19.2.8)
-      '@workflow/core': 5.0.0-beta.35
+      '@opentelemetry/api': 1.9.1
+      '@workflow/astro': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/cli': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
+      '@workflow/core': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/errors': 5.0.0-beta.11
       '@workflow/nest': 5.0.0-beta.35(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@swc/cli@0.8.1(@swc/core@1.15.3))(@swc/core@1.15.3)
       '@workflow/next': 5.0.0-beta.35
-      '@workflow/nitro': 5.0.0-beta.35(react@19.2.8)
-      '@workflow/nuxt': 5.0.0-beta.35(react@19.2.8)
-      '@workflow/rollup': 5.0.0-beta.35
-      '@workflow/sveltekit': 5.0.0-beta.35
+      '@workflow/nitro': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
+      '@workflow/nuxt': 5.0.0-beta.35(@opentelemetry/api@1.9.1)(react@19.2.8)
+      '@workflow/rollup': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
+      '@workflow/sveltekit': 5.0.0-beta.35(@opentelemetry/api@1.9.1)
       '@workflow/typescript-plugin': 5.0.0-beta.5
       '@workflow/utils': 5.0.0-beta.6
       ms: 2.1.3
     transitivePeerDependencies:
-      - '@opentelemetry/api'
       - '@swc/helpers'
       - magicast
       - next

@@ -32,19 +32,18 @@ aube test
 
 ## Choose the right package
 
-| Change                                            | Location          |
-| ------------------------------------------------- | ----------------- |
-| Agent lifecycle and decisions                     | `packages/agent`  |
-| Commands and repository mutation                  | `packages/runner` |
-| LLM providers                                     | `packages/models` |
-| GitHub adapters                                   | `packages/github` |
-| Configuration and policy                          | `packages/config` |
-| Shared contracts                                  | `packages/shared` |
-| CLI parsing and presentation                      | `packages/cli`    |
-| Authentication policy                             | `packages/auth`   |
-| oRPC router, control-plane operations, auth mount | `packages/api`    |
-| HTTP host (RPC, OpenAPI, auth, dashboard routes)  | `apps/server`     |
-| Dashboard frontend                                | `apps/dashboard`  |
+| Change                                               | Location          |
+| ---------------------------------------------------- | ----------------- |
+| Agent lifecycle and decisions                        | `packages/agent`  |
+| Commands and repository mutation                     | `packages/runner` |
+| LLM providers                                        | `packages/models` |
+| GitHub adapters                                      | `packages/github` |
+| Configuration and policy                             | `packages/config` |
+| Shared contracts                                     | `packages/shared` |
+| CLI parsing and presentation                         | `packages/cli`    |
+| Authentication policy                                | `packages/auth`   |
+| oRPC router and control-plane operations             | `packages/api`    |
+| UI, HTTP host (RPC, OpenAPI, auth, dashboard routes) | `apps/dashboard`  |
 
 Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before making architectural or safety-sensitive changes.
 

@@ -44,23 +44,21 @@ GitHub adapter / CLI
         ▼
  Runner boundary ─── repository commands and file operations
 
-Control plane (oRPC + OpenAPI + auth) ─── typed task API, persistence, and scheduling
-Nuxt dashboard ─── frontend-only operational interface ─── control plane ─── session store
+Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─── session store
 ```
 
-| Package                                | Responsibility                                                                          |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)   | Orchestration and state transitions                                                     |
-| [`packages/runner`](./packages/runner) | The only boundary that executes commands or mutates a checkout                          |
-| [`packages/models`](./packages/models) | Model-provider abstractions                                                             |
-| [`packages/github`](./packages/github) | GitHub event and API adapters                                                           |
-| [`packages/config`](./packages/config) | Configuration parsing and policy                                                        |
-| [`packages/shared`](./packages/shared) | Stable cross-package contracts                                                          |
-| [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                                              |
-| [`packages/auth`](./packages/auth)     | Authentication policy and the Better Auth instance                                      |
-| [`packages/api`](./packages/api)       | oRPC router, control-plane operations, and the Better Auth Hono mount                   |
-| [`apps/server`](./apps/server)         | HTTP host: RPC, OpenAPI, auth, and dashboard routes; the only component with a database |
-| [`apps/dashboard`](./apps/dashboard)   | Nuxt operational dashboard, authenticated client of `apps/server`                       |
+| Package                                | Responsibility                                                              |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| [`packages/agent`](./packages/agent)   | Orchestration and state transitions                                         |
+| [`packages/runner`](./packages/runner) | The only boundary that executes commands or mutates a checkout              |
+| [`packages/models`](./packages/models) | Model-provider abstractions                                                 |
+| [`packages/github`](./packages/github) | GitHub event and API adapters                                               |
+| [`packages/config`](./packages/config) | Configuration parsing and policy                                            |
+| [`packages/shared`](./packages/shared) | Stable cross-package contracts                                              |
+| [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                                  |
+| [`packages/auth`](./packages/auth)     | Authentication policy and the Better Auth options factory                   |
+| [`packages/api`](./packages/api)       | oRPC router and control-plane operations                                    |
+| [`apps/dashboard`](./apps/dashboard)   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**` |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -100,18 +98,18 @@ The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args)
 
 ---
 
-## Control plane
+## Dashboard
 
-`aube --filter @agent-zero/server run dev` starts the control plane on `http://localhost:3001` (override with `PORT`; 3000 belongs to the dashboard). It is the only adapter that composes a runner for hosted work, and it exposes:
+`aube run dev` starts the single deployable app on `http://localhost:3000` (override with `PORT`). It is the only adapter that composes a runner for hosted work, and the same Nuxt app serves the UI, the control plane, and authentication from one origin:
 
 | Surface              | Purpose                                                                                               |
 | -------------------- | ----------------------------------------------------------------------------------------------------- |
 | `/rpc/**`            | Typed oRPC router: `health`, `tasks.list/get/create`, `approvals.decide`                              |
 | `/api/v1/**`         | The same router over OpenAPI/REST; interactive docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
-| `/api/auth/**`       | The Better Auth handler                                                                               |
+| `/api/auth/**`       | The Better Auth handler (mounted by `@onmax/nuxt-better-auth` from `server/auth.config.ts`)           |
 | `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters                             |
 
-`/rpc/**` and `/api/v1/**` are the same `rpcRouter` from [`packages/api`](./packages/api) served over two wire protocols, so authorization behaves identically either way. Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. `AGENT_ZERO_CONTROL_PLANE_MODES` holds comma-separated `name:mode|mode` grants for the execution modes each principal may request; without a grant a principal may only request the non-writable `observe` and `suggest` modes, so `fix` and `autonomous` require an explicit operator grant. The approval actor is the authenticated principal's name, never a wire-supplied value.
+`/rpc/**` and `/api/v1/**` are the same `rpcRouter` from [`packages/api`](./packages/api) served over two wire protocols, so authorization behaves identically either way. Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. `AGENT_ZERO_CONTROL_PLANE_MODES` holds comma-separated `name:mode|mode` grants for the execution modes each principal may request; without a grant a principal may only request the non-writable `observe` and `suggest` modes, so `fix` and `autonomous` require an explicit operator grant. The approval actor is the authenticated principal's name, never a wire-supplied value. This bearer-token scheme authorizes the control-plane API and is independent of the Better Auth session that protects the dashboard UI.
 
 Typed clients infer their shape from the router rather than redeclaring request and response types:
 
@@ -123,7 +121,7 @@ import type { RpcRouter } from '@agent-zero/api';
 
 const client: RouterClient<RpcRouter> = createORPCClient(
   new RPCLink({
-    url: 'http://localhost:3001/rpc',
+    url: 'http://localhost:3000/rpc',
     headers: { authorization: `Bearer ${process.env.CONTROL_PLANE_TOKEN}` },
   }),
 );
@@ -132,29 +130,11 @@ const { tasks } = await client.tasks.list();
 await client.approvals.decide({ taskId: tasks[0]!.id, decision: 'approved' });
 ```
 
-Non-TypeScript or external callers can use plain HTTP against `/api/v1/**` instead — for example `curl http://localhost:3001/api/v1/tasks` — with the same bearer-token rules; the interactive reference at `/api/v1/docs` documents every route from the generated OpenAPI spec.
+Non-TypeScript or external callers can use plain HTTP against `/api/v1/**` instead — for example `curl http://localhost:3000/api/v1/tasks` — with the same bearer-token rules; the interactive reference at `/api/v1/docs` documents every route from the generated OpenAPI spec.
 
-The transport is a Nitro v3 server composed as a Vite app with [ViteHub](https://vitehub.dev): routes live in `apps/server/server/`, and `vite build` emits a self-contained `.output/` bundle started with `node .output/server/index.mjs`.
+The transport is Nuxt's own Nitro server: routes live in `apps/dashboard/server/`, and `nuxt build` emits a self-contained `.output/` bundle started with `node .output/server/index.mjs`. Task history persists through a `KeyValueStorage` contract backed by the ViteHub KV Runtime Helper (registered by the local `apps/dashboard/modules/vitehub.ts` module): filesystem-backed `fs-lite` by default, with Cloudflare KV, Deno KV, or Upstash dropping in as driver configuration without touching application code. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
 
-Task history persists through a `KeyValueStorage` contract backed by the ViteHub KV Runtime Helper: filesystem-backed `fs-lite` by default, with Cloudflare KV, Deno KV, or Upstash dropping in as driver configuration without touching application code. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
-
----
-
-## Dashboard
-
-`aube run dev` starts the Nuxt dashboard on `http://localhost:3000` and the control plane on
-`http://localhost:3001`, which now also serves authentication. The dashboard remains an
-operational interface shell: it does not
-expose API or RPC routes, persist data, import runtime packages, or execute repository work. It
-renders as a single-page app, because the session cookie belongs to the control plane's origin and
-a server render could never observe it.
-
-Authentication is mounted at `/api/auth/**` in `apps/server` (see [Control plane](#control-plane)),
-the one route in that app that resolves `AUTH_DATABASE_URL` and `BETTER_AUTH_SECRET` and therefore
-the only place in the repository that opens a connection to Postgres, accessed through
-[Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session
-store's schema lives in this repository as reviewable, checked-in SQL. The dashboard consumes it
-through [`@onmax/nuxt-better-auth`](https://better-auth.nuxt.dev) in `clientOnly` mode.
+Authentication is mounted in-process at `/api/auth/**` by `apps/dashboard/server/auth.config.ts`, the one route in the app that resolves `AUTH_DATABASE_URL` and `BETTER_AUTH_SECRET` and therefore the only place in the repository that opens a connection to Postgres, accessed through [Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session store's schema lives in this repository as reviewable, checked-in SQL. The dashboard renders with SSR: the session cookie is same-origin, so the server resolves it directly and a signed-out visitor never flashes protected content before redirecting.
 
 Point `AUTH_DATABASE_URL` at a Postgres database, then apply the schema once before the first run
 (`db:generate` only needs to run again after editing `packages/auth/src/schema.ts`):
@@ -163,25 +143,23 @@ Point `AUTH_DATABASE_URL` at a Postgres database, then apply the schema once bef
 aube --filter @agent-zero/auth run db:migrate
 ```
 
-The control plane reads auth configuration from the environment. Registration and GitHub OAuth are
+The app reads auth configuration from the environment. Registration and GitHub OAuth are
 off until you turn them on, so a fresh deployment cannot be signed up for by a stranger:
 
-| Variable                                    | Required | Default | Purpose                                     |
-| ------------------------------------------- | -------- | ------- | ------------------------------------------- |
-| `BETTER_AUTH_SECRET`                        | yes      | –       | Session signing secret                      |
-| `BETTER_AUTH_URL`                           | yes      | –       | Public origin of the control plane          |
-| `AUTH_DASHBOARD_ORIGIN`                     | yes      | –       | The one origin allowed credentialed access  |
-| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                  |
-| `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration    |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set |
+| Variable                                    | Required | Default | Purpose                                                                                                             |
+| ------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `NUXT_BETTER_AUTH_SECRET`                   | yes      | –       | Session signing secret. Required under this name in production; `BETTER_AUTH_SECRET` is a development-only fallback |
+| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                                                                                          |
+| `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration                                                                            |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set                                                                         |
+| `NUXT_PUBLIC_SITE_URL`                      | no       | –       | Base URL override for a custom domain or deterministic OAuth callbacks; auto-detected from the request otherwise    |
 
-The dashboard needs to know where the control plane lives: `NUXT_PUBLIC_SITE_URL` (default
-`http://localhost:3001`). The sign-in methods it offers are derived at build time from the same
-policy variables the control plane reads (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
+The sign-in methods the login page offers are derived at build time from the same policy variables
+`server/auth.config.ts` reads at runtime (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
 `GITHUB_CLIENT_SECRET`), and no runtime override can change them. The flip side of that build-time
-capture is a deployment contract: whenever you change those policy variables, rebuild the dashboard
-in the same environment the control plane runs with, or the login page will keep advertising the old
-capabilities (the control plane still enforces its own policy either way).
+capture is a deployment contract: whenever you change those policy variables, rebuild the app, or
+the login page will keep advertising the old capabilities (the server still enforces its own policy
+either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
 `apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
@@ -189,9 +167,10 @@ The interface ships English and Italian through `@nuxtjs/i18n`, with dictionarie
 source; it reads git history, so it needs the dictionaries committed.
 
 `aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the
-Playwright suite. The control plane is not started for e2e: its origin is intercepted so the run
-stays deterministic. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI
-mode.
+Playwright suite against `server/auth.config.ts` running with an in-memory Better Auth adapter and
+signup enabled (`AUTH_E2E_MEMORY=true`, set only for that preview server), so the suite creates and
+signs in its own throwaway account through the real `/api/auth/**` endpoints instead of a live
+database. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
 
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 

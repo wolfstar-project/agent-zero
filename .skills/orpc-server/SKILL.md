@@ -1,46 +1,69 @@
 ---
 name: orpc-server
-description: Use when changing apps/server routes, oRPC contracts, handlers, middleware, transport setup, or typed clients.
+description: Use when changing apps/dashboard server routes, oRPC contracts, handlers, middleware, transport setup, or typed clients.
 ---
 
 # oRPC server
 
-`packages/api` owns the router and its runtime delegation; `apps/server` is the transport adapter and composition root that serves it.
+`packages/api` owns the router and its runtime delegation; `apps/dashboard`'s `server/` directory is the transport adapter and composition root that serves it, alongside the app's own Nuxt frontend.
 
 ## Rules
 
 - Keep procedure contracts and router composition in `packages/api/src/orpc/router.ts`, and the
   control-plane operations they delegate to in `packages/api/src/operations.ts`,
   `control-plane.ts`, `access.ts`, and `dashboard.ts`. `packages/api` holds no HTTP host of its
-  own — it only exports `rpcRouter`, `createAuthApp`, and the plain functions those depend on.
-- The HTTP host is Nitro v3 registered as a Vite plugin next to ViteHub (`apps/server/vite.config.ts`,
-  `apps/server/nitro.config.ts`). HTTP routes live in `apps/server/server/`:
+  own — it only exports `rpcRouter`, `requestLoggerStorage`, and the plain functions those depend
+  on. It does not depend on `packages/auth`.
+- The HTTP host is Nuxt's own Nitro server. Routes live in `apps/dashboard/server/`:
   - `routes/rpc/[...].ts` mounts `rpcRouter` over `RPCHandler` (the typed RPC transport).
   - `api/v1/[...].ts` mounts the same `rpcRouter` over `OpenAPIHandler` (REST + docs at `/api/v1/docs`).
-  - `api/auth/[...].ts` mounts `createAuthApp`'s Hono app (the only route with a database credential).
+  - `auth.config.ts` (at the `server/` root) configures `@onmax/nuxt-better-auth`, which mounts
+    `/api/auth/**` itself — there is no hand-written auth route file.
   - `api/dashboard.get.ts` serves the aggregate dashboard view.
-  `apps/server/src/` stays a thin transport-neutral leftover (currently just `port.ts`).
-- `.route({ method, path, tags, summary })` on a procedure in `router.ts` only affects the OpenAPI
-  transport; the RPC transport ignores it. Add it whenever a procedure should be reachable over
-  `/api/v1/**`, which today means every procedure.
+  Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports:
+  `apps/dashboard/tsconfig.json`'s plain `tsc` pass (part of `typecheck`, separate from `vue-tsc`)
+  has no visibility into Nuxt's generated ambient auto-import types.
+- Classic h3 (`import { defineEventHandler, toWebRequest } from 'h3'`), not the standalone Nitro v3
+  package: Nuxt 4 here bundles `@nuxt/nitro-server`/`nitropack` v2, which pins `h3@1.x`, not the
+  `nitro`/`nitro/h3` packages' Fetch-first `defineHandler`/`EventHandlerWithFetch` API. Use
+  `toWebRequest(event)` to get a standard `Request` for oRPC's `handler.handle(request, {...})`,
+  and return a `Response` directly — h3 detects and serves it.
+- Declare a procedure's HTTP method, path, tags, and summary with `.meta(openapi({...}))`
+  (`import { openapi } from '@orpc/openapi'`), not the `.route({...})` sugar from
+  `@orpc/openapi/extensions/route`. That extension patches `.route()` onto the builder via a bare
+  side-effect import; Nitro's production bundler tree-shakes it away even though the package's own
+  `sideEffects` field marks the module as one to keep, silently dropping every `/api/v1/**` route
+  while `/rpc/**` and the build both still look fine. `.meta(openapi(...))` is a real import a
+  bundler can't discard, and is what `.route()` expands to internally. This metadata only affects
+  the OpenAPI transport; the RPC transport ignores it. Add it whenever a procedure should be
+  reachable over `/api/v1/**`, which today means every procedure.
 - Infer client types from the router; do not duplicate request or response interfaces.
 - Validate inputs at the procedure boundary and return stable domain-shaped results.
 - Procedures call the agent runtime through typed APIs. They do not execute shell commands or
   mutate checkouts directly.
 - Persist through the `KeyValueStorage` contract, adapted over the ViteHub KV Runtime Helper in
-  `apps/server/server/utils/store.ts`, so KV drivers stay interchangeable; never store review
-  input or checkout paths.
+  `apps/dashboard/server/utils/store.ts`, so KV drivers stay interchangeable; never store review
+  input or checkout paths. ViteHub is composed into Nuxt's own Nitro build by the local
+  `apps/dashboard/modules/vitehub.ts` Nuxt module (calling `vite-hub/nuxt`'s undocumented
+  `viteHubNuxtModule(options, nuxt)` export directly — there is no `modules: ['vite-hub/nuxt']`
+  one-liner). Prove KV changes with a real `nuxt build` and a request against a route that reads
+  the store, not just `nuxt prepare` or a type check.
 - Keep transport-specific headers, status mapping, and request objects out of runtime packages.
-- Nitro v3 plus ViteHub is the only top-level HTTP host; do not introduce Express or a second one.
-  Hono exists only inside `packages/api/src/auth-app.ts`, as the fetch-compatible shape Better
-  Auth already expects — it is mounted by one Nitro route, not a competing server.
+- Nuxt's Nitro server is the only top-level HTTP host; do not introduce Express, Hono, or a second
+  one.
+- Request logging goes through `EvlogHandlerPlugin` (`@orpc/evlog`), configured with
+  `packages/api`'s shared `requestLoggerStorage` in every transport's `plugins` array. Read the
+  logger inside a procedure with `requestLoggerStorage?.getStore()?.set({...})` — never the
+  throwing `useLogger()` helper, which errors outside a request the plugin instrumented, including
+  `createRouterClient` tests.
 
 ## Workflow
 
 1. Read the router, its tests, and the runtime method being exposed.
 2. Define or adjust the oRPC procedure contract in `packages/api/src/orpc/router.ts`, including its
-   `.route()` metadata.
+   `.meta(openapi(...))` metadata.
 3. Keep the handler thin: validate, authorize, delegate, translate.
 4. Add router tests with `createRouterClient`, without opening a real network port.
 5. Update the README client example when the public router shape changes.
-6. Run `aube run test --filter @agent-zero/api`, then `--filter @agent-zero/server`, typecheck, and build.
+6. Run `aube run test --filter @agent-zero/api`, then `--filter @agent-zero/dashboard`, typecheck,
+   and build. For KV or transport-mounting changes, also run a real `nuxt build` and hit the route.

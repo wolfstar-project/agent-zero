@@ -2,17 +2,18 @@ import {
   accessFromEnvironment,
   authenticate,
   mayTargetRepository,
+  requestLoggerStorage,
   rpcRouter,
   type RpcContext,
 } from '@agent-zero/api';
 import { redactSecrets } from '@agent-zero/shared';
+import { EvlogHandlerPlugin } from '@orpc/evlog';
 import { OpenAPIGenerator } from '@orpc/openapi';
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
 import { OpenAPIReferenceHandlerPlugin } from '@orpc/openapi/plugins';
 import { CORSPlugin } from '@orpc/server/plugins';
 import { ZodToJsonSchemaConverter } from '@orpc/zod';
-import { defineHandler } from 'nitro';
-import type { EventHandlerWithFetch } from 'nitro/h3';
+import { defineEventHandler, toWebRequest } from 'h3';
 
 import { json, messageOf } from '../../utils/respond.js';
 import { taskStore } from '../../utils/store.js';
@@ -28,6 +29,7 @@ const generator = new OpenAPIGenerator({ converters: [new ZodToJsonSchemaConvert
 const handler = new OpenAPIHandler(rpcRouter, {
   plugins: [
     new CORSPlugin(),
+    new EvlogHandlerPlugin({ storage: requestLoggerStorage }),
     new OpenAPIReferenceHandlerPlugin({
       docsPath: '/docs',
       specPath: '/openapi.json',
@@ -41,15 +43,16 @@ const handler = new OpenAPIHandler(rpcRouter, {
 // Fails closed: without configured tokens every mutation is rejected while reads stay open.
 const access = accessFromEnvironment();
 
-const route: EventHandlerWithFetch = defineHandler(async (event) => {
+const route = defineEventHandler(async (event) => {
+  const request = toWebRequest(event);
   try {
-    const principal = authenticate(event.req.headers.get('authorization') ?? undefined, access);
+    const principal = authenticate(request.headers.get('authorization') ?? undefined, access);
     const context: RpcContext = {
       store: taskStore,
       ...(principal ? { principal } : {}),
       mayTargetRepository: (repository) => mayTargetRepository(repository, access),
     };
-    const { matched, response } = await handler.handle(event.req, {
+    const { matched, response } = await handler.handle(request, {
       prefix: '/api/v1',
       context,
     });

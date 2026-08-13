@@ -10,7 +10,6 @@
     { "path": "packages/cli" },
     { "path": "packages/auth" },
     { "path": "packages/api" },
-    { "path": "apps/dashboard" },
-    { "path": "apps/server" }
+    { "path": "apps/dashboard" }
   ]
 }

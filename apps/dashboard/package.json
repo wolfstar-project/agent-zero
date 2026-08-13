@@ -28,10 +28,13 @@
     "@agent-zero/auth": "workspace:*",
     "@agent-zero/shared": "workspace:*",
     "@onmax/nuxt-better-auth": "^0.0.7",
+    "@orpc/evlog": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",
     "@orpc/server": "2.0.0-beta.26",
     "@orpc/zod": "2.0.0-beta.26",
     "better-auth": "^1.6.26",
+    "evlog": "^2.26.0",
+    "h3": "^1.15.11",
     "nuxt": "^4.5.2",
     "vite-hub": "^0.0.3",
     "vue-i18n": "^11.4.8"

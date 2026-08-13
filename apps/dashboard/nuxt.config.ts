@@ -25,6 +25,7 @@ export default defineNuxtConfig({
     compatibilityVersion: 5,
   },
   modules: [
+    './modules/vitehub',
     '@unocss/nuxt',
     '@nuxt/icon',
     '@nuxtjs/i18n',

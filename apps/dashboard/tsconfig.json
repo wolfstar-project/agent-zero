@@ -10,6 +10,8 @@
   "include": [
     "app/**/*.ts",
     "config/**/*.ts",
+    "modules/**/*.ts",
+    "server/**/*.ts",
     "shared/**/*.ts",
     "i18n/locale-features.json",
     "lunaria.config.ts",

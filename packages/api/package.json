@@ -43,8 +43,10 @@
     "@agent-zero/runner": "workspace:*",
     "@agent-zero/shared": "workspace:*",
     "@orpc/contract": "2.0.0-beta.26",
+    "@orpc/evlog": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",
     "@orpc/server": "2.0.0-beta.26",
+    "evlog": "^2.26.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

@@ -2,18 +2,21 @@ import {
   accessFromEnvironment,
   authenticate,
   mayTargetRepository,
+  requestLoggerStorage,
   rpcRouter,
   type RpcContext,
 } from '@agent-zero/api';
 import { redactSecrets } from '@agent-zero/shared';
+import { EvlogHandlerPlugin } from '@orpc/evlog';
 import { RPCHandler } from '@orpc/server/fetch';
-import { defineHandler } from 'nitro';
-import type { EventHandlerWithFetch } from 'nitro/h3';
+import { defineEventHandler, toWebRequest } from 'h3';
 
 import { json, messageOf } from '../../utils/respond.js';
 import { taskStore } from '../../utils/store.js';
 
-const handler = new RPCHandler(rpcRouter);
+const handler = new RPCHandler(rpcRouter, {
+  plugins: [new EvlogHandlerPlugin({ storage: requestLoggerStorage })],
+});
 // Fails closed: without configured tokens every mutation is rejected while reads stay open.
 const access = accessFromEnvironment();
 
@@ -24,15 +27,16 @@ const access = accessFromEnvironment();
  * no checkout, so an HTTP client cannot reach a repository except through the procedures in
  * {@link rpcRouter}, which run behind the runner boundary.
  */
-const route: EventHandlerWithFetch = defineHandler(async (event) => {
+const route = defineEventHandler(async (event) => {
+  const request = toWebRequest(event);
   try {
-    const principal = authenticate(event.req.headers.get('authorization') ?? undefined, access);
+    const principal = authenticate(request.headers.get('authorization') ?? undefined, access);
     const context: RpcContext = {
       store: taskStore,
       ...(principal ? { principal } : {}),
       mayTargetRepository: (repository) => mayTargetRepository(repository, access),
     };
-    const { matched, response } = await handler.handle(event.req, {
+    const { matched, response } = await handler.handle(request, {
       prefix: '/rpc',
       context,
     });

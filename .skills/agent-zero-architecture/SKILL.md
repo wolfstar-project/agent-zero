@@ -16,10 +16,17 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
-- `auth`: authentication policy and the Better Auth instance factory. No HTTP server, no runtime imports.
-- `api`: the oRPC router, control-plane operations (task persistence, scheduling), and the Better Auth Hono mount. Composes the runtime, GitHub, models, config, and auth packages; nothing composes into it. Holds no HTTP host of its own.
-- `apps/server`: the Nitro v3 + ViteHub composition root that constructs a runner and serves `packages/api`'s router over `/rpc/**` (RPC) and `/api/v1/**` (OpenAPI), plus `/api/auth/**` and `/api/dashboard`. The only component with a database credential. See the `orpc-server` skill.
-- `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
+- `auth`: authentication policy and a Better Auth options factory (`authBetterAuthOptions`), plus a
+  standalone instance factory (`createAuth`) for callers that own their own secret and origin. No
+  HTTP server, no runtime imports.
+- `api`: the oRPC router and control-plane operations (task persistence, scheduling). Composes the
+  runtime, GitHub, models, and config packages; nothing composes into it, and it does not depend on
+  `auth`. Holds no HTTP host of its own.
+- `apps/dashboard`: the single deployable app and composition root. A Nuxt app that constructs a
+  runner and, from its `server/` directory, serves `packages/api`'s router over `/rpc/**` (RPC) and
+  `/api/v1/**` (OpenAPI), plus `GET /api/dashboard`, and mounts Better Auth in-process at
+  `/api/auth/**` via `server/auth.config.ts` (`@onmax/nuxt-better-auth`, full mode, SSR-aware). The
+  only component with a database credential. See the `orpc-server` skill.
 
 ## Workflow
 

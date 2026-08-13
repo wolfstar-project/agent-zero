@@ -13,14 +13,11 @@
     "nano-staged",
   ],
   "workspaces": {
-    "apps/server": {
-      // Nitro discovers server routes, middleware, and utilities from the
-      // filesystem, so knip cannot see who references them.
-      "entry": ["server/**/*.ts", "vite.config.ts", "nitro.config.ts"],
-    },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does
       // not scan, and Nuxt auto-imports components, composables, and utils.
+      // Nitro likewise discovers server routes and this local module from the
+      // filesystem, so knip cannot see who references them either.
       "entry": [
         "app/app.vue",
         // Loaded by `@onmax/nuxt-better-auth` from its configured `clientConfig` path.
@@ -33,6 +30,10 @@
         "app/middleware/**/*.ts",
         "app/plugins/**/*.ts",
         "app/utils/**/*.ts",
+        "modules/**/*.ts",
+        "server/**/*.ts",
+        // Loaded by `@onmax/nuxt-better-auth` from its configured `serverConfig` path.
+        "server/auth.config.ts",
       ],
       // The `nuxt` Vitest environment resolves to vitest-environment-nuxt,
       // which `@nuxt/test-utils` ships as its own dependency. @nuxt/icon
