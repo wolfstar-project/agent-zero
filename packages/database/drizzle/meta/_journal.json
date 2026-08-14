@@ -15,6 +15,13 @@
       "when": 1786470134471,
       "tag": "0001_peaceful_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786746798312,
+      "tag": "0002_fast_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

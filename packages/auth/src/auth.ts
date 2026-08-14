@@ -1,4 +1,5 @@
 import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
+import { betterEnrollment } from '@octopi-ai/better-enrollment';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -21,6 +22,25 @@ export type SendInvitationEmail = (invitation: {
   readonly acceptUrl: string;
 }) => Promise<void>;
 
+/**
+ * Delivers a private (email-bound) enrollment invitation.
+ *
+ * Declared structurally for the same reason {@link SendInvitationEmail} is. The link is never
+ * returned to whoever created the invitation, so this callback is the only path it travels: it
+ * exists solely in the recipient's mailbox, which is what makes presenting the token proof of
+ * mailbox access and lets redemption mark the address verified.
+ */
+export type SendPrivateInvitationEmail = (invitation: {
+  readonly to: string;
+  /** The invitee's name when the inviter supplied one. */
+  readonly name: string | null;
+  readonly inviterName: string;
+  /** Set when the invitation grants membership in, or founding of, an organization. */
+  readonly organizationName: string | null;
+  /** Absolute URL that redeems the invitation. Carries the only copy of the token. */
+  readonly acceptUrl: string;
+}) => Promise<void>;
+
 /** Everything Better Auth's policy shape needs that isn't signing or origin configuration. */
 export interface AuthDatabaseOptions {
   /**
@@ -34,7 +54,7 @@ export interface AuthDatabaseOptions {
   readonly github?: GithubOauthCredentials;
   /**
    * Dashboard origin invitation links point at, so a recipient lands on the UI, not the API.
-   * Required when organizations are enabled.
+   * Required when organizations or invitations are enabled.
    */
   readonly dashboardUrl?: string;
   /**
@@ -42,6 +62,13 @@ export interface AuthDatabaseOptions {
    * invitation would be created that nobody is ever told about.
    */
   readonly sendInvitationEmail?: SendInvitationEmail;
+  /**
+   * How private enrollment invitations are delivered. Required when invitations are enabled, for
+   * the same reason {@link sendInvitationEmail} is: the link is deliberately never shown to its
+   * creator, so a deployment without a transport could create invitations that are unreachable by
+   * anyone, including the person who made them.
+   */
+  readonly sendPrivateInvitationEmail?: SendPrivateInvitationEmail;
 }
 
 /** Everything the Better Auth instance needs that is not policy. */
@@ -63,7 +90,7 @@ export interface AuthInstanceOptions extends AuthDatabaseOptions {
  */
 export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
   BetterAuthOptions,
-  'database' | 'emailAndPassword' | 'session' | 'socialProviders'
+  'database' | 'emailAndPassword' | 'session' | 'socialProviders' | 'user'
 > & {
   // Declared here rather than picked from `BetterAuthOptions`: that interface's own `plugins`
   // field is typed `... | undefined` explicitly, which trips `exactOptionalPropertyTypes` at
@@ -80,9 +107,12 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
     throw new Error('organizations are enabled but no sendInvitationEmail was provided');
   if (config.enableOrganizations && !options.dashboardUrl)
     throw new Error('organizations are enabled but no dashboardUrl was provided');
+  if (config.enableInvitations && !options.sendPrivateInvitationEmail)
+    throw new Error('invitations are enabled but no sendPrivateInvitationEmail was provided');
+  if (config.enableInvitations && !options.dashboardUrl)
+    throw new Error('invitations are enabled but no dashboardUrl was provided');
 
-  const sendInvitationEmail = options.sendInvitationEmail;
-  const dashboardUrl = options.dashboardUrl;
+  const plugins = authPlugins(options);
 
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
@@ -105,32 +135,108 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
     session: {
       expiresIn: config.sessionMaximumAgeSeconds,
     },
+    // Declared unconditionally, because the column exists in every deployment's store whether or
+    // not invitations are enabled, and a field the adapter does not know about is one it silently
+    // drops on write. Better Auth keeps multiple roles in this one comma-separated string, so any
+    // code that sets it must send the full set: a partial write is a silent revocation, not a
+    // merge. Invitation redemption is the only path that merges rather than replaces.
+    user: { additionalFields: { role: { type: 'string', required: false, input: false } } },
     ...(options.github
       ? { socialProviders: { github: { ...options.github, disableSignUp: !config.enableSignup } } }
       : {}),
-    plugins:
-      config.enableOrganizations && dashboardUrl
-        ? [
-            organization({
-              allowUserToCreateOrganization: config.allowUserToCreateOrganization,
-              membershipLimit: config.organizationMembershipLimit,
-              invitationExpiresIn: config.invitationExpiresInSeconds,
-              sendInvitationEmail: async (data) => {
-                // Checked in the guard above; narrowing here keeps the callback total.
-                const send = sendInvitationEmail;
-                if (!send) return;
-                await send({
-                  to: data.email,
-                  organizationName: data.organization.name,
-                  // Better Auth exposes the inviter as a member record wrapping the user.
-                  inviterName: data.inviter.user.name,
-                  acceptUrl: invitationAcceptUrl(dashboardUrl, data.id),
-                });
-              },
-            }),
-          ]
-        : [],
+    plugins,
   };
+}
+
+/**
+ * Assemble the plugin list for a policy.
+ *
+ * Built imperatively into a `BetterAuthPlugin[]` rather than spread out of conditionals, because
+ * each plugin's own return type is narrower than the interface and only stays assignable while the
+ * target type is in view at the point it is added.
+ */
+function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
+  const { config, dashboardUrl, sendInvitationEmail, sendPrivateInvitationEmail } = options;
+  const plugins: BetterAuthPlugin[] = [];
+
+  if (config.enableOrganizations && dashboardUrl) {
+    plugins.push(
+      organization({
+        allowUserToCreateOrganization: config.allowUserToCreateOrganization,
+        membershipLimit: config.organizationMembershipLimit,
+        invitationExpiresIn: config.invitationExpiresInSeconds,
+        sendInvitationEmail: async (data) => {
+          // Checked in the guard above; narrowing here keeps the callback total.
+          const send = sendInvitationEmail;
+          if (!send) return;
+          await send({
+            to: data.email,
+            organizationName: data.organization.name,
+            // Better Auth exposes the inviter as a member record wrapping the user.
+            inviterName: data.inviter.user.name,
+            acceptUrl: invitationAcceptUrl(dashboardUrl, data.id),
+          });
+        },
+      }),
+    );
+  }
+
+  // Added after the organization plugin, which it detects at construction to decide whether the
+  // `org-join` and `org-create` invitation kinds exist at all.
+  if (config.enableInvitations && dashboardUrl) {
+    const enrollment = betterEnrollment({
+      // Derived from the sign-up configuration rather than configured twice: with
+      // `enableSignup` off every sign-up route is closed and invitations are the only way in,
+      // and with it on they degrade to role and organization grants. Stating a mode here as
+      // well is how the two drift apart.
+      mode: 'auto',
+      validRoles: [...config.userRoles],
+      defaultRole: config.defaultUserRole,
+      adminRoles: [...config.inviteAdminRoles],
+      expiresIn: config.inviteExpiresInSeconds,
+      publicExpiresIn: config.inviteExpiresInSeconds,
+      buildInviteUrl: ({ token }) => inviteRedeemUrl(dashboardUrl, token),
+      sendPrivateInvitation: async (data) => {
+        // Checked in the guard above; narrowing here keeps the callback total.
+        const send = sendPrivateInvitationEmail;
+        if (!send) return;
+        await send({
+          to: data.email,
+          name: data.name,
+          inviterName: data.inviterName,
+          organizationName: data.organizationName,
+          acceptUrl: data.url,
+        });
+      },
+      ...(config.enableOrganizations
+        ? {
+            organization: {
+              // Seats and memberships are the same cap seen from two sides, so they read from
+              // one setting: a deployment cannot end up rejecting an invitation for an
+              // organization that still has room, or the reverse.
+              defaultSeatLimit: config.organizationMembershipLimit,
+            },
+          }
+        : {}),
+    });
+
+    // The plugin declares the table groups it adds conditionally — `organization` and `user`
+    // appear only when org features or additional user fields are configured — as
+    // `?: ... | undefined`, and under `exactOptionalPropertyTypes` an explicit `undefined` is not
+    // assignable to Better Auth's merely-optional entries. Dropping the absent groups rather than
+    // asserting the type away keeps the check honest and says the same thing at runtime: a table
+    // group that is not there should be missing, not present and undefined.
+    plugins.push({
+      ...enrollment,
+      schema: Object.fromEntries(
+        Object.entries(enrollment.schema).filter(
+          (entry): entry is [string, NonNullable<(typeof entry)[1]>] => entry[1] !== undefined,
+        ),
+      ),
+    });
+  }
+
+  return plugins;
 }
 
 /**
@@ -161,6 +267,20 @@ function invitationAcceptUrl(dashboardUrl: string, invitationId: string): string
     `/organizations/accept-invitation/${encodeURIComponent(invitationId)}`,
     dashboardUrl,
   ).toString();
+}
+
+/**
+ * Build the link an enrollment invitation points at.
+ *
+ * One path for every invitation kind and both modes, carrying only the token: what the page has to
+ * render is decided by the auth server when it reads the token, so the URL never encodes whether
+ * the recipient is joining an organization, founding one, or merely signing up. That also keeps
+ * the link from disclosing anything about the invitation to whoever it is forwarded to.
+ */
+function inviteRedeemUrl(dashboardUrl: string, token: string): string {
+  const url = new URL('/invite', dashboardUrl);
+  url.searchParams.set('token', token);
+  return url.toString();
 }
 
 /** Missing configuration is a deployment error, not something to paper over with a default. */

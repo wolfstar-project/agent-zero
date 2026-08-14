@@ -89,6 +89,8 @@ describe('schema', () => {
     expect(Object.keys(schema).toSorted()).toEqual([
       'account',
       'invitation',
+      'invite',
+      'inviteUse',
       'member',
       'organization',
       'session',

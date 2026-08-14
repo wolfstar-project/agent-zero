@@ -37,7 +37,9 @@
   },
   "dependencies": {
     "@agent-zero/database": "workspace:*",
-    "better-auth": "^1.6.26"
+    "@octopi-ai/better-enrollment": "^0.3.0",
+    "better-auth": "^1.6.26",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "oxlint": "^1.44.0",

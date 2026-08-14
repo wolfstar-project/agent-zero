@@ -7,17 +7,22 @@ export {
   type AuthInstance,
   type AuthInstanceOptions,
   type SendInvitationEmail,
+  type SendPrivateInvitationEmail,
   type Session,
   type User,
 } from './auth.js';
 export {
+  ADMIN_USER_ROLE,
   authConfigFromEnvironment,
+  DEFAULT_USER_ROLE,
   defaultAuthConfig,
   githubCredentialsFromEnvironment,
   INVITATION_EXPIRES_IN_SECONDS,
+  INVITE_EXPIRES_IN_SECONDS,
   MINIMUM_PASSWORD_LENGTH,
   ORGANIZATION_MEMBERSHIP_LIMIT,
   SESSION_MAXIMUM_AGE_SECONDS,
+  USER_ROLES,
   type AuthConfig,
   type GithubOauthCredentials,
 } from './config.js';

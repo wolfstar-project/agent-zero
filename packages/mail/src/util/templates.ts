@@ -15,6 +15,19 @@ export interface MailTemplateContext {
     /** Absolute URL that accepts the invitation. Carries a single-use token. */
     readonly acceptUrl: string;
   };
+  readonly privateInvitation: {
+    /** The invitee's name when the inviter supplied one, otherwise empty. */
+    readonly name: string;
+    /** Who sent the invitation, shown so the recipient can judge whether it is expected. */
+    readonly inviterName: string;
+    /** The organization the invitation grants access to, or empty for an app-wide invitation. */
+    readonly organizationName: string;
+    /**
+     * Absolute URL that redeems the invitation. Carries the only copy of the token, which is why
+     * this message is the sole place it ever appears.
+     */
+    readonly acceptUrl: string;
+  };
   readonly emailVerification: {
     readonly name: string;
     readonly verifyUrl: string;
@@ -37,6 +50,10 @@ export const mailTemplates: Readonly<Record<MailTemplateId, MailTemplateDefiniti
   organizationInvitation: {
     file: 'OrganizationInvitation.vue',
     subject: 'You have been invited to an organization',
+  },
+  privateInvitation: {
+    file: 'PrivateInvitation.vue',
+    subject: 'You have been invited to Agent Zero',
   },
   emailVerification: {
     file: 'EmailVerification.vue',

@@ -67,6 +67,26 @@ describe('authConfigFromEnvironment', () => {
     ).toBe(true);
   });
 
+  it('keeps invitations disabled unless explicitly opted in', () => {
+    expect(authConfigFromEnvironment({}).enableInvitations).toBe(false);
+    expect(authConfigFromEnvironment({ AUTH_ENABLE_INVITATIONS: 'TRUE' }).enableInvitations).toBe(
+      false,
+    );
+    expect(authConfigFromEnvironment({ AUTH_ENABLE_INVITATIONS: 'true' }).enableInvitations).toBe(
+      true,
+    );
+  });
+
+  it('keeps invitations independent of whether self-registration is open', () => {
+    // With signup off they are the only way in; with it on they stay useful as role grants.
+    for (const AUTH_ENABLE_SIGNUP of ['false', 'true']) {
+      expect(
+        authConfigFromEnvironment({ AUTH_ENABLE_SIGNUP, AUTH_ENABLE_INVITATIONS: 'true' })
+          .enableInvitations,
+      ).toBe(true);
+    }
+  });
+
   it('refuses to advertise organization creation while organizations are off', () => {
     // A stale AUTH_ALLOW_ORGANIZATION_CREATION must not survive turning the feature back off.
     expect(

@@ -40,6 +40,21 @@ const options = authBetterAuthOptions({
             templateId: 'organizationInvitation',
             context: { organizationName, inviterName, acceptUrl },
           }),
+        // The enrollment plugin deliberately never returns a private invitation's link to whoever
+        // created it, so this callback is the only path the token travels. The template renders
+        // the optional halves away rather than printing "null": an invitation with no invitee name
+        // or no organization is the ordinary app-wide case, not a missing value.
+        sendPrivateInvitationEmail: ({ to, name, inviterName, organizationName, acceptUrl }) =>
+          sendMail({
+            to,
+            templateId: 'privateInvitation',
+            context: {
+              name: name ?? '',
+              inviterName,
+              organizationName: organizationName ?? '',
+              acceptUrl,
+            },
+          }),
       }
     : {}),
 });
@@ -65,7 +80,14 @@ export default defineServerAuth(
         // Better Auth's memory adapter needs each model's collection to exist up front, even
         // empty — an absent key throws "Model <name> not found" on the first query rather than
         // being treated as an empty table.
-        database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+        database: memoryAdapter({
+          user: [],
+          session: [],
+          account: [],
+          verification: [],
+          invite: [],
+          inviteUse: [],
+        }),
         // The default rate limiter can't determine a per-client IP in this sandboxed preview
         // server, so it falls back to one shared bucket across every request. A parallel
         // Playwright run's repeated sign-up/sign-in calls exhaust that bucket in a few tests;
