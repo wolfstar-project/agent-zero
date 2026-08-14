@@ -1,3 +1,4 @@
+import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -5,8 +6,6 @@ import { organization } from 'better-auth/plugins';
 
 import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './config.js';
 import type { AuthConfig, GithubOauthCredentials } from './config.js';
-import { createAuthDatabase } from './database.js';
-import { schema } from './schema.js';
 
 /**
  * Delivers an organization invitation.
@@ -24,7 +23,12 @@ export type SendInvitationEmail = (invitation: {
 
 /** Everything Better Auth's policy shape needs that isn't signing or origin configuration. */
 export interface AuthDatabaseOptions {
-  /** Postgres connection string holding users and sessions. */
+  /**
+   * Postgres connection string holding users and sessions.
+   *
+   * The pool is opened by `@agent-zero/database`, which owns the schema and the migrations for
+   * those tables.
+   */
   readonly databaseUrl: string;
   readonly config: AuthConfig;
   readonly github?: GithubOauthCredentials;
@@ -82,8 +86,12 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
 
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
+  //
+  // The client and the tables both come from `@agent-zero/database`: this package owns
+  // authentication policy, not the store, so the shape of `user` and `session` stays reviewable in
+  // one place and any other consumer of those tables sees the same declarations.
   const database: BetterAuthOptions['database'] = drizzleAdapter(
-    createAuthDatabase(options.databaseUrl),
+    createDatabase({ connectionString: options.databaseUrl }),
     { provider: 'pg', schema },
   );
 
@@ -172,15 +180,17 @@ function requireEnvironmentValue(
  * policy shape (no signing, no origin) should not be made to supply one, and one that needs
  * invitation links resolves `dashboardUrl` through {@link authOptionsFromEnvironment} instead.
  *
- * The error messages name the variable but never echo its value, so a misconfigured deployment
- * cannot leak a secret or a connection string into a crash log.
+ * The connection string is resolved by `@agent-zero/database` so the store has one variable
+ * regardless of which process opens it; it accepts the pre-split `AUTH_DATABASE_URL` as well. The
+ * error messages name the variable but never echo its value, so a misconfigured deployment cannot
+ * leak a secret or a connection string into a crash log.
  */
 export function authDatabaseOptionsFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthDatabaseOptions {
   const github = githubCredentialsFromEnvironment(environment);
   return {
-    databaseUrl: requireEnvironmentValue(environment, 'AUTH_DATABASE_URL'),
+    databaseUrl: databaseUrlFromEnvironment(environment),
     config: authConfigFromEnvironment(environment),
     ...(github ? { github } : {}),
   };

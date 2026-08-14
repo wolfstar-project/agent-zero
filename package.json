@@ -9,6 +9,8 @@
     "build": "turbo run build",
     "check:repo": "node scripts/check-repository.mjs",
     "clean": "turbo run clean && tsc -b --clean",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate",
     "dev": "turbo run dev",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",

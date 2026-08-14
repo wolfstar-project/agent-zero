@@ -12,7 +12,7 @@ const completeEnvironment = {
   BETTER_AUTH_SECRET: 'a-very-secret-value',
   BETTER_AUTH_URL: 'http://localhost:3001',
   AUTH_DASHBOARD_ORIGIN: 'http://localhost:3000',
-  AUTH_DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/agent_zero_auth',
+  DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/agent_zero_auth',
 };
 
 const MISSING_URL_MESSAGE = /missing required environment variable: BETTER_AUTH_URL/;
@@ -37,8 +37,16 @@ describe('authOptionsFromEnvironment', () => {
 
   it('reads the database connection string from the environment', () => {
     expect(authOptionsFromEnvironment(completeEnvironment).databaseUrl).toBe(
-      completeEnvironment.AUTH_DATABASE_URL,
+      completeEnvironment.DATABASE_URL,
     );
+  });
+
+  it('still accepts AUTH_DATABASE_URL from a deployment configured before the split', () => {
+    const { DATABASE_URL, ...environment } = completeEnvironment;
+
+    expect(
+      authOptionsFromEnvironment({ ...environment, AUTH_DATABASE_URL: DATABASE_URL }).databaseUrl,
+    ).toBe(DATABASE_URL);
   });
 
   it('omits GitHub unless both credentials are configured', () => {
@@ -52,7 +60,7 @@ describe('authOptionsFromEnvironment', () => {
     ).toEqual({ clientId: 'id', clientSecret: 'secret' });
   });
 
-  it.each(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'AUTH_DASHBOARD_ORIGIN', 'AUTH_DATABASE_URL'])(
+  it.each(['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL', 'AUTH_DASHBOARD_ORIGIN', 'DATABASE_URL'])(
     'refuses to start without %s',
     (name) => {
       const environment = { ...completeEnvironment, [name]: '' };
@@ -82,7 +90,7 @@ describe('authOptionsFromEnvironment', () => {
 
 describe('createAuth with organizations', () => {
   const instanceOptions = {
-    databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+    databaseUrl: completeEnvironment.DATABASE_URL,
     secret: completeEnvironment.BETTER_AUTH_SECRET,
     baseUrl: completeEnvironment.BETTER_AUTH_URL,
     trustedOrigins: [completeEnvironment.AUTH_DASHBOARD_ORIGIN],
@@ -107,22 +115,30 @@ describe('createAuth with organizations', () => {
 describe('authDatabaseOptionsFromEnvironment', () => {
   it('reads the database connection string without requiring signing or origin variables', () => {
     const options = authDatabaseOptionsFromEnvironment({
-      AUTH_DATABASE_URL: completeEnvironment.AUTH_DATABASE_URL,
+      DATABASE_URL: completeEnvironment.DATABASE_URL,
     });
 
-    expect(options.databaseUrl).toBe(completeEnvironment.AUTH_DATABASE_URL);
+    expect(options.databaseUrl).toBe(completeEnvironment.DATABASE_URL);
     expect(options.github).toBeUndefined();
   });
 
-  it('refuses to start without AUTH_DATABASE_URL', () => {
-    expect(() => authDatabaseOptionsFromEnvironment({})).toThrow('AUTH_DATABASE_URL');
+  it('still accepts AUTH_DATABASE_URL from a deployment configured before the split', () => {
+    const options = authDatabaseOptionsFromEnvironment({
+      AUTH_DATABASE_URL: completeEnvironment.DATABASE_URL,
+    });
+
+    expect(options.databaseUrl).toBe(completeEnvironment.DATABASE_URL);
+  });
+
+  it('refuses to start without DATABASE_URL', () => {
+    expect(() => authDatabaseOptionsFromEnvironment({})).toThrow('DATABASE_URL');
   });
 });
 
 describe('authBetterAuthOptions', () => {
   it('omits secret, baseURL, and trustedOrigins for a host that resolves them itself', () => {
     const options = authBetterAuthOptions({
-      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      databaseUrl: completeEnvironment.DATABASE_URL,
       config: defaultAuthConfig,
     });
 
@@ -134,13 +150,13 @@ describe('authBetterAuthOptions', () => {
 
   it('enables a GitHub social provider only when credentials are supplied', () => {
     const withoutGithub = authBetterAuthOptions({
-      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      databaseUrl: completeEnvironment.DATABASE_URL,
       config: defaultAuthConfig,
     });
     expect(withoutGithub.socialProviders).toBeUndefined();
 
     const withGithub = authBetterAuthOptions({
-      databaseUrl: completeEnvironment.AUTH_DATABASE_URL,
+      databaseUrl: completeEnvironment.DATABASE_URL,
       config: defaultAuthConfig,
       github: { clientId: 'id', clientSecret: 'secret' },
     });

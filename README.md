@@ -45,21 +45,22 @@ Source-control adapters (GitHub, GitLab, Bitbucket, Gitea) / CLI
         ▼
  Runner boundary ─── repository commands and file operations
 
-Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─── session store
+Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─── database ─── Postgres
 ```
 
-| Package                                                | Responsibility                                                                            |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                       |
-| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                            |
-| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                               |
-| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea) |
-| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                          |
-| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                            |
-| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                |
-| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth options factory                                 |
-| [`packages/api`](./packages/api)                       | oRPC router and control-plane operations                                                  |
-| [`apps/dashboard`](./apps/dashboard)                   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**`               |
+| Package                                                | Responsibility                                                                             |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                        |
+| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                             |
+| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                                |
+| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea)  |
+| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                           |
+| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                             |
+| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                 |
+| [`packages/database`](./packages/database)             | Schema, Drizzle client, and checked-in migrations; the only package that talks to Postgres |
+| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth options factory                                  |
+| [`packages/api`](./packages/api)                       | oRPC router and control-plane operations                                                   |
+| [`apps/dashboard`](./apps/dashboard)                   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**`                |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -135,13 +136,13 @@ Non-TypeScript or external callers can use plain HTTP against `/api/v1/**` inste
 
 The transport is Nuxt's own Nitro server: routes live in `apps/dashboard/server/`, and `nuxt build` emits a self-contained `.output/` bundle started with `node .output/server/index.mjs`. Task history persists through a `KeyValueStorage` contract backed by the ViteHub KV Runtime Helper (registered by the local `apps/dashboard/modules/vitehub.ts` module): filesystem-backed `fs-lite` by default, with Cloudflare KV, Deno KV, or Upstash dropping in as driver configuration without touching application code. Records are redacted before they are written and never contain review input or checkout paths. `TaskScheduler` bounds work globally and per repository, so a burst queues instead of fanning out unbounded runs.
 
-Authentication is mounted in-process at `/api/auth/**` by `apps/dashboard/server/auth.config.ts`, the one route in the app that resolves `AUTH_DATABASE_URL` and `BETTER_AUTH_SECRET` and therefore the only place in the repository that opens a connection to Postgres, accessed through [Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session store's schema lives in this repository as reviewable, checked-in SQL. The dashboard renders with SSR: the session cookie is same-origin, so the server resolves it directly and a signed-out visitor never flashes protected content before redirecting.
+Authentication is mounted in-process at `/api/auth/**` by `apps/dashboard/server/auth.config.ts`, the one route in the app that resolves `packages/auth`'s environment options — including the connection string, through [`packages/database`](./packages/database) — and therefore the only place in the repository that opens a connection to Postgres. `packages/database` declares the tables with [Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session store's schema lives in this repository as reviewable, checked-in SQL. The dashboard renders with SSR: the session cookie is same-origin, so the server resolves it directly and a signed-out visitor never flashes protected content before redirecting.
 
-Point `AUTH_DATABASE_URL` at a Postgres database, then apply the schema once before the first run
-(`db:generate` only needs to run again after editing `packages/auth/src/schema.ts`):
+Point `DATABASE_URL` at a Postgres database, then apply the schema once before the first run
+(`db:generate` only needs to run again after editing `packages/database/src/schema/`):
 
 ```bash
-aube --filter @agent-zero/auth run db:migrate
+aube run db:migrate
 ```
 
 The app reads auth configuration from the environment. Registration and GitHub OAuth are
@@ -150,10 +151,13 @@ off until you turn them on, so a fresh deployment cannot be signed up for by a s
 | Variable                                    | Required | Default | Purpose                                                                                                             |
 | ------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | `NUXT_BETTER_AUTH_SECRET`                   | yes      | –       | Session signing secret. Required under this name in production; `BETTER_AUTH_SECRET` is a development-only fallback |
-| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                                                                                          |
+| `DATABASE_URL`                              | yes      | –       | Postgres connection string                                                                                          |
 | `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration                                                                            |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set                                                                         |
 | `NUXT_PUBLIC_SITE_URL`                      | no       | –       | Base URL override for a custom domain or deterministic OAuth callbacks; auto-detected from the request otherwise    |
+
+`AUTH_DATABASE_URL` is still read when `DATABASE_URL` is unset, so a deployment configured before
+the store moved into `packages/database` keeps starting; prefer `DATABASE_URL` for new ones.
 
 The sign-in methods the login page offers are derived at build time from the same policy variables
 `server/auth.config.ts` reads at runtime (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
