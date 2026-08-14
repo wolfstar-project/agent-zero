@@ -23,11 +23,14 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports:
   `apps/dashboard/tsconfig.json`'s plain `tsc` pass (part of `typecheck`, separate from `vue-tsc`)
   has no visibility into Nuxt's generated ambient auto-import types.
-- Classic h3 (`import { defineEventHandler, toWebRequest } from 'h3'`), not the standalone Nitro v3
-  package: Nuxt 4 here bundles `@nuxt/nitro-server`/`nitropack` v2, which pins `h3@1.x`, not the
-  `nitro`/`nitro/h3` packages' Fetch-first `defineHandler`/`EventHandlerWithFetch` API. Use
-  `toWebRequest(event)` to get a standard `Request` for oRPC's `handler.handle(request, {...})`,
-  and return a `Response` directly — h3 detects and serves it.
+- `apps/dashboard` pins `nuxt` to the stable v4 channel (`^4.5.2` in `package.json`), whose
+  `@nuxt/nitro-server` depends on `nitropack` v2 + classic h3 (`h3@^1.15.11`, also a direct
+  dependency), not the standalone Nitro v3 package. Route handlers use classic h3's API:
+  `import { defineEventHandler, toWebRequest } from 'h3';`. Call `toWebRequest(event)` to get a
+  standard `Request`, pass it to `handler.handle(request, {...})`, and return the resulting
+  `Response`. Do not reach for Nitro v3's Fetch-first `defineHandler`/`EventHandlerWithFetch` from
+  `nitro`/`nitro/h3`; that API belongs to the unreleased `nuxt-nightly` v5 channel this project does
+  not use.
 - Declare a procedure's HTTP method, path, tags, and summary with `.meta(openapi({...}))`
   (`import { openapi } from '@orpc/openapi'`), not the `.route({...})` sugar from
   `@orpc/openapi/extensions/route`. That extension patches `.route()` onto the builder via a bare
