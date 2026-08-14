@@ -176,22 +176,62 @@ database. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwrig
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 
 Agent Zero supports native OpenAI, Anthropic, and Google Generative AI adapters, Vercel AI
-Gateway, and arbitrary OpenAI-compatible endpoints. Select the transport in repository policy and
-provide its credential through the environment:
+Gateway, arbitrary OpenAI-compatible endpoints, and two subscription transports that drive a
+locally authenticated vendor CLI. Select the transport in repository policy and provide its
+credential through the environment:
 
-| `model.provider`    | Credential environment variable                          | Model example                 |
-| ------------------- | -------------------------------------------------------- | ----------------------------- |
-| `ai-gateway`        | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
-| `anthropic`         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
-| `google`            | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
-| `openai`            | `OPENAI_API_KEY`                                         | `gpt-5`                       |
-| `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+| `model.provider`    | Credential kind | Credential environment variable                          | Model example                 |
+| ------------------- | --------------- | -------------------------------------------------------- | ----------------------------- |
+| `ai-gateway`        | api-key         | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
+| `anthropic`         | api-key         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
+| `google`            | api-key         | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
+| `openai`            | api-key         | `OPENAI_API_KEY`                                         | `gpt-5`                       |
+| `openai-compatible` | api-key         | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+| `claude-code`       | subscription    | none; `claude login` on the host                         | `opus`, `sonnet`              |
+| `codex-cli`         | subscription    | none; `codex login` on the host                          | `gpt-5.2-codex`               |
 
 `AGENT_ZERO_MODEL_BASE_URL` is an optional operator environment variable for custom gateways and
 self-hosted endpoints. Endpoint URLs and credentials cannot be named or embedded in
 `.agent-zero.yml`, so untrusted repository policy cannot redirect a provider secret. The AI Gateway
 accepts `provider/model` identifiers and exposes the broader AI SDK provider catalog without adding
 provider-specific logic to the Agent Zero runtime.
+
+#### Subscription transports
+
+`claude-code` and `codex-cli` spend an existing Claude Pro/Max or ChatGPT Plus/Pro subscription
+instead of a metered API key. They drive the vendor CLI installed on the host, so there is no
+credential for Agent Zero to read, rotate, or redact — the session lives in the CLI's own state.
+Both are off unless the matching operator flag is exactly `true`:
+
+```
+AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER=true   # requires: npm i -g @anthropic-ai/claude-code && claude login
+AGENT_ZERO_ENABLE_CODEX_CLI_PROVIDER=true     # requires: the Codex CLI on PATH && codex login
+```
+
+`AGENT_ZERO_CLAUDE_CODE_PATH` and `AGENT_ZERO_CODEX_PATH` point at the executable when it is not on
+`PATH`. `zero doctor` runs the CLI's `--version` through the runner boundary and reports whether it
+is installed; an expired session can only be detected by a real call, and surfaces as
+`Run \`claude login\` on this host` rather than a spawn error.
+
+Known limits, all of which follow from the session being local:
+
+- **Single-tenant.** Every run on the host shares one personal account. Rate limits are the
+  subscription's, not the request's, and there is no per-user isolation. Do not select these
+  transports for a multi-tenant control plane; scope them to one administrative workspace, or keep
+  a metered transport for shared work.
+- **Host-bound.** The run must execute where `claude login` / `codex login` was completed, and the
+  Agent Zero process must be allowed to spawn subprocesses.
+- **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
+  `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
+  transport to degrade to it automatically when the CLI is missing or its session expired. The
+  fallback applies to that failure only; an invalid model decision never silently switches
+  transports.
+- **Not metered per call.** Cost accounting reports `0` unless explicit rates are configured, since
+  the subscription is billed to the account, not the request.
+
+The CLI is configured as a text generator only: built-in tools are disabled for Claude Code and
+Codex runs read-only with approvals off, so neither can read outside the supplied context or edit a
+checkout behind the runner boundary.
 
 To record cost, configure explicit rates; Agent Zero never guesses provider pricing:
 

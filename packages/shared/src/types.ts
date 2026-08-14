@@ -26,9 +26,20 @@ export type NetworkPolicy = 'none' | 'restricted' | 'full';
 export type ModelProviderKind =
   | 'ai-gateway'
   | 'anthropic'
+  | 'claude-code'
+  | 'codex-cli'
   | 'google'
   | 'openai'
   | 'openai-compatible';
+
+/**
+ * How a model transport is paid for and authenticated.
+ *
+ * `api-key` transports read a metered credential from the operator environment. `subscription`
+ * transports carry no credential at all: they drive a locally installed vendor CLI that already
+ * holds an interactive session, so they are bound to one host and one personal account.
+ */
+export type ModelProviderCredentialKind = 'api-key' | 'subscription';
 
 /** Every state of the discover to review lifecycle, including terminal states. */
 export type TaskState =

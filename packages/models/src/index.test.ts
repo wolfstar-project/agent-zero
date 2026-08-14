@@ -3,14 +3,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AISdkModelProvider,
+  FallbackModelProvider,
   isModelConfigured,
   isAgentDecision,
   modelCredentialEnvironmentVariables,
   modelFromEnvironment,
   OpenAICompatibleProvider,
   renderPrompt,
+  SubscriptionProviderUnavailableError,
   UnconfiguredModelProvider,
   type ModelContext,
+  type ModelProvider,
 } from './index.js';
 
 const decision: AgentDecision = {
@@ -29,6 +32,9 @@ const decision: AgentDecision = {
 };
 
 const REDACTED_MARKER = /\[redacted]/;
+const INCOMPLETE_FALLBACK = /must be set together/;
+const SUBSCRIPTION_FALLBACK = /must be an API-key provider/;
+const UNKNOWN_FALLBACK = /Invalid AGENT_ZERO_MODEL_FALLBACK_PROVIDER/;
 
 const input: ReviewInput = {
   repository: '/checkout',
@@ -255,6 +261,107 @@ describe('modelFromEnvironment', () => {
       'OPENAI_COMPATIBLE_API_KEY',
       'OPENAI_API_KEY',
     ]);
+  });
+
+  it('reports no credential variable for a subscription transport', () => {
+    expect(modelCredentialEnvironmentVariables('claude-code')).toEqual([]);
+    expect(modelCredentialEnvironmentVariables('codex-cli')).toEqual([]);
+  });
+});
+
+describe('subscription transports', () => {
+  const claudeCode = { provider: 'claude-code', name: 'opus' } as const;
+
+  it('stays inert until the host opts in, so no CLI is ever spawned by default', () => {
+    expect(modelFromEnvironment(claudeCode, {})).toBeInstanceOf(UnconfiguredModelProvider);
+    expect(isModelConfigured('claude-code', {})).toBe(false);
+    expect(
+      modelFromEnvironment({ provider: 'codex-cli', name: 'gpt-5.2-codex' }, {}),
+    ).toBeInstanceOf(UnconfiguredModelProvider);
+  });
+
+  it('ignores an API key: the flag is the only thing that enables the transport', () => {
+    expect(
+      modelFromEnvironment(claudeCode, { ANTHROPIC_API_KEY: 'test-key-value' }),
+    ).toBeInstanceOf(UnconfiguredModelProvider);
+  });
+
+  it('selects the transport once the flag is exactly true', () => {
+    const configured = modelFromEnvironment(claudeCode, {
+      AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+    });
+    expect(configured).toBeInstanceOf(AISdkModelProvider);
+    expect(configured).toMatchObject({ provider: 'claude-code', model: 'opus' });
+    expect(
+      isModelConfigured('claude-code', { AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true' }),
+    ).toBe(true);
+  });
+
+  it('wraps the transport when an operator configured a credentialed fallback', () => {
+    expect(
+      modelFromEnvironment(claudeCode, {
+        AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+        AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'anthropic',
+        AGENT_ZERO_MODEL_FALLBACK_MODEL: 'claude-sonnet-4-5',
+        ANTHROPIC_API_KEY: 'test-key-value',
+      }),
+    ).toBeInstanceOf(FallbackModelProvider);
+  });
+
+  it('keeps the actionable CLI error when the fallback has no credential of its own', () => {
+    expect(
+      modelFromEnvironment(claudeCode, {
+        AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+        AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'anthropic',
+        AGENT_ZERO_MODEL_FALLBACK_MODEL: 'claude-sonnet-4-5',
+      }),
+    ).toBeInstanceOf(AISdkModelProvider);
+  });
+
+  it('rejects a fallback that cannot degrade anything', () => {
+    const base = {
+      AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+      AGENT_ZERO_MODEL_FALLBACK_MODEL: 'gpt-5',
+    };
+    expect(() => modelFromEnvironment(claudeCode, base)).toThrow(INCOMPLETE_FALLBACK);
+    expect(() =>
+      modelFromEnvironment(claudeCode, {
+        ...base,
+        AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'codex-cli',
+      }),
+    ).toThrow(SUBSCRIPTION_FALLBACK);
+    expect(() =>
+      modelFromEnvironment(claudeCode, {
+        ...base,
+        AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'not-a-provider',
+      }),
+    ).toThrow(UNKNOWN_FALLBACK);
+  });
+});
+
+describe('FallbackModelProvider', () => {
+  const succeeding: ModelProvider = { decide: async () => decision };
+
+  it('degrades only when the host cannot reach the primary transport', async () => {
+    const unreachable: ModelProvider = {
+      decide: async () => {
+        throw new SubscriptionProviderUnavailableError('claude-code', 'run `claude login`');
+      },
+    };
+    await expect(
+      new FallbackModelProvider(unreachable, succeeding).decide(context()),
+    ).resolves.toMatchObject({ finding: { title: 'Null return' } });
+  });
+
+  it('never swaps transports because it disliked the answer', async () => {
+    const failing: ModelProvider = {
+      decide: async () => {
+        throw new Error('Model returned an invalid decision');
+      },
+    };
+    await expect(new FallbackModelProvider(failing, succeeding).decide(context())).rejects.toThrow(
+      'Model returned an invalid decision',
+    );
   });
 });
 

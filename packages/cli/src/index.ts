@@ -9,8 +9,21 @@ import {
   loadConfig,
   mayModifyRepository,
 } from '@agent-zero/config';
-import { isModelConfigured, modelFromEnvironment } from '@agent-zero/models';
-import { createRunner, LocalRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
+import {
+  isModelConfigured,
+  isSubscriptionModelProvider,
+  modelFromEnvironment,
+  modelProviderCredentialKind,
+  subscriptionProbeCommand,
+  subscriptionProviderDescriptor,
+  type SubscriptionModelProviderKind,
+} from '@agent-zero/models';
+import {
+  createRunner,
+  LocalRunner,
+  runnerOptionsFromPolicy,
+  type Runner,
+} from '@agent-zero/runner';
 import {
   evidenceFromResult,
   renderEvidenceMarkdown,
@@ -116,11 +129,18 @@ async function runDoctor(asJson: boolean): Promise<void> {
           packageJson: await inspector.read('package.json').catch(() => null),
           lockfiles,
         });
+  const modelConfigured = isModelConfigured(config.model.provider);
   const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
-    modelConfigured: isModelConfigured(config.model.provider),
+    modelConfigured,
     modelProvider: config.model.provider,
+    modelCredentialKind: modelProviderCredentialKind(config.model.provider),
+    // Only probed once the operator opted this host in; an unset flag is already the answer, and
+    // doctor must not be the thing that first spawns a vendor CLI.
+    ...(isSubscriptionModelProvider(config.model.provider) && modelConfigured
+      ? { modelCli: await probeSubscriptionCli(inspector, config.model.provider) }
+      : {}),
     mode: config.mode,
     isolation: config.runner.isolation,
     network: config.permissions.network,
@@ -136,7 +156,18 @@ async function runDoctor(asJson: boolean): Promise<void> {
   p.log.info(`Node ${status.node}`);
   logCheck('Git repository', status.gitRepository);
   logCheck('Model configured', status.modelConfigured);
-  p.log.info(`Model provider: ${status.modelProvider}`);
+  p.log.info(`Model provider: ${status.modelProvider} (${status.modelCredentialKind})`);
+  if (!status.modelConfigured && isSubscriptionModelProvider(config.model.provider))
+    p.log.warn(
+      `Set ${subscriptionProviderDescriptor(config.model.provider).enableEnvironmentVariable}=true to enable this host's subscription session.`,
+    );
+  if (status.modelCli) {
+    logCheck(`${status.modelCli.executable} CLI installed`, status.modelCli.installed);
+    if (!status.modelCli.installed)
+      p.log.warn(
+        `Install it and run \`${status.modelCli.loginCommand}\`, or point ${status.modelCli.pathVariable} at the executable.`,
+      );
+  }
   logCheck(
     `Isolated runner (${status.isolation}, network ${status.network})`,
     status.isolation === 'container',
@@ -148,7 +179,39 @@ async function runDoctor(asJson: boolean): Promise<void> {
     checks.length > 0,
   );
   p.log.info(`Mode: ${status.mode}`);
-  p.outro(status.gitRepository && status.modelConfigured ? 'Ready to run.' : 'Setup incomplete.');
+  p.outro(
+    status.gitRepository && status.modelConfigured && status.modelCli?.installed !== false
+      ? 'Ready to run.'
+      : 'Setup incomplete.',
+  );
+}
+
+/**
+ * Prove the vendor CLI is installed and runnable before a run depends on it.
+ *
+ * The probe goes through the runner like every other command execution, and asks only for a
+ * version, so a diagnostic can never start a session or touch the checkout. It cannot tell whether
+ * the session is still authenticated — only a real call can, and that failure is translated into
+ * the matching `login` instruction by the models package.
+ */
+async function probeSubscriptionCli(
+  inspector: Runner,
+  provider: SubscriptionModelProviderKind,
+): Promise<{
+  executable: string;
+  installed: boolean;
+  pathVariable: string;
+  loginCommand: string;
+}> {
+  const descriptor = subscriptionProviderDescriptor(provider);
+  const command = subscriptionProbeCommand(provider, process.env);
+  const result = await inspector.check(command, 15_000).catch(() => undefined);
+  return {
+    executable: command.split(' ')[0] ?? descriptor.executable,
+    installed: result?.exitCode === 0,
+    pathVariable: descriptor.executableEnvironmentVariable,
+    loginCommand: descriptor.loginCommand,
+  };
 }
 
 async function runAgent(

@@ -21,6 +21,28 @@ import {
 } from 'ai';
 import { z } from 'zod';
 
+import {
+  isSubscriptionModelProvider,
+  isSubscriptionProviderEnabled,
+  providerStderr,
+  subscriptionLanguageModel,
+  SubscriptionProviderUnavailableError,
+  translateSubscriptionError,
+  type SubscriptionModelProviderKind,
+} from './providers/subscription.js';
+
+export {
+  isSubscriptionModelProvider,
+  isSubscriptionProviderEnabled,
+  modelProviderCredentialKind,
+  providerStderr,
+  subscriptionProbeCommand,
+  subscriptionProviderDescriptor,
+  SubscriptionProviderUnavailableError,
+  type SubscriptionModelProviderKind,
+  type SubscriptionProviderDescriptor,
+} from './providers/subscription.js';
+
 export interface ModelContext {
   input: ReviewInput;
   repositoryContext: string;
@@ -92,17 +114,28 @@ export interface ModelSelection {
 interface AISdkModelOptions {
   provider: ModelProviderKind;
   model: string;
-  languageModel: LanguageModel;
+  /**
+   * The model, or a factory for it. Transports whose SDK is large and optional supply a factory so
+   * the module is imported on first use instead of on every process start.
+   */
+  languageModel: LanguageModel | (() => Promise<LanguageModel>);
   credentialSecrets: readonly string[];
   timeoutMs?: number;
   inputCostPerMillionTokens?: number;
   outputCostPerMillionTokens?: number;
+  /**
+   * Rewrites a transport failure an operator can act on. It receives the already-redacted message
+   * and returns the error to throw, or nothing to keep the default.
+   */
+  translateError?: (error: unknown, message: string) => Promise<Error | undefined>;
 }
 
 /** Shared AI SDK execution path used by every native and gateway adapter. */
 export class AISdkModelProvider implements ModelProvider {
   readonly provider: ModelProviderKind;
   readonly model: string;
+  /** Memoized so a repaired multi-attempt run imports and configures the transport once. */
+  #languageModel: Promise<LanguageModel> | undefined;
 
   constructor(private readonly options: AISdkModelOptions) {
     this.provider = options.provider;
@@ -113,7 +146,7 @@ export class AISdkModelProvider implements ModelProvider {
     const startedAt = performance.now();
     try {
       const result = await generateText({
-        model: this.options.languageModel,
+        model: await this.languageModel(),
         system: SYSTEM_PROMPT,
         prompt: renderPrompt(context),
         output: Output.object({
@@ -155,16 +188,31 @@ export class AISdkModelProvider implements ModelProvider {
         );
       // Provider failures may echo the request or a credential back; redact before the message can
       // reach a log, a check annotation, or published evidence.
-      const detail = APICallError.isInstance(error) ? (error.responseBody ?? '') : '';
+      const detail = APICallError.isInstance(error)
+        ? [error.responseBody ?? '', providerStderr(error)].filter(Boolean).join('\n')
+        : '';
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        redactSecrets(detail.length > 0 ? `${message}\n${detail}` : message, [
-          ...this.options.credentialSecrets,
-          ...secretValuesFromEnvironment(),
-        ]),
-        { cause: error },
+      const redacted = redactSecrets(detail.length > 0 ? `${message}\n${detail}` : message, [
+        ...this.options.credentialSecrets,
+        ...secretValuesFromEnvironment(),
+      ]);
+      throw (
+        (await this.options.translateError?.(error, redacted)) ??
+        new Error(redacted, { cause: error })
       );
     }
+  }
+
+  private async languageModel(): Promise<LanguageModel> {
+    const source = this.options.languageModel;
+    if (typeof source !== 'function') return source;
+    // Assigned before the await so concurrent decisions share one import, and cleared on failure
+    // so a transient module-load error does not poison every later attempt.
+    this.#languageModel ??= source().catch((error: unknown) => {
+      this.#languageModel = undefined;
+      throw error;
+    });
+    return this.#languageModel;
   }
 }
 
@@ -221,17 +269,45 @@ export class UnconfiguredModelProvider implements ModelProvider {
   }
 }
 
+/**
+ * Falls back to a second transport when the first one cannot serve the run at all.
+ *
+ * Only a subscription transport is wrapped, and only for the two failures that mean "this host
+ * cannot reach the model" — a missing CLI or an expired session. Every other failure, including a
+ * model that produced an invalid decision, propagates unchanged: a run must never quietly swap
+ * transports because it disliked an answer.
+ */
+export class FallbackModelProvider implements ModelProvider {
+  constructor(
+    private readonly primary: ModelProvider,
+    private readonly fallback: ModelProvider,
+  ) {}
+
+  async decide(context: ModelContext): Promise<AgentDecision> {
+    try {
+      return await this.primary.decide(context);
+    } catch (error) {
+      if (!(error instanceof SubscriptionProviderUnavailableError)) throw error;
+      return this.fallback.decide(context);
+    }
+  }
+}
+
 export function modelFromEnvironment(
   selection: ModelSelection,
   environment: NodeJS.ProcessEnv = process.env,
 ): ModelProvider {
-  const apiKey = providerApiKey(selection.provider, environment);
+  const { provider } = selection;
+  if (isSubscriptionModelProvider(provider))
+    return subscriptionModelFromEnvironment(selection, provider, environment);
+
+  const apiKey = providerApiKey(provider, environment);
   const baseUrl = environment.AGENT_ZERO_MODEL_BASE_URL;
-  if (!apiKey && !(selection.provider === 'ai-gateway' && environment.VERCEL_OIDC_TOKEN))
+  if (!apiKey && !(provider === 'ai-gateway' && environment.VERCEL_OIDC_TOKEN))
     return new UnconfiguredModelProvider();
 
   const common = {
-    provider: selection.provider,
+    provider,
     model: selection.name,
     credentialSecrets: apiKey ? [apiKey] : [],
     ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
@@ -243,7 +319,7 @@ export function modelFromEnvironment(
       : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
   } satisfies Omit<AISdkModelOptions, 'languageModel'>;
 
-  switch (selection.provider) {
+  switch (provider) {
     case 'openai-compatible':
       return new OpenAICompatibleProvider({
         apiKey: apiKey ?? '',
@@ -258,52 +334,143 @@ export function modelFromEnvironment(
           : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
       });
     case 'openai': {
-      const provider = createOpenAI({
+      const openai = createOpenAI({
         apiKey: apiKey ?? '',
         ...(baseUrl ? { baseURL: baseUrl } : {}),
       });
-      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+      return new AISdkModelProvider({ ...common, languageModel: openai(selection.name) });
     }
     case 'anthropic': {
-      const provider = createAnthropic({
+      const anthropic = createAnthropic({
         apiKey: apiKey ?? '',
         ...(baseUrl ? { baseURL: baseUrl } : {}),
       });
-      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+      return new AISdkModelProvider({ ...common, languageModel: anthropic(selection.name) });
     }
     case 'google': {
-      const provider = createGoogleGenerativeAI({
+      const google = createGoogleGenerativeAI({
         apiKey: apiKey ?? '',
         ...(baseUrl ? { baseURL: baseUrl } : {}),
       });
-      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+      return new AISdkModelProvider({ ...common, languageModel: google(selection.name) });
     }
     case 'ai-gateway': {
-      const provider = createGateway({
+      const gateway = createGateway({
         ...(apiKey ? { apiKey } : {}),
         ...(baseUrl ? { baseURL: baseUrl } : {}),
       });
-      return new AISdkModelProvider({ ...common, languageModel: provider(selection.name) });
+      return new AISdkModelProvider({ ...common, languageModel: gateway(selection.name) });
     }
     default:
-      return unsupportedModelProvider(selection.provider);
+      return unsupportedModelProvider(provider);
   }
 }
 
+/**
+ * Build a CLI-backed transport, or refuse to.
+ *
+ * The flag is the only thing standing between a control plane and an unexpected subprocess on the
+ * host, so an unset flag yields the same inert provider as a missing API key rather than an error.
+ */
+function subscriptionModelFromEnvironment(
+  selection: ModelSelection,
+  provider: SubscriptionModelProviderKind,
+  environment: NodeJS.ProcessEnv,
+): ModelProvider {
+  if (!isSubscriptionProviderEnabled(provider, environment)) return new UnconfiguredModelProvider();
+
+  const primary = new AISdkModelProvider({
+    provider,
+    model: selection.name,
+    // The session lives in the CLI's own state; Agent Zero never holds a credential to redact.
+    credentialSecrets: [],
+    languageModel: subscriptionLanguageModel(provider, selection.name, environment),
+    translateError: translateSubscriptionError(provider),
+    ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
+    ...(selection.inputCostPerMillionTokens === undefined
+      ? {}
+      : { inputCostPerMillionTokens: selection.inputCostPerMillionTokens }),
+    ...(selection.outputCostPerMillionTokens === undefined
+      ? {}
+      : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
+  });
+
+  const fallback = fallbackSelection(environment);
+  if (!fallback) return primary;
+  const configured = modelFromEnvironment({ ...selection, ...fallback }, environment);
+  // An unusable fallback would turn an actionable "run `claude login`" into a silent unvalidated
+  // verdict, so keep the primary's error path when the fallback has no credential of its own.
+  return configured instanceof UnconfiguredModelProvider
+    ? primary
+    : new FallbackModelProvider(primary, configured);
+}
+
+/**
+ * The optional API-key transport a subscription run degrades to.
+ *
+ * Operator environment only, like every other credential-adjacent setting: repository policy must
+ * not be able to name the transport a run silently falls back to.
+ */
+function fallbackSelection(
+  environment: NodeJS.ProcessEnv,
+): Pick<ModelSelection, 'provider' | 'name'> | undefined {
+  const provider = environment.AGENT_ZERO_MODEL_FALLBACK_PROVIDER;
+  const name = environment.AGENT_ZERO_MODEL_FALLBACK_MODEL;
+  if (!provider && !name) return undefined;
+  if (!provider || !name)
+    throw new Error(
+      'AGENT_ZERO_MODEL_FALLBACK_PROVIDER and AGENT_ZERO_MODEL_FALLBACK_MODEL must be set together',
+    );
+  if (!isModelProviderKind(provider))
+    throw new Error(`Invalid AGENT_ZERO_MODEL_FALLBACK_PROVIDER: ${provider}`);
+  if (isSubscriptionModelProvider(provider))
+    throw new Error(
+      `AGENT_ZERO_MODEL_FALLBACK_PROVIDER must be an API-key provider, not ${provider}`,
+    );
+  return { provider, name };
+}
+
+const modelProviderKinds = new Set<string>([
+  'ai-gateway',
+  'anthropic',
+  'claude-code',
+  'codex-cli',
+  'google',
+  'openai',
+  'openai-compatible',
+]);
+
+export function isModelProviderKind(value: string): value is ModelProviderKind {
+  return modelProviderKinds.has(value);
+}
+
+/**
+ * Whether this environment can actually reach the selected transport.
+ *
+ * A subscription transport has no credential to look for, so the operator flag is the whole
+ * answer here. Whether the CLI is installed and its session still valid can only be settled by
+ * running it, which `zero doctor` does through the runner boundary.
+ */
 export function isModelConfigured(
   provider: ModelProviderKind,
   environment: NodeJS.ProcessEnv = process.env,
 ): boolean {
+  if (isSubscriptionModelProvider(provider))
+    return isSubscriptionProviderEnabled(provider, environment);
   return (
     providerApiKey(provider, environment) !== undefined ||
     (provider === 'ai-gateway' && Boolean(environment.VERCEL_OIDC_TOKEN))
   );
 }
 
+/** Empty for a subscription transport: it authenticates through the vendor CLI, not a variable. */
 export function modelCredentialEnvironmentVariables(
   provider: ModelProviderKind,
 ): readonly string[] {
   switch (provider) {
+    case 'claude-code':
+    case 'codex-cli':
+      return [];
     case 'ai-gateway':
       return ['AI_GATEWAY_API_KEY', 'VERCEL_OIDC_TOKEN'];
     case 'anthropic':

@@ -139,6 +139,8 @@ const networkPolicies = new Set<string>(['none', 'restricted', 'full']);
 const modelProviders = new Set<string>([
   'ai-gateway',
   'anthropic',
+  'claude-code',
+  'codex-cli',
   'google',
   'openai',
   'openai-compatible',

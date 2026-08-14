@@ -11,7 +11,12 @@ Keep dependency direction explicit while changing the monorepo.
 
 - `shared`: stable contracts only, plus pure functions over them (evidence rendering, redaction, path predicates).
 - `config`: configuration, repository policy, and check discovery. Pure; the agent supplies what it read through the runner.
-- `models`: provider-independent model contracts and provider adapters.
+- `models`: provider-independent model contracts and provider adapters, including the
+  subscription transports (`claude-code`, `codex-cli`) that drive a locally logged-in vendor CLI.
+  Those spawn a subprocess through their vendor SDK, so they stay behind an exact operator flag,
+  import their SDK lazily, and run with the CLI's own file tools disabled. This package still
+  executes nothing itself: liveness commands are returned as strings for a composition root to run
+  through the runner.
 - `source-control`: provider-neutral source-control contracts, webhook normalization, capability detection, and the GitHub, GitLab, Bitbucket, and Gitea adapters, including GitHub's issue-to-PR publication (branch and pull-request creation through the Git data API).
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
