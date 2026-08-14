@@ -9,8 +9,7 @@
     { "path": "packages/agent" },
     { "path": "packages/cli" },
     { "path": "packages/auth" },
-    { "path": "apps/auth-server" },
-    { "path": "apps/dashboard" },
-    { "path": "apps/server" }
+    { "path": "packages/api" },
+    { "path": "apps/dashboard" }
   ]
 }

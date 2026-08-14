@@ -5,15 +5,15 @@ import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
-import { authConfigFromEnvironment, defaultAuthServerUrl, loginPath } from './config/auth.js';
+import { authConfigFromEnvironment, loginPath } from './config/auth.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 
-// Resolved once at config evaluation so the dashboard publishes the same sign-in policy the auth
-// server derives from the shared environment (AUTH_ENABLE_SIGNUP, GitHub OAuth credentials).
-// Build-time capture is deliberate: the deployment contract (documented in README and
-// .env.example) is that the dashboard is rebuilt whenever those policy variables change. The
-// auth server enforces its own policy regardless, so a stale build can only mislabel the login
-// page, never open a sign-in method the server rejects.
+// Resolved once at config evaluation so the dashboard's login page publishes the same sign-in
+// policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
+// credentials). Build-time capture is deliberate: the deployment contract (documented in README
+// and .env.example) is that the app is rebuilt whenever those policy variables change. The server
+// config enforces its own policy regardless, so a stale build can only mislabel the login page,
+// never open a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
 
 // `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
@@ -33,15 +33,16 @@ const resolvedI18nLocales = i18nLocales.map((locale) => ({
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
   devtools: { enabled: false },
-  // Rendered as a single-page app. The session cookie belongs to the auth adapter's origin, so a
-  // server render can never see it: SSR would resolve every visitor as signed out, redirect to
-  // /login, and then be corrected by the client, flashing the login page and mismatching on every
-  // hydration. An internal console that is explicitly noindex gains nothing from SSR in exchange.
-  ssr: false,
+  // Better Auth is mounted in-process (`server/auth.config.ts`), so the session cookie belongs to
+  // this app's own origin and a server render can observe it directly: SSR resolves the session
+  // from the request cookie before the first paint, instead of flashing a signed-out page that the
+  // client then corrects.
+  ssr: true,
   future: {
     compatibilityVersion: 5,
   },
   modules: [
+    './modules/vitehub',
     '@unocss/nuxt',
     '@nuxt/icon',
     '@nuxtjs/i18n',
@@ -80,10 +81,9 @@ export default defineNuxtConfig({
     ],
   },
   icon: {
-    // The dashboard owns no Nitro routes and its e2e suite asserts that nothing hits a local
-    // /api/** path, so the icon component may never fall back to a server endpoint or the
-    // Iconify API. Every icon is scanned from the templates at build time and compiled into the
-    // client bundle from the locally installed lucide collection.
+    // Icons stay fully client-bundled rather than served or fetched at runtime, regardless of the
+    // app's own server routes. Every icon is scanned from the templates at build time and compiled
+    // into the client bundle from the locally installed lucide collection.
     provider: 'none',
     serverBundle: false,
     fallbackToApi: false,
@@ -108,10 +108,8 @@ export default defineNuxtConfig({
     },
   },
   auth: {
-    // Better Auth runs in `apps/auth-server`, not here. Client-only mode drops the local
-    // `/api/auth/**` handlers, the server config, and the signing secret, which is what keeps the
-    // dashboard free of Nitro auth routes and of any persistence.
-    clientOnly: true,
+    // Full mode: the module reads `server/auth.config.ts`, mounts Better Auth at `/api/auth/**`
+    // itself, and resolves sessions server-side from the request cookie for SSR.
     redirects: {
       login: loginPath,
       guest: '/',
@@ -121,16 +119,17 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      // In client-only mode the module reads this as the Better Auth client base URL, so it points
-      // at the auth adapter rather than at the dashboard. Override with NUXT_PUBLIC_SITE_URL.
-      siteUrl: defaultAuthServerUrl,
+      // The module auto-detects the base URL from the incoming request in most deployments.
+      // Declared here (empty by default) so NUXT_PUBLIC_SITE_URL can still override it for a
+      // custom domain or deterministic OAuth callbacks.
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? '',
     },
   },
   // Published through appConfig rather than runtimeConfig.public: Nuxt maps NUXT_PUBLIC_* env vars
   // onto public runtime keys, which would let a deployment advertise a sign-in capability that
-  // diverges from the policy the auth server derives from the same environment. appConfig has no
-  // env override channel, so AUTH_ENABLE_SIGNUP and the GitHub OAuth credentials stay the single
-  // authoritative source for both processes.
+  // diverges from the policy `server/auth.config.ts` enforces from the same environment. appConfig
+  // has no env override channel, so AUTH_ENABLE_SIGNUP and the GitHub OAuth credentials stay the
+  // single authoritative source for both the build-time label and the runtime enforcement.
   appConfig: {
     auth: {
       enableSignup: authPolicy.enableSignup,

@@ -15,7 +15,7 @@ These instructions apply to humans and coding agents working in this repository.
 - Use aube for dependencies and scripts. It reads and writes `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place; keep both files and do not create npm, Yarn, or Bun lockfiles.
 - `typescript` is overridden to `typescript-native-bridge` in `pnpm-workspace.yaml`, so `tsc` and every Compiler API consumer type-check on tsgo. Keep the pin exact and reinstall after changing it.
 - Use Turborepo through the root scripts; do not duplicate orchestration in package scripts.
-- Use tsdown through each tsdown-built package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`. The Nuxt dashboard uses the Nuxt build pipeline, and the server app builds with Vite through the Nitro v3 plugin composed with ViteHub.
+- Use tsdown through each tsdown-built package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`. `apps/dashboard` uses the Nuxt build pipeline, with a local Nuxt module (`apps/dashboard/modules/vitehub.ts`) composing ViteHub into Nuxt's own Nitro build.
 - Use Oxlint with type-aware checks and Oxfmt. Do not add ESLint or Prettier.
 - Do not edit `dist/`, `.turbo/`, or generated declaration files.
 
@@ -28,12 +28,11 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
-- `packages/auth`: authentication policy and the Better Auth instance. No HTTP server, no runtime imports.
-- `apps/server`: oRPC control-plane transport and composition root.
-- `apps/auth-server`: the only component that owns a persistence layer. Serves the Better Auth handler and nothing else.
-- `apps/dashboard`: frontend-only Nuxt operational dashboard. Presentation plus an authenticated client of `apps/auth-server`. No Nitro server routes, no persistence, no runtime-package imports.
+- `packages/auth`: authentication policy and the Better Auth options factory. No HTTP server, no runtime imports.
+- `packages/api`: the oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own.
+- `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), plus `GET /api/dashboard`, and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only component that owns a persistence layer (Postgres, via that one route).
 
-The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/auth` nor `apps/auth-server` may import a runtime package, and neither may execute repository work.
+The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: `packages/auth` may not import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes its policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
 
 ## Safety and determinism
 
