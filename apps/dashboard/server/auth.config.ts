@@ -51,7 +51,14 @@ const options = authBetterAuthOptions({
  * `/api/auth/**` endpoints without a live database, staying off the network and off mutable
  * external state. `AUTH_DATABASE_URL` still has to resolve to build `options` above, but nothing
  * ever queries it once `database` is overridden here.
+ *
+ * Refused outright when `NODE_ENV=production`: this flag discards every session on restart and
+ * disables rate limiting, so a value leaked into a real deployment's environment (a shared
+ * .env/CI template, for instance) must fail loudly at startup rather than silently degrade auth.
  */
+if (process.env.AUTH_E2E_MEMORY === 'true' && process.env.NODE_ENV === 'production')
+  throw new Error('AUTH_E2E_MEMORY must not be set when NODE_ENV=production');
+
 export default defineServerAuth(
   process.env.AUTH_E2E_MEMORY === 'true'
     ? {

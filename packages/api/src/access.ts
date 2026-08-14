@@ -111,6 +111,23 @@ function parseModeGrants(modes: string | undefined): Map<string, readonly RunMod
   return grants;
 }
 
+/**
+ * Parse the REST/OpenAPI transport's CORS allow-list from the environment.
+ *
+ * `AGENT_ZERO_CONTROL_PLANE_ORIGINS` holds comma-separated origins. Defaults to none: `tasks.list`,
+ * `tasks.get`, and `health` are unauthenticated by design, but a browser's ability to read their
+ * responses cross-origin is a separate grant that has to be configured explicitly rather than
+ * defaulting open.
+ */
+export function controlPlaneOriginsFromEnvironment(
+  origins = process.env.AGENT_ZERO_CONTROL_PLANE_ORIGINS,
+): readonly string[] {
+  return (origins ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin !== '');
+}
+
 /** Resolve the principal for an `Authorization` header using constant-time token comparison. */
 export function authenticate(
   authorization: string | undefined,

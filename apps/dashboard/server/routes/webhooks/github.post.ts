@@ -1,8 +1,7 @@
 import { githubTokenFromEnvironment, ingestWebhook } from '@agent-zero/api';
-import { redactSecrets } from '@agent-zero/shared';
 import { defineEventHandler, toWebRequest } from 'h3';
 
-import { json, messageOf } from '../../utils/respond.js';
+import { errorResponse, json } from '../../utils/respond.js';
 import { deliveryClaimStore, taskStore } from '../../utils/store.js';
 
 /**
@@ -45,7 +44,7 @@ const route = defineEventHandler(async (event) => {
       return json(200, { status: 'ignored', reason: outcome.reason });
     return json(200, { status: 'accepted', taskId: outcome.result.id });
   } catch (error) {
-    return json(500, { error: redactSecrets(messageOf(error)) });
+    return errorResponse(error);
   }
 });
 

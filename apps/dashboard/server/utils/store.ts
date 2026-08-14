@@ -34,7 +34,7 @@ class KvKeyValueStorage implements KeyValueStorage {
 
 /**
  * One shared storage instance per server process. The KV driver (fs-lite locally;
- * Cloudflare KV, Deno KV, or Upstash when hosted) is selected in `vite.config.ts`,
+ * Cloudflare KV, Deno KV, or Upstash when hosted) is selected in `../../modules/vitehub.ts`,
  * so this module never changes when the deployment target does.
  */
 const storage: KeyValueStorage = new KvKeyValueStorage();

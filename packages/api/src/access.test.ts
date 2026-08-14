@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accessFromEnvironment,
   authenticate,
+  controlPlaneOriginsFromEnvironment,
   mayTargetRepository,
   type ControlPlaneAccess,
 } from './access.js';
@@ -104,6 +105,20 @@ describe('authenticate', () => {
 
   it('fails closed when no access policy is configured', () => {
     expect(authenticate('Bearer token-value', undefined)).toBeUndefined();
+  });
+});
+
+describe('controlPlaneOriginsFromEnvironment', () => {
+  it('defaults to no trusted origins', () => {
+    expect(controlPlaneOriginsFromEnvironment(undefined)).toEqual([]);
+    expect(controlPlaneOriginsFromEnvironment('')).toEqual([]);
+    expect(controlPlaneOriginsFromEnvironment(' , ')).toEqual([]);
+  });
+
+  it('parses a comma-separated origin allow-list', () => {
+    expect(
+      controlPlaneOriginsFromEnvironment('https://dashboard.example, https://ops.example'),
+    ).toEqual(['https://dashboard.example', 'https://ops.example']);
   });
 });
 
