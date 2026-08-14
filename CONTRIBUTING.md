@@ -41,6 +41,7 @@ aube test
 | Configuration and policy         | `packages/config`         |
 | Shared contracts                 | `packages/shared`         |
 | CLI parsing and presentation     | `packages/cli`            |
+| Database schema and migrations   | `packages/database`       |
 | Authentication policy            | `packages/auth`           |
 | Authentication HTTP adapter      | `apps/auth-server`        |
 | Dashboard frontend               | `apps/dashboard`          |

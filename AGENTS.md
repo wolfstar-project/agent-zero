@@ -28,12 +28,15 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
-- `packages/auth`: authentication policy and the Better Auth instance. No HTTP server, no runtime imports.
+- `packages/database`: the schema, the Drizzle client, and the checked-in migrations. The only package that talks to Postgres. No policy, no HTTP, no runtime imports.
+- `packages/auth`: authentication policy and the Better Auth instance. Reads the store through `packages/database`. No HTTP server, no runtime imports.
 - `apps/server`: oRPC control-plane transport and composition root.
-- `apps/auth-server`: the only component that owns a persistence layer. Serves the Better Auth handler and nothing else.
+- `apps/auth-server`: the only process that opens the database. Serves the Better Auth handler and nothing else.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard. Presentation plus an authenticated client of `apps/auth-server`. No Nitro server routes, no persistence, no runtime-package imports.
 
-The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/auth` nor `apps/auth-server` may import a runtime package, and neither may execute repository work.
+The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/database`, `packages/auth`, nor `apps/auth-server` may import a runtime package, and none of them may execute repository work.
+
+Persistence and policy are separate boundaries. `packages/database` owns tables, connections, and migrations and knows nothing about authentication; `packages/auth` decides what is allowed and reads the store through it. The dependency runs one way — a schema change never needs to know who signs in, and `packages/database` must not import `packages/auth`.
 
 ## Safety and determinism
 

@@ -46,22 +46,23 @@ Source-control adapters (GitHub, GitLab, Bitbucket, Gitea) / CLI
  Runner boundary ─── repository commands and file operations
 
 oRPC control plane ─── typed task API, persistence, and scheduling
-Nuxt dashboard ─── frontend-only operational interface ─── auth adapter ─── session store
+Nuxt dashboard ─── frontend-only operational interface ─── auth adapter ─── database ─── Postgres
 ```
 
-| Package                                                | Responsibility                                                                            |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                       |
-| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                            |
-| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                               |
-| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea) |
-| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                          |
-| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                            |
-| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                |
-| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth instance                                        |
-| [`apps/server`](./apps/server)                         | oRPC control-plane transport and composition root                                         |
-| [`apps/auth-server`](./apps/auth-server)               | Standalone auth adapter; the only component with a database                               |
-| [`apps/dashboard`](./apps/dashboard)                   | Nuxt operational dashboard, authenticated client of the adapter                           |
+| Package                                                | Responsibility                                                                             |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                        |
+| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                             |
+| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                                |
+| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea)  |
+| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                           |
+| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                             |
+| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                 |
+| [`packages/database`](./packages/database)             | Schema, Drizzle client, and checked-in migrations; the only package that talks to Postgres |
+| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth instance                                         |
+| [`apps/server`](./apps/server)                         | oRPC control-plane transport and composition root                                          |
+| [`apps/auth-server`](./apps/auth-server)               | Standalone auth adapter; the only process that opens the database                          |
+| [`apps/dashboard`](./apps/dashboard)                   | Nuxt operational dashboard, authenticated client of the adapter                            |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -147,16 +148,18 @@ renders as a single-page app, because the session cookie belongs to the adapter'
 server render could never observe it.
 
 Authentication runs in `apps/auth-server`, a standalone Hono process that mounts the Better Auth
-handler and owns the only database in the repository: Postgres, accessed through
-[Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the session
-store's schema lives in this repository as reviewable, checked-in SQL. The dashboard consumes the
-adapter through [`@onmax/nuxt-better-auth`](https://better-auth.nuxt.dev) in `clientOnly` mode.
+handler and is the only process that opens the database. Postgres itself belongs to
+[`packages/database`](./packages/database), which declares the tables with
+[Drizzle](https://orm.drizzle.team) rather than Better Auth's own migration tool, so the store's
+schema lives in this repository as reviewable, checked-in SQL. `packages/auth` holds policy only
+and reads the store through that package. The dashboard consumes the adapter through
+[`@onmax/nuxt-better-auth`](https://better-auth.nuxt.dev) in `clientOnly` mode.
 
-Point `AUTH_DATABASE_URL` at a Postgres database, then apply the schema once before the first run
-(`db:generate` only needs to run again after editing `packages/auth/src/schema.ts`):
+Point `DATABASE_URL` at a Postgres database, then apply the schema once before the first run
+(`db:generate` only needs to run again after editing `packages/database/src/schema/`):
 
 ```bash
-aube --filter @agent-zero/auth run db:migrate
+aube run db:migrate
 ```
 
 The adapter reads its configuration from the environment. Registration and GitHub OAuth are off
@@ -167,10 +170,13 @@ until you turn them on, so a fresh deployment cannot be signed up for by a stran
 | `BETTER_AUTH_SECRET`                        | yes      | –       | Session signing secret                      |
 | `BETTER_AUTH_URL`                           | yes      | –       | Public origin of the auth adapter           |
 | `AUTH_DASHBOARD_ORIGIN`                     | yes      | –       | The one origin allowed credentialed access  |
-| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                  |
+| `DATABASE_URL`                              | yes      | –       | Postgres connection string                  |
 | `AUTH_SERVER_PORT`                          | no       | `3002`  | Port the adapter listens on                 |
 | `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration    |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set |
+
+`AUTH_DATABASE_URL` is still read when `DATABASE_URL` is unset, so a deployment configured before
+the store moved into `packages/database` keeps starting; prefer `DATABASE_URL` for new ones.
 
 The dashboard needs to know where the adapter lives: `NUXT_PUBLIC_SITE_URL` (default
 `http://localhost:3002`). The sign-in methods it offers are derived at build time from the same

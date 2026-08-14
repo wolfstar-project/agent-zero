@@ -16,6 +16,8 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
+- `database`: Postgres schema, the Drizzle client factory, and checked-in migrations. No policy, and the only package that names a table or opens a connection.
+- `auth`: authentication policy and the Better Auth instance. Reads the store through `database` and never declares a table itself.
 - `apps/server`: oRPC transport, task persistence, scheduling, and the composition root that constructs a runner. See the `orpc-server` skill.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
 
@@ -36,6 +38,7 @@ Keep dependency direction explicit while changing the monorepo.
 - Provider SDK or payload objects passed through shared contracts.
 - A generic `utils` package used to bypass ownership decisions.
 - Cross-package imports from another package's `src/` directory.
-- A capability package importing another capability package. When `runner` needs policy, it declares the fields it needs structurally instead of importing `config`.
+- A capability package importing another capability package. When `runner` needs policy, it declares the fields it needs structurally instead of importing `config`. `auth` depending on `database` is the one sanctioned exception: persistence is a layer beneath policy, and the dependency runs only in that direction.
+- A table declared, a connection opened, or a migration written outside `packages/database`.
 - Direct filesystem or `child_process` access outside `packages/runner`, including in the agent's discovery step.
 - A second place that decides whether a run may write, or whether a run is verified. Both have exactly one home.

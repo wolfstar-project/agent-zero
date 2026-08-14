@@ -1,3 +1,4 @@
+import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -5,8 +6,6 @@ import { organization } from 'better-auth/plugins';
 
 import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './config.js';
 import type { AuthConfig, GithubOauthCredentials } from './config.js';
-import { createAuthDatabase } from './database.js';
-import { schema } from './schema.js';
 
 /**
  * Delivers an organization invitation.
@@ -24,7 +23,12 @@ export type SendInvitationEmail = (invitation: {
 
 /** Everything the Better Auth instance needs that is not policy. */
 export interface AuthInstanceOptions {
-  /** Postgres connection string holding users and sessions. */
+  /**
+   * Postgres connection string holding users and sessions.
+   *
+   * The pool is opened by `@agent-zero/database`, which owns the schema and the migrations for
+   * those tables.
+   */
   readonly databaseUrl: string;
   /** Signing secret. Must be supplied by the caller; there is deliberately no default. */
   readonly secret: string;
@@ -59,8 +63,12 @@ export function createAuth(options: AuthInstanceOptions) {
 
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
+  //
+  // The client and the tables both come from `@agent-zero/database`: this package owns
+  // authentication policy, not the store, so the shape of `user` and `session` stays reviewable in
+  // one place and any other consumer of those tables sees the same declarations.
   const database: BetterAuthOptions['database'] = drizzleAdapter(
-    createAuthDatabase(options.databaseUrl),
+    createDatabase({ connectionString: options.databaseUrl }),
     { provider: 'pg', schema },
   );
 
@@ -141,7 +149,9 @@ export function authOptionsFromEnvironment(
   const github = githubCredentialsFromEnvironment(environment);
 
   return {
-    databaseUrl: requireEnvironmentValue(environment, 'AUTH_DATABASE_URL'),
+    // Resolved by the database package so the store has one variable regardless of which process
+    // opens it; it accepts the pre-split `AUTH_DATABASE_URL` as well.
+    databaseUrl: databaseUrlFromEnvironment(environment),
     secret: requireEnvironmentValue(environment, 'BETTER_AUTH_SECRET'),
     baseUrl: requireEnvironmentValue(environment, 'BETTER_AUTH_URL'),
     trustedOrigins: [dashboardOrigin],
