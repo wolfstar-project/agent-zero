@@ -52,13 +52,12 @@ const options = authBetterAuthOptions({
  * external state. `AUTH_DATABASE_URL` still has to resolve to build `options` above, but nothing
  * ever queries it once `database` is overridden here.
  *
- * Refused outright when `NODE_ENV=production`: this flag discards every session on restart and
- * disables rate limiting, so a value leaked into a real deployment's environment (a shared
- * .env/CI template, for instance) must fail loudly at startup rather than silently degrade auth.
+ * Deliberately not guarded by `NODE_ENV`: `nuxt preview` — the command this app's own e2e suite
+ * runs, per `start:playwright:webserver` above — sets `NODE_ENV=production` whenever it isn't
+ * already set (`@nuxt/cli`'s `preview` command), identically to a real deployment's built output.
+ * A `NODE_ENV === 'production'` check would therefore reject every e2e run, not just a leaked
+ * flag. Keep this variable out of any shared `.env`/CI template that a real deployment also reads.
  */
-if (process.env.AUTH_E2E_MEMORY === 'true' && process.env.NODE_ENV === 'production')
-  throw new Error('AUTH_E2E_MEMORY must not be set when NODE_ENV=production');
-
 export default defineServerAuth(
   process.env.AUTH_E2E_MEMORY === 'true'
     ? {
