@@ -3,6 +3,7 @@ export {
   databaseUrlFromEnvironment,
   DATABASE_URL_VARIABLE,
   DEFAULT_MAXIMUM_CONNECTIONS,
+  optionalDatabaseUrlFromEnvironment,
   type Database,
   type DatabaseOptions,
 } from './client.js';

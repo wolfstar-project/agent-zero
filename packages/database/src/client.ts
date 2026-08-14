@@ -53,19 +53,38 @@ export const DATABASE_URL_VARIABLE = 'DATABASE_URL';
 const LEGACY_DATABASE_URL_VARIABLE = 'AUTH_DATABASE_URL';
 
 /**
+ * Read the connection string from the environment, or report that it is not configured.
+ *
+ * A variable set to an empty or whitespace-only value counts as unset, so a deployment that
+ * blanks `DATABASE_URL` still falls back to the legacy name instead of resolving to nothing.
+ *
+ * The environment is passed in so callers stay deterministic in tests.
+ */
+export function optionalDatabaseUrlFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string | undefined {
+  return (
+    environment[DATABASE_URL_VARIABLE]?.trim() ||
+    environment[LEGACY_DATABASE_URL_VARIABLE]?.trim() ||
+    undefined
+  );
+}
+
+/**
  * Read the connection string from the environment.
  *
  * Throws when neither variable is set: a missing connection string is a deployment error, and a
  * default would point a production process at a local database. The message names the variable
  * but never echoes its value, which would leak the password embedded in a Postgres URL.
  *
- * The environment is passed in so callers stay deterministic in tests.
+ * This is the one place the precedence between the two variable names is decided; `drizzle.config.ts`
+ * resolves through the same function so migrations cannot disagree with the running server about
+ * which database they mean.
  */
 export function databaseUrlFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
-  const url =
-    environment[DATABASE_URL_VARIABLE]?.trim() || environment[LEGACY_DATABASE_URL_VARIABLE]?.trim();
+  const url = optionalDatabaseUrlFromEnvironment(environment);
   if (!url) throw new Error(`missing required environment variable: ${DATABASE_URL_VARIABLE}`);
   return url;
 }
