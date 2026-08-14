@@ -57,6 +57,8 @@ export interface Runner {
   /** Files in the working-tree or committed pull-request diff under review. */
   reviewFiles(options?: RepositoryContextOptions): Promise<string[]>;
   read(path: string): Promise<string>;
+  /** The file's exact bytes, for content that must survive republication byte-for-byte. */
+  readBytes(path: string): Promise<Uint8Array>;
   exists(path: string): Promise<boolean>;
   write(path: string, content: string): Promise<void>;
   check(command: string, timeoutMs: number): Promise<CheckResult>;
@@ -125,6 +127,19 @@ export abstract class RepositoryBoundary implements Runner {
     const handle = await this.openInside(path, constants.O_RDONLY);
     try {
       return await handle.readFile('utf8');
+    } finally {
+      await handle.close();
+    }
+  }
+
+  /**
+   * Unlike {@link read}, no encoding is applied: invalid UTF-8 sequences survive untouched, so a
+   * binary change captured through this method republishes with exactly the verified bytes.
+   */
+  async readBytes(path: string): Promise<Uint8Array> {
+    const handle = await this.openInside(path, constants.O_RDONLY);
+    try {
+      return await handle.readFile();
     } finally {
       await handle.close();
     }
@@ -273,6 +288,26 @@ export abstract class RepositoryBoundary implements Runner {
       else patches.push(outcome.stdout);
     }
     return patches;
+  }
+
+  /**
+   * The `owner/repo` identity recorded in the checkout's own git metadata.
+   *
+   * The `origin` remote URL is trusted local state: it was written when the checkout was created,
+   * not supplied by a webhook. Callers use it to bind a checkout to the repository an event claims
+   * to be about, so this fails closed: a checkout without exactly one parseable `origin` URL has
+   * no identity and returns null rather than a guess.
+   */
+  async originRepository(): Promise<{ owner: string; repo: string } | null> {
+    const outcome = await this.git(['remote', 'get-url', 'origin']);
+    if (outcome.exitCode !== 0) return null;
+    const urls = outcome.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+    const url = urls[0];
+    if (urls.length !== 1 || url === undefined) return null;
+    return parseRemoteRepository(url);
   }
 
   async changedFiles(): Promise<string[]> {
@@ -523,6 +558,50 @@ function boundedDiff(patches: readonly string[], budget: number): string {
 function unavailablePatch(path: string, reason: string): string {
   const name = HEADER_UNSAFE.test(path) ? JSON.stringify(path) : path;
   return `diff --git a/${name} b/${name}\n[untracked file patch unavailable: ${reason}]`;
+}
+
+// The host and path portions of an scp-style git remote such as `git@github.com:owner/repo.git`.
+const SCP_REMOTE = /^[\w.-]+@(?<host>[\w.-]+):(?<path>.+)$/u;
+const GIT_SUFFIX = /\.git$/u;
+// The only host whose remotes mint a repository identity. Callers bind this identity to GitHub
+// webhook targets, so a remote on any other host must not resolve to an `owner/repo` at all:
+// `https://attacker.example/acme/app.git` is not GitHub's `acme/app`.
+const GITHUB_HOST = 'github.com';
+
+/**
+ * Extract `owner/repo` from a GitHub remote URL, or null when the URL names anything else.
+ *
+ * The remote host must be `github.com`: the identity approves publication to the GitHub
+ * repository of the same name, so a checkout tracking another host has no GitHub identity and
+ * fails closed. Exactly two path segments are required: a URL with more or fewer segments does
+ * not identify a GitHub repository and is rejected rather than truncated into one.
+ */
+function parseRemoteRepository(url: string): { owner: string; repo: string } | null {
+  let host: string;
+  let path: string;
+  const scp = SCP_REMOTE.exec(url);
+  if (scp?.groups?.host !== undefined && scp.groups.path !== undefined) {
+    host = scp.groups.host;
+    path = scp.groups.path;
+  } else {
+    try {
+      const parsed = new URL(url);
+      host = parsed.hostname;
+      path = parsed.pathname;
+    } catch {
+      return null;
+    }
+  }
+  if (host.toLowerCase() !== GITHUB_HOST) return null;
+  const segments = path
+    .replaceAll('\\', '/')
+    .split('/')
+    .filter((segment) => segment.length > 0);
+  const [owner, tail] = segments;
+  if (segments.length !== 2 || !owner || !tail) return null;
+  const repo = tail.replace(GIT_SUFFIX, '');
+  if (repo.length === 0) return null;
+  return { owner, repo };
 }
 
 function assertInside(root: string, candidate: string, original: string): void {

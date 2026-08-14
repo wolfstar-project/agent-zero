@@ -17,23 +17,24 @@
 
 ## Overview
 
-Agent Zero runs one trustworthy loop: ingest review feedback or inspect a pull-request diff proactively, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
+Agent Zero runs one trustworthy loop: ingest review feedback, inspect a pull-request diff proactively, or take on a scoped GitHub issue, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
 
 Feedback is never treated as truth merely because it came from a human or an AI reviewer.
 
 - **Evidence over assertion** &ndash; every fix carries the commands that verified it.
 - **Proactive, not speculative** &ndash; diff review reports the highest-priority finding only when checkout evidence supports it.
 - **Confidence and impact gates** &ndash; automatic fixes require confidence, an allowed change-risk class, repository permission, and verification.
+- **Issues become reviewable pull requests** &ndash; a labeled, repository-scoped issue can be investigated, implemented on an isolated branch, verified, and published as a pull request that carries its acceptance criteria and evidence; never as a direct commit.
 - **`observe` by default** &ndash; the safe mode inspects and reports, and never writes to a target repository.
 - **One execution boundary** &ndash; `packages/runner` is the only code allowed to run commands or mutate a checkout.
-- **Adapters at the edges** &ndash; the runtime stays independent of HTTP, GitHub, terminal UI, and model providers.
+- **Adapters at the edges** &ndash; the runtime stays independent of HTTP, source-control platforms, terminal UI, and model providers.
 
 ---
 
 ## Architecture
 
 ```text
-GitHub adapter / CLI
+Source-control adapters (GitHub, GitLab, Bitbucket, Gitea) / CLI
         │
         ▼
    Agent state machine
@@ -47,18 +48,18 @@ GitHub adapter / CLI
 Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─── session store
 ```
 
-| Package                                | Responsibility                                                              |
-| -------------------------------------- | --------------------------------------------------------------------------- |
-| [`packages/agent`](./packages/agent)   | Orchestration and state transitions                                         |
-| [`packages/runner`](./packages/runner) | The only boundary that executes commands or mutates a checkout              |
-| [`packages/models`](./packages/models) | Model-provider abstractions                                                 |
-| [`packages/github`](./packages/github) | GitHub event and API adapters                                               |
-| [`packages/config`](./packages/config) | Configuration parsing and policy                                            |
-| [`packages/shared`](./packages/shared) | Stable cross-package contracts                                              |
-| [`packages/cli`](./packages/cli)       | Argument parsing and terminal presentation                                  |
-| [`packages/auth`](./packages/auth)     | Authentication policy and the Better Auth options factory                   |
-| [`packages/api`](./packages/api)       | oRPC router and control-plane operations                                    |
-| [`apps/dashboard`](./apps/dashboard)   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**` |
+| Package                                                | Responsibility                                                                            |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| [`packages/agent`](./packages/agent)                   | Orchestration and state transitions                                                       |
+| [`packages/runner`](./packages/runner)                 | The only boundary that executes commands or mutates a checkout                            |
+| [`packages/models`](./packages/models)                 | Model-provider abstractions                                                               |
+| [`packages/source-control`](./packages/source-control) | Provider-neutral source-control contracts and adapters (GitHub, GitLab, Bitbucket, Gitea) |
+| [`packages/config`](./packages/config)                 | Configuration parsing and policy                                                          |
+| [`packages/shared`](./packages/shared)                 | Stable cross-package contracts                                                            |
+| [`packages/cli`](./packages/cli)                       | Argument parsing and terminal presentation                                                |
+| [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth options factory                                 |
+| [`packages/api`](./packages/api)                       | oRPC router and control-plane operations                                                  |
+| [`apps/dashboard`](./apps/dashboard)                   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**`               |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -202,7 +203,9 @@ model:
   outputCostPerMillionTokens: 10
 ```
 
-`observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive/autonomous work) an isolated runner. High-impact changes always require human approval.
+`observe` is the safe default and never writes files. Proactive pull-request webhooks are ignored until `proactive.enabled` is true. Automatic changes additionally require `mode: fix` or `autonomous`, `autofix.enabled`, sufficient confidence, an allowed change-risk class, repository-native checks, and (by default for proactive, issue, or autonomous work) an isolated runner. High-impact changes always require human approval.
+
+Issue-to-PR work is opt-in twice: `issues.enabled` must be true and the issue must carry the `issues.requireLabel` label, so arbitrary issue text can never start a run. Issue text is untrusted input for the runtime to validate — never instructions. The run first decides from repository evidence whether the issue actually reports a real problem, and (unless `issues.validationComment` is disabled) posts that verdict back on the issue: confirmed with its evidence, not confirmed with every rejection reason, or inconclusive for a human. A pull request is opened only when the run completed, its changes were applied, and every repository check passed. Verified changes are published to a fresh `issues.branchPrefix` branch (never force-updated, never the default branch), and the pull request body is the run's evidence: acceptance criteria, plan, checks, and lifecycle.
 
 ---
 

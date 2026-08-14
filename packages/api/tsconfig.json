@@ -5,9 +5,9 @@
   "references": [
     { "path": "../agent" },
     { "path": "../config" },
-    { "path": "../github" },
     { "path": "../models" },
     { "path": "../runner" },
-    { "path": "../shared" }
+    { "path": "../shared" },
+    { "path": "../source-control" }
   ]
 }

@@ -12,7 +12,7 @@ Keep dependency direction explicit while changing the monorepo.
 - `shared`: stable contracts only, plus pure functions over them (evidence rendering, redaction, path predicates).
 - `config`: configuration, repository policy, and check discovery. Pure; the agent supplies what it read through the runner.
 - `models`: provider-independent model contracts and provider adapters.
-- `github`: GitHub-specific translation, event parsing, and Checks API behavior.
+- `source-control`: provider-neutral source-control contracts, webhook normalization, capability detection, and the GitHub, GitLab, Bitbucket, and Gitea adapters, including GitHub's issue-to-PR publication (branch and pull-request creation through the Git data API).
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
 - `cli`: argument parsing and terminal presentation.
@@ -32,7 +32,7 @@ Keep dependency direction explicit while changing the monorepo.
 
 1. Read `AGENTS.md` and `docs/architecture.md`.
 2. Identify the narrowest package that owns the behavior.
-3. Check imports before adding a dependency. Core packages must not import CLI, HTTP, or GitHub adapters.
+3. Check imports before adding a dependency. Core packages must not import CLI, HTTP, or source-control adapters.
 4. Put a contract in `shared` only when at least two packages need a stable common type.
 5. Keep SDK-specific types inside their adapter.
 6. Add deterministic tests beside the changed source.
@@ -40,9 +40,9 @@ Keep dependency direction explicit while changing the monorepo.
 
 ## Reject these designs
 
-- Shell execution in a transport adapter, CLI presentation, GitHub adapter, model adapter, or agent state machine.
+- Shell execution in a transport adapter, CLI presentation, source-control adapter, model adapter, or agent state machine.
 - HTTP request/response types inside the runtime.
-- GitHub SDK objects passed through shared contracts.
+- Provider SDK or payload objects passed through shared contracts.
 - A generic `utils` package used to bypass ownership decisions.
 - Cross-package imports from another package's `src/` directory.
 - A capability package importing another capability package. When `runner` needs policy, it declares the fields it needs structurally instead of importing `config`.

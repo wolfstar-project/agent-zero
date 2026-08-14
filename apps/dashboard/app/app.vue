@@ -7,9 +7,9 @@
 </template>
 
 <script setup lang="ts">
+import { locales } from '@agent-zero/i18n';
+import type { LocaleCode } from '@agent-zero/i18n';
 import { app } from '~~/config/app.js';
-import { locales } from '~~/config/i18n.js';
-import type { LocaleCode } from '~~/config/i18n.js';
 
 const { locale } = useI18n();
 

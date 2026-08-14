@@ -1,9 +1,12 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
 import { authConfigFromEnvironment, loginPath } from './config/auth.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
-import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 
 // Resolved once at config evaluation so the dashboard's login page publishes the same sign-in
 // policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
@@ -12,6 +15,20 @@ import { defaultLocale, i18nLocales, localeCookieName } from './config/i18n.js';
 // config enforces its own policy regardless, so a stale build can only mislabel the login page,
 // never open a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
+// locale directory has to be wired through each locale's `files` entries instead (the module's own
+// documented pattern for this). `@agent-zero/i18n` keeps `i18nLocales.files` package-relative
+// (`en/common.json`) so it stays portable; this is the one place that resolves them against the
+// installed package's real `locales/` directory.
+const i18nPackageDirectory = dirname(
+  fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
+);
+const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
+const resolvedI18nLocales = i18nLocales.map((locale) => ({
+  ...locale,
+  files: locale.files.map((file) => join(i18nLocalesDirectory, file)),
+}));
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -41,6 +58,28 @@ export default defineNuxtConfig({
     ],
   ],
   css: ['~/assets/css/main.css'],
+  // Components live under per-module roots instead of the default `app/components`, matching
+  // supastarter's modules/<feature> layout (with `shared` as its own module), so each root is
+  // registered explicitly. Nesting under each root still derives the auto-import prefix from the
+  // relative sub-path exactly like the default scanner did, so tag names (e.g. <TaskTable>,
+  // <AppSidebar>) are unchanged.
+  components: [
+    { path: '~/modules/shared/components' },
+    { path: '~/modules/auth/components' },
+    { path: '~/modules/dashboard/components' },
+    // Prefixed so the module's generic names (Switcher, MemberList, InviteForm) cannot collide
+    // with another module's component of the same name.
+    { path: '~/modules/organizations/components', prefix: 'Organizations' },
+  ],
+  imports: {
+    // Composables also moved out of `app/composables`; Nuxt auto-imports by exported symbol name,
+    // so call sites (useAuthErrorMessage(), useSidebarCollapsed()) are unaffected.
+    dirs: [
+      'modules/auth/composables',
+      'modules/shared/composables',
+      'modules/organizations/composables',
+    ],
+  },
   icon: {
     // Icons stay fully client-bundled rather than served or fetched at runtime, regardless of the
     // app's own server routes. Every icon is scanned from the templates at build time and compiled
@@ -56,7 +95,7 @@ export default defineNuxtConfig({
     plugins: [stripEmptyI18nMessagesPlugin()],
   },
   i18n: {
-    locales: i18nLocales,
+    locales: resolvedI18nLocales,
     defaultLocale,
     // The dashboard is a single internal surface, so localised URL prefixes would only churn
     // route paths without buying any of the SEO they exist for.
@@ -95,6 +134,7 @@ export default defineNuxtConfig({
     auth: {
       enableSignup: authPolicy.enableSignup,
       enableGithubOauth: authPolicy.enableGithubOauth,
+      enableOrganizations: authPolicy.enableOrganizations,
     },
   },
   app: {
@@ -106,6 +146,10 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { appLayout: 'default', auth: { only: 'user' } },
     [loginPath]: { auth: { only: 'guest' } },
+    '/organizations': { appLayout: 'default', auth: { only: 'user' } },
+    // Reached from an invitation email, so the visitor is frequently signed out at that moment:
+    // requiring a session sends them through /login and back, rather than rejecting the link.
+    '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },
   },
   typescript: {
     strict: true,

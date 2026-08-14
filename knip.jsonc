@@ -13,6 +13,20 @@
     "nano-staged",
   ],
   "workspaces": {
+    "packages/i18n": {
+      // Every i18n:* script is invoked directly (`node scripts/x.ts`) from package.json rather
+      // than imported, so each is its own entry point. lunaria.config.ts is discovered by
+      // @lunariajs/core's own filesystem convention, not imported.
+      "entry": ["src/index.ts", "scripts/*.ts", "lunaria.config.ts"],
+    },
+    "packages/mail": {
+      // maizzle.config.ts is discovered by Maizzle's own `render()` call by filesystem
+      // convention (it walks up from the template path), not imported by anything in src/.
+      "entry": ["src/index.ts", "maizzle.config.ts"],
+      // Resolved by Maizzle's Tailwind integration from the package name, not imported
+      // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
+      "ignoreDependencies": ["@maizzle/tailwindcss"],
+    },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does
       // not scan, and Nuxt auto-imports components, composables, and utils.
@@ -25,10 +39,11 @@
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",
-        "app/components/**/*.vue",
-        "app/composables/**/*.ts",
+        "app/modules/**/*.vue",
+        "app/modules/**/*.ts",
         "app/middleware/**/*.ts",
         "app/plugins/**/*.ts",
+        "app/types/**/*.ts",
         "app/utils/**/*.ts",
         "modules/**/*.ts",
         "server/**/*.ts",
@@ -40,12 +55,10 @@
       // loads the lucide collection by name at build time, so no source file
       // imports @iconify-json/lucide directly.
       "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
-      // Nuxt resolves ~ to the app/ source directory, ~~ to the project root,
-      // and #shared to the shared/ directory.
+      // Nuxt resolves ~ to the app/ source directory and ~~ to the project root.
       "paths": {
         "~/*": ["app/*"],
         "~~/*": ["*"],
-        "#shared/*": ["shared/*"],
       },
     },
   },

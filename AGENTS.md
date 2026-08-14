@@ -24,15 +24,15 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/agent`: orchestration and state transitions only.
 - `packages/runner`: the only boundary allowed to execute repository commands or mutate a checkout.
 - `packages/models`: model-provider abstractions.
-- `packages/github`: GitHub event and API adapters.
+- `packages/source-control`: provider-neutral source-control contracts, with GitHub, GitLab, Bitbucket, and Gitea adapters underneath.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
 - `packages/auth`: authentication policy and the Better Auth options factory. No HTTP server, no runtime imports.
-- `packages/api`: the oRPC router and control-plane operations. The only package that composes the runtime, GitHub, models, and config adapters into one API surface. Holds no HTTP host of its own.
+- `packages/api`: the oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own.
 - `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), plus `GET /api/dashboard`, and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only component that owns a persistence layer (Postgres, via that one route).
 
-The runtime must remain independent from HTTP, GitHub, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: `packages/auth` may not import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes its policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
+The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: `packages/auth` may not import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes its policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
 
 ## Safety and determinism
 

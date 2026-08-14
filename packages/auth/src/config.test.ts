@@ -56,4 +56,28 @@ describe('authConfigFromEnvironment', () => {
         .enableGithubOauth,
     ).toBe(true);
   });
+
+  it('keeps organizations disabled unless explicitly opted in', () => {
+    expect(authConfigFromEnvironment({}).enableOrganizations).toBe(false);
+    expect(
+      authConfigFromEnvironment({ AUTH_ENABLE_ORGANIZATIONS: 'TRUE' }).enableOrganizations,
+    ).toBe(false);
+    expect(
+      authConfigFromEnvironment({ AUTH_ENABLE_ORGANIZATIONS: 'true' }).enableOrganizations,
+    ).toBe(true);
+  });
+
+  it('refuses to advertise organization creation while organizations are off', () => {
+    // A stale AUTH_ALLOW_ORGANIZATION_CREATION must not survive turning the feature back off.
+    expect(
+      authConfigFromEnvironment({ AUTH_ALLOW_ORGANIZATION_CREATION: 'true' })
+        .allowUserToCreateOrganization,
+    ).toBe(false);
+    expect(
+      authConfigFromEnvironment({
+        AUTH_ENABLE_ORGANIZATIONS: 'true',
+        AUTH_ALLOW_ORGANIZATION_CREATION: 'true',
+      }).allowUserToCreateOrganization,
+    ).toBe(true);
+  });
 });

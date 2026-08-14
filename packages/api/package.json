@@ -38,10 +38,10 @@
   "dependencies": {
     "@agent-zero/agent": "workspace:*",
     "@agent-zero/config": "workspace:*",
-    "@agent-zero/github": "workspace:*",
     "@agent-zero/models": "workspace:*",
     "@agent-zero/runner": "workspace:*",
     "@agent-zero/shared": "workspace:*",
+    "@agent-zero/source-control": "workspace:*",
     "@orpc/contract": "2.0.0-beta.26",
     "@orpc/evlog": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",

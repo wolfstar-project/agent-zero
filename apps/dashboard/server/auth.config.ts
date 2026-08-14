@@ -1,15 +1,48 @@
 import { authBetterAuthOptions, authDatabaseOptionsFromEnvironment } from '@agent-zero/auth';
+import { createMailer, mailProviderNameFromEnvironment } from '@agent-zero/mail';
 import { defineServerAuth } from '@onmax/nuxt-better-auth/config';
 import { memoryAdapter } from 'better-auth/adapters/memory';
+
+// This module is the composition root for authentication, so it is where the mail transport is
+// bound and injected. `packages/auth` declares the delivery contract structurally and never
+// imports `@agent-zero/mail`, which keeps one capability package from depending on another.
+//
+// The transport is only injected when the configured provider actually delivers: the console
+// default logs an envelope instead of sending, so wiring it in would satisfy
+// `authBetterAuthOptions`'s startup guard while every invitation silently reached nobody.
+// Withholding the callback lets that guard fail startup when organizations are enabled without a
+// real transport.
+const sendMail = createMailer();
+const deliversMail = mailProviderNameFromEnvironment() !== 'console';
 
 /**
  * Better Auth's database, policy, and provider configuration.
  *
  * `secret` and `baseURL` are deliberately absent from `authBetterAuthOptions`: the module injects
  * them itself (from `NUXT_BETTER_AUTH_SECRET`/`BETTER_AUTH_SECRET` and the resolved site URL), so
- * this file cannot become a second, divergent source for either.
+ * this file cannot become a second, divergent source for either. `dashboardUrl` resolves from
+ * `NUXT_PUBLIC_SITE_URL` for the same reason `secret`/`baseURL` are omitted above: this app is
+ * same-origin with itself, so the dashboard origin an invitation link should point at is this
+ * deployment's own public origin. It has to be set explicitly (rather than derived from an
+ * incoming request) because Better Auth's plugin list, and therefore the invitation callback
+ * closure, is built once at module load.
  */
-const options = authBetterAuthOptions(authDatabaseOptionsFromEnvironment());
+const dashboardUrl = process.env.NUXT_PUBLIC_SITE_URL?.trim();
+
+const options = authBetterAuthOptions({
+  ...authDatabaseOptionsFromEnvironment(),
+  ...(dashboardUrl ? { dashboardUrl } : {}),
+  ...(deliversMail
+    ? {
+        sendInvitationEmail: ({ to, organizationName, inviterName, acceptUrl }) =>
+          sendMail({
+            to,
+            templateId: 'organizationInvitation',
+            context: { organizationName, inviterName, acceptUrl },
+          }),
+      }
+    : {}),
+});
 
 /**
  * `AUTH_E2E_MEMORY` swaps the Postgres adapter for an in-memory one. Set only by the Playwright

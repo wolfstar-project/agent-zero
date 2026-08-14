@@ -1,0 +1,3 @@
+{
+  "features": ["common.json", "errors.json", "auth.json", "dashboard.json", "organizations.json"]
+}

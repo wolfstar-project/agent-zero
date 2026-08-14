@@ -5,7 +5,7 @@
     { "path": "packages/config" },
     { "path": "packages/models" },
     { "path": "packages/runner" },
-    { "path": "packages/github" },
+    { "path": "packages/source-control" },
     { "path": "packages/agent" },
     { "path": "packages/cli" },
     { "path": "packages/auth" },

@@ -27,6 +27,7 @@ export {
   type FeedbackItem,
   type FeedbackKind,
   type Finding,
+  type IssueRef,
   type ModelFinding,
   type ModelCallUsage,
   type ModelProviderKind,
