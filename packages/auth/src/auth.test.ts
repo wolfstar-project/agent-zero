@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { authOptionsFromEnvironment, createAuth } from './auth.js';
+import {
+  authBetterAuthOptions,
+  authDatabaseOptionsFromEnvironment,
+  authOptionsFromEnvironment,
+  createAuth,
+} from './auth.js';
 import { defaultAuthConfig } from './config.js';
 
 const completeEnvironment = {
   BETTER_AUTH_SECRET: 'a-very-secret-value',
-  BETTER_AUTH_URL: 'http://localhost:3002',
+  BETTER_AUTH_URL: 'http://localhost:3001',
   AUTH_DASHBOARD_ORIGIN: 'http://localhost:3000',
   DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/agent_zero_auth',
 };
@@ -104,5 +109,59 @@ describe('createAuth with organizations', () => {
 
   it('constructs without a transport while organizations are off', () => {
     expect(() => createAuth({ ...instanceOptions, config: defaultAuthConfig })).not.toThrow();
+  });
+});
+
+describe('authDatabaseOptionsFromEnvironment', () => {
+  it('reads the database connection string without requiring signing or origin variables', () => {
+    const options = authDatabaseOptionsFromEnvironment({
+      DATABASE_URL: completeEnvironment.DATABASE_URL,
+    });
+
+    expect(options.databaseUrl).toBe(completeEnvironment.DATABASE_URL);
+    expect(options.github).toBeUndefined();
+  });
+
+  it('still accepts AUTH_DATABASE_URL from a deployment configured before the split', () => {
+    const options = authDatabaseOptionsFromEnvironment({
+      AUTH_DATABASE_URL: completeEnvironment.DATABASE_URL,
+    });
+
+    expect(options.databaseUrl).toBe(completeEnvironment.DATABASE_URL);
+  });
+
+  it('refuses to start without DATABASE_URL', () => {
+    expect(() => authDatabaseOptionsFromEnvironment({})).toThrow('DATABASE_URL');
+  });
+});
+
+describe('authBetterAuthOptions', () => {
+  it('omits secret, baseURL, and trustedOrigins for a host that resolves them itself', () => {
+    const options = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+
+    expect(options).not.toHaveProperty('secret');
+    expect(options).not.toHaveProperty('baseURL');
+    expect(options).not.toHaveProperty('trustedOrigins');
+    expect(options.emailAndPassword).toMatchObject({ enabled: true, disableSignUp: true });
+  });
+
+  it('enables a GitHub social provider only when credentials are supplied', () => {
+    const withoutGithub = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    expect(withoutGithub.socialProviders).toBeUndefined();
+
+    const withGithub = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+      github: { clientId: 'id', clientSecret: 'secret' },
+    });
+    expect(withGithub.socialProviders).toMatchObject({
+      github: { clientId: 'id', clientSecret: 'secret' },
+    });
   });
 });

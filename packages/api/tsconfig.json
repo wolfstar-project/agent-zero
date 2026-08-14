@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "dist" },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../agent" },
+    { "path": "../config" },
+    { "path": "../models" },
+    { "path": "../runner" },
+    { "path": "../shared" },
+    { "path": "../source-control" }
+  ]
+}

@@ -1,6 +1,6 @@
 import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
 import { betterAuth } from 'better-auth';
-import type { BetterAuthOptions } from 'better-auth';
+import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins';
 
@@ -21,8 +21,8 @@ export type SendInvitationEmail = (invitation: {
   readonly acceptUrl: string;
 }) => Promise<void>;
 
-/** Everything the Better Auth instance needs that is not policy. */
-export interface AuthInstanceOptions {
+/** Everything Better Auth's policy shape needs that isn't signing or origin configuration. */
+export interface AuthDatabaseOptions {
   /**
    * Postgres connection string holding users and sessions.
    *
@@ -30,16 +30,13 @@ export interface AuthInstanceOptions {
    * those tables.
    */
   readonly databaseUrl: string;
-  /** Signing secret. Must be supplied by the caller; there is deliberately no default. */
-  readonly secret: string;
-  /** Public origin the auth server is reachable at. */
-  readonly baseUrl: string;
-  /** Origins allowed to complete a credentialed round trip, typically the dashboard. */
-  readonly trustedOrigins: readonly string[];
-  /** Dashboard origin invitation links point at, so a recipient lands on the UI, not the API. */
-  readonly dashboardUrl: string;
   readonly config: AuthConfig;
   readonly github?: GithubOauthCredentials;
+  /**
+   * Dashboard origin invitation links point at, so a recipient lands on the UI, not the API.
+   * Required when organizations are enabled.
+   */
+  readonly dashboardUrl?: string;
   /**
    * How invitations are delivered. Required when organizations are enabled: without it an
    * invitation would be created that nobody is ever told about.
@@ -47,19 +44,45 @@ export interface AuthInstanceOptions {
   readonly sendInvitationEmail?: SendInvitationEmail;
 }
 
+/** Everything the Better Auth instance needs that is not policy. */
+export interface AuthInstanceOptions extends AuthDatabaseOptions {
+  /** Signing secret. Must be supplied by the caller; there is deliberately no default. */
+  readonly secret: string;
+  /** Public origin the auth server is reachable at. */
+  readonly baseUrl: string;
+  /** Origins allowed to complete a credentialed round trip, typically the dashboard. */
+  readonly trustedOrigins: readonly string[];
+}
+
 /**
- * Build a Better Auth instance from explicit options.
+ * Build the database, policy, and provider portion of the Better Auth options.
  *
- * A factory rather than a module-level singleton, so that tests and alternative composition roots
- * can construct an isolated instance without reaching into the environment.
+ * Deliberately excludes `secret`, `baseURL`, and `trustedOrigins`: a same-origin host (a Nuxt
+ * module hosting Better Auth in-process, for example) resolves those itself and must not have a
+ * second, potentially divergent source for them.
  */
-export function createAuth(options: AuthInstanceOptions) {
+export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
+  BetterAuthOptions,
+  'database' | 'emailAndPassword' | 'session' | 'socialProviders'
+> & {
+  // Declared here rather than picked from `BetterAuthOptions`: that interface's own `plugins`
+  // field is typed `... | undefined` explicitly, which trips `exactOptionalPropertyTypes` at
+  // every consumer that (rightly) declares its own `plugins` as merely optional, including
+  // `@onmax/nuxt-better-auth`'s server config type. A required, mutable, always-array field is
+  // assignable to both; `readonly` is not, because `BetterAuthOptions['plugins']` itself is not.
+  plugins: BetterAuthPlugin[];
+} {
   const { config } = options;
 
   // Fail at construction rather than at the first invitation: a deployment that enables
   // organizations without a transport would accept invitations and silently never deliver them.
   if (config.enableOrganizations && !options.sendInvitationEmail)
     throw new Error('organizations are enabled but no sendInvitationEmail was provided');
+  if (config.enableOrganizations && !options.dashboardUrl)
+    throw new Error('organizations are enabled but no dashboardUrl was provided');
+
+  const sendInvitationEmail = options.sendInvitationEmail;
+  const dashboardUrl = options.dashboardUrl;
 
   // Widened to the option type Better Auth declares. Left as the concrete adapter type, the
   // inferred return type embeds types TypeScript cannot name in the emitted declarations.
@@ -72,11 +95,8 @@ export function createAuth(options: AuthInstanceOptions) {
     { provider: 'pg', schema },
   );
 
-  return betterAuth({
+  return {
     database,
-    secret: options.secret,
-    baseURL: options.baseUrl,
-    trustedOrigins: [...options.trustedOrigins],
     emailAndPassword: {
       enabled: config.enablePasswordLogin,
       minPasswordLength: config.minimumPasswordLength,
@@ -88,27 +108,44 @@ export function createAuth(options: AuthInstanceOptions) {
     ...(options.github
       ? { socialProviders: { github: { ...options.github, disableSignUp: !config.enableSignup } } }
       : {}),
-    plugins: config.enableOrganizations
-      ? [
-          organization({
-            allowUserToCreateOrganization: config.allowUserToCreateOrganization,
-            membershipLimit: config.organizationMembershipLimit,
-            invitationExpiresIn: config.invitationExpiresInSeconds,
-            sendInvitationEmail: async (data) => {
-              // Checked in the guard above; narrowing here keeps the callback total.
-              const send = options.sendInvitationEmail;
-              if (!send) return;
-              await send({
-                to: data.email,
-                organizationName: data.organization.name,
-                // Better Auth exposes the inviter as a member record wrapping the user.
-                inviterName: data.inviter.user.name,
-                acceptUrl: invitationAcceptUrl(options.dashboardUrl, data.id),
-              });
-            },
-          }),
-        ]
-      : [],
+    plugins:
+      config.enableOrganizations && dashboardUrl
+        ? [
+            organization({
+              allowUserToCreateOrganization: config.allowUserToCreateOrganization,
+              membershipLimit: config.organizationMembershipLimit,
+              invitationExpiresIn: config.invitationExpiresInSeconds,
+              sendInvitationEmail: async (data) => {
+                // Checked in the guard above; narrowing here keeps the callback total.
+                const send = sendInvitationEmail;
+                if (!send) return;
+                await send({
+                  to: data.email,
+                  organizationName: data.organization.name,
+                  // Better Auth exposes the inviter as a member record wrapping the user.
+                  inviterName: data.inviter.user.name,
+                  acceptUrl: invitationAcceptUrl(dashboardUrl, data.id),
+                });
+              },
+            }),
+          ]
+        : [],
+  };
+}
+
+/**
+ * Build a standalone Better Auth instance from explicit options.
+ *
+ * A factory rather than a module-level singleton, so that tests and alternative composition roots
+ * can construct an isolated instance without reaching into the environment. Kept for callers that
+ * own their own signing secret and origin rather than delegating them to a host module.
+ */
+export function createAuth(options: AuthInstanceOptions) {
+  return betterAuth({
+    ...authBetterAuthOptions(options),
+    secret: options.secret,
+    baseURL: options.baseUrl,
+    trustedOrigins: [...options.trustedOrigins],
   });
 }
 
@@ -137,6 +174,29 @@ function requireEnvironmentValue(
 }
 
 /**
+ * Resolve `authBetterAuthOptions` options from the environment.
+ *
+ * Deliberately does not read `AUTH_DASHBOARD_ORIGIN`: a caller that only needs the database and
+ * policy shape (no signing, no origin) should not be made to supply one, and one that needs
+ * invitation links resolves `dashboardUrl` through {@link authOptionsFromEnvironment} instead.
+ *
+ * The connection string is resolved by `@agent-zero/database` so the store has one variable
+ * regardless of which process opens it; it accepts the pre-split `AUTH_DATABASE_URL` as well. The
+ * error messages name the variable but never echo its value, so a misconfigured deployment cannot
+ * leak a secret or a connection string into a crash log.
+ */
+export function authDatabaseOptionsFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): AuthDatabaseOptions {
+  const github = githubCredentialsFromEnvironment(environment);
+  return {
+    databaseUrl: databaseUrlFromEnvironment(environment),
+    config: authConfigFromEnvironment(environment),
+    ...(github ? { github } : {}),
+  };
+}
+
+/**
  * Resolve `createAuth` options from the environment.
  *
  * The error messages name the variable but never echo its value, so a misconfigured deployment
@@ -146,19 +206,14 @@ export function authOptionsFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthInstanceOptions {
   const dashboardOrigin = requireEnvironmentValue(environment, 'AUTH_DASHBOARD_ORIGIN');
-  const github = githubCredentialsFromEnvironment(environment);
 
   return {
-    // Resolved by the database package so the store has one variable regardless of which process
-    // opens it; it accepts the pre-split `AUTH_DATABASE_URL` as well.
-    databaseUrl: databaseUrlFromEnvironment(environment),
+    ...authDatabaseOptionsFromEnvironment(environment),
     secret: requireEnvironmentValue(environment, 'BETTER_AUTH_SECRET'),
     baseUrl: requireEnvironmentValue(environment, 'BETTER_AUTH_URL'),
     trustedOrigins: [dashboardOrigin],
     // The same origin the dashboard is served from, so invitation links resolve to the UI.
     dashboardUrl: dashboardOrigin,
-    config: authConfigFromEnvironment(environment),
-    ...(github ? { github } : {}),
   };
 }
 
