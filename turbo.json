@@ -11,7 +11,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo"]
+      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"],

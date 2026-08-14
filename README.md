@@ -15,6 +15,12 @@
 
 ---
 
+## Documentation
+
+The full documentation — getting started, architecture, configuration, API, authentication, and deployment — lives in [`apps/docs`](./apps/docs), a VitePress site. Run it locally with `aube run dev --filter=@agent-zero/docs`. The canonical architecture and provider references stay in [`docs/`](./docs) and are included by the site, so both always read the same source.
+
+---
+
 ## Overview
 
 Agent Zero runs one trustworthy loop: ingest review feedback, inspect a pull-request diff proactively, or take on a scoped GitHub issue, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.

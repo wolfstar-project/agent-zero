@@ -47,6 +47,8 @@ aube test
 
 Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before making architectural or safety-sensitive changes.
 
+Documentation lives in `apps/docs`, a VitePress site (`aube run dev --filter=@agent-zero/docs` to preview it). The canonical architecture and provider references stay in `docs/*.md` and are included by the site — edit those files rather than duplicating their content into site pages.
+
 ## Development workflow
 
 1. Fork the repository and branch from `main`.

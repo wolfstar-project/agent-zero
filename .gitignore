@@ -3,6 +3,7 @@ node_modules/
 dist/
 .output/
 .nuxt/
+.vitepress/cache/
 .vitehub/
 *.tsbuildinfo
 coverage/
