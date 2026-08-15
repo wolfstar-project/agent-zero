@@ -33,6 +33,7 @@ jobs:
             ci
             cli
             config
+            database
             deps
             docs
             github

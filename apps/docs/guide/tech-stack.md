@@ -27,7 +27,7 @@ Agent Zero is a TypeScript monorepo. Every tool below was chosen deliberately; t
 - **[UnoCSS](https://unocss.dev)** (preset-wind4) with **[@nuxt/icon](https://github.com/nuxt/icon)** (Lucide, bundled locally) — styling and icons.
 - **[oRPC](https://orpc.unnoq.com)** — one typed router served over both a typed RPC transport (`/rpc/**`) and OpenAPI/REST (`/api/v1/**`).
 - **[Better Auth](https://better-auth.com)** via [`@onmax/nuxt-better-auth`](https://github.com/onmax/nuxt-better-auth) — authentication mounted in-process at `/api/auth/**`.
-- **[Drizzle](https://orm.drizzle.team) + Postgres** — the session store, the only database in the repository, with reviewable checked-in SQL migrations.
+- **[Drizzle](https://orm.drizzle.team) + Postgres** — the session store, the only database in the repository, owned by `packages/database` with reviewable checked-in SQL migrations.
 - **[Maizzle](https://maizzle.com)** — transactional email templates in `packages/mail`.
 - **[@nuxtjs/i18n](https://i18n.nuxtjs.org)** + **[Lunaria](https://lunaria.dev)** — English and Italian dictionaries with translation-staleness reporting.
 - **[Vercel AI SDK](https://sdk.vercel.ai)** — the model-provider integrations behind one `ModelProvider` contract in `packages/models`.

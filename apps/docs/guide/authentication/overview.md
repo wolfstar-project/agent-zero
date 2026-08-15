@@ -7,17 +7,18 @@ The dashboard UI is protected by [Better Auth](https://better-auth.com), mounted
 Authentication follows the adapter rule at the package level:
 
 - **`packages/auth`** holds the policy: `authBetterAuthOptions` builds the database, policy, and provider options Better Auth needs. It has no HTTP server and no runtime imports, and its `./config` subpath stays free of database dependencies so the login page can read feature flags without bundling one.
-- **`apps/dashboard/server/auth.config.ts`** composes that policy into the running instance. It is the only route in the app that resolves `AUTH_DATABASE_URL` and the signing secret, and therefore the only place in the repository that opens a connection to Postgres.
+- **`packages/database`** owns the store: the Drizzle schema, the connection factory, and the checked-in migrations. It knows nothing about sign-in and must never import `packages/auth` — see [Database](/guide/database).
+- **`apps/dashboard/server/auth.config.ts`** composes that policy into the running instance. It is the only route in the app that resolves the connection string (through `packages/database`) and the signing secret, and therefore the only process that opens a connection to Postgres.
 
 `authBetterAuthOptions` deliberately omits `secret`, `baseURL`, and `trustedOrigins` — the Nuxt module resolves those itself and constructs the actual instance, so the two cannot diverge. `createAuth`, which does build a full standalone instance, remains for callers that own their own secret and origin, such as the Better Auth CLI's schema-generation entry point.
 
 ## Secrets
 
-| Variable                  | Rule                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `NUXT_BETTER_AUTH_SECRET` | Required under this name in production; generate with `openssl rand -base64 32` |
-| `BETTER_AUTH_SECRET`      | Development-only fallback                                                       |
-| `AUTH_DATABASE_URL`       | Postgres connection string, resolved only by `server/auth.config.ts`            |
+| Variable                  | Rule                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `NUXT_BETTER_AUTH_SECRET` | Required under this name in production; generate with `openssl rand -base64 32`                                                   |
+| `BETTER_AUTH_SECRET`      | Development-only fallback                                                                                                         |
+| `DATABASE_URL`            | Postgres connection string, resolved only by `server/auth.config.ts` (the pre-split `AUTH_DATABASE_URL` is still read when unset) |
 
 ## Closed by default
 

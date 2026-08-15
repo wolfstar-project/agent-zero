@@ -28,12 +28,15 @@ These instructions apply to humans and coding agents working in this repository.
 - `packages/config`: configuration parsing and policy.
 - `packages/shared`: stable cross-package contracts.
 - `packages/cli`: argument parsing and terminal presentation.
-- `packages/auth`: authentication policy and the Better Auth options factory. No HTTP server, no runtime imports.
+- `packages/database`: the schema, the Drizzle client, and the checked-in migrations. The only package that talks to Postgres. No policy, no HTTP, no runtime imports.
+- `packages/auth`: authentication policy and the Better Auth options factory. Reads the store through `packages/database`. No HTTP server, no runtime imports.
 - `packages/api`: the oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own.
 - `apps/docs`: the VitePress documentation site. Not deployed with the dashboard. The canonical architecture and provider references remain in `docs/*.md` (the site includes them verbatim); edit those files, not copies.
-- `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), plus `GET /api/dashboard`, and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only component that owns a persistence layer (Postgres, via that one route).
+- `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), plus `GET /api/dashboard`, and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only process that opens the database, and it does so through `packages/database`.
 
-The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: `packages/auth` may not import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes its policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
+The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/database` nor `packages/auth` may import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes `packages/auth`'s policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
+
+Persistence and policy are separate boundaries. `packages/database` owns tables, connections, and migrations and knows nothing about authentication; `packages/auth` decides what is allowed and reads the store through it. The dependency runs one way — a schema change never needs to know who signs in, and `packages/database` must not import `packages/auth`.
 
 ## Safety and determinism
 

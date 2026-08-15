@@ -19,7 +19,7 @@ Enabling organizations requires a working mail transport, because invitations ar
 
 ## How it works
 
-- Organization data (membership, invitations, roles) lives in the Better Auth session store — the same Postgres database, declared in `packages/auth`'s Drizzle schema.
+- Organization data (membership, invitations, roles) lives in the Better Auth session store — the same Postgres database, declared in `packages/database`'s Drizzle schema.
 - Policy constants such as the membership limit and invitation expiry are defined in `packages/auth` and composed into the Better Auth options.
 - The dashboard's organization UI lives in `apps/dashboard/app/modules/organizations/` — pages for creating an organization, managing members, and accepting invitations.
 - Like every auth capability, the organization feature flags are captured at build time; rebuild after changing them. See [Authentication overview](/guide/authentication/overview).

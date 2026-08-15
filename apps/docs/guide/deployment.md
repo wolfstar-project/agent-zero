@@ -14,7 +14,7 @@ node apps/dashboard/.output/server/index.mjs
 ## Production checklist
 
 - [ ] **Session secret** — set `NUXT_BETTER_AUTH_SECRET` (this exact name; the development fallback is ignored in production). Generate with `openssl rand -base64 32`.
-- [ ] **Postgres** — point `AUTH_DATABASE_URL` at a managed database and apply the schema once with `aube --filter @agent-zero/auth run db:migrate`. See [Database](/guide/database).
+- [ ] **Postgres** — point `DATABASE_URL` at a managed database and apply the schema once with `aube run db:migrate`. See [Database](/guide/database).
 - [ ] **Auth policy** — decide `AUTH_ENABLE_SIGNUP`, GitHub OAuth credentials, and organization flags, then **build with them set**: the login page captures capabilities at build time. See [Authentication](/guide/authentication/overview).
 - [ ] **Mail** — set `MAIL_PROVIDER` to `resend` or `smtp`; the default `console` only logs. Required if organizations are enabled. See [Mails](/guide/mails).
 - [ ] **Control plane** — issue bearer tokens via `AGENT_ZERO_CONTROL_PLANE_TOKENS`, allow-list repositories via `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES`, and grant modes via `AGENT_ZERO_CONTROL_PLANE_MODES`. Without them, mutations are rejected. See [Protect endpoints](/guide/api/protect-endpoints).

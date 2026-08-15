@@ -47,7 +47,7 @@ Registration and GitHub OAuth are off until you turn them on, so a fresh deploym
 | Variable                                    | Required | Default | Purpose                                                                                                             |
 | ------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | `NUXT_BETTER_AUTH_SECRET`                   | yes      | –       | Session signing secret. Required under this name in production; `BETTER_AUTH_SECRET` is a development-only fallback |
-| `AUTH_DATABASE_URL`                         | yes      | –       | Postgres connection string                                                                                          |
+| `DATABASE_URL`                              | yes      | –       | Postgres connection string; the pre-split `AUTH_DATABASE_URL` is still read when this is unset                      |
 | `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration                                                                            |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set                                                                         |
 | `AUTH_ENABLE_ORGANIZATIONS`                 | no       | `false` | Enables organizations; requires a working mail transport                                                            |

@@ -13,6 +13,7 @@ agent-zero
 │   ├── auth             # authentication policy and Better Auth options factory
 │   ├── cli              # argument parsing and terminal presentation
 │   ├── config           # configuration parsing and policy
+│   ├── database         # the schema, the Drizzle client, and the migrations
 │   ├── i18n             # locale definitions and translation tooling
 │   ├── mail             # transactional email templates and providers
 │   ├── models           # model-provider abstractions
@@ -35,7 +36,8 @@ agent-zero
 | `packages/config`         | Configuration parsing and policy for `.agent-zero.yml`.                                                                                                                                    |
 | `packages/shared`         | Stable cross-package contracts. Zero dependencies; must not import feature packages.                                                                                                       |
 | `packages/cli`            | Argument parsing and terminal presentation for the `zero` binary.                                                                                                                          |
-| `packages/auth`           | Authentication policy and the Better Auth options factory. No HTTP server, no runtime imports.                                                                                             |
+| `packages/database`       | The schema, the Drizzle client, and the checked-in migrations. The only package that talks to Postgres. No policy, no HTTP, no runtime imports.                                            |
+| `packages/auth`           | Authentication policy and the Better Auth options factory. Reads the store through `packages/database`. No HTTP server, no runtime imports.                                                |
 | `packages/api`            | The oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own. |
 | `packages/i18n`           | Locale definitions (English, Italian) plus translation status tooling.                                                                                                                     |
 | `packages/mail`           | Maizzle-based transactional email templates and delivery providers.                                                                                                                        |
@@ -64,6 +66,7 @@ If a change would create a reverse dependency, move the shared contract inward i
 | Configuration and policy                             | `packages/config`         |
 | Shared contracts                                     | `packages/shared`         |
 | CLI parsing and presentation                         | `packages/cli`            |
+| Database schema and migrations                       | `packages/database`       |
 | Authentication policy                                | `packages/auth`           |
 | oRPC router and control-plane operations             | `packages/api`            |
 | UI, HTTP host (RPC, OpenAPI, auth, dashboard routes) | `apps/dashboard`          |
