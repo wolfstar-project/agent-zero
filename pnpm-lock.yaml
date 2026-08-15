@@ -14697,10 +14697,6 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@alloc/quick-lru@5.2.0': {}
-
-  '@andrewbranch/untar.js@1.0.4': {}
-
   '@algolia/abtesting@1.22.0':
     dependencies:
       '@algolia/client-common': 5.56.0
@@ -14813,9 +14809,9 @@ snapshots:
     dependencies:
       '@algolia/client-common': 5.56.0
 
-  '@babel/helper-string-parser@7.29.7': {}
+  '@alloc/quick-lru@5.2.0': {}
 
-  '@babel/helper-validator-identifier@7.29.7': {}
+  '@andrewbranch/untar.js@1.0.4': {}
 
   '@antfu/install-pkg@1.1.0':
     dependencies:
@@ -15950,7 +15946,7 @@ snapshots:
       vite: 8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
       zigpty: 0.2.1
 
-  '@drizzle-team/brocli@0.10.2': {}
+  '@docsearch/css@3.8.2': {}
 
   '@docsearch/js@3.8.2(@algolia/client-search@5.56.0)(search-insights@2.17.3)':
     dependencies:
@@ -15974,6 +15970,8 @@ snapshots:
       search-insights: 2.17.3
     transitivePeerDependencies:
       - '@algolia/client-search'
+
+  '@drizzle-team/brocli@0.10.2': {}
 
   '@dxup/nuxt@0.5.6(esbuild@0.28.2)(oxc-parser@0.143.0)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2)':
     dependencies:
@@ -16605,10 +16603,6 @@ snapshots:
   '@iconify-json/simple-icons@1.2.93':
     dependencies:
       '@iconify/types': 2.0.0
-
-  '@iconify/types@2.0.0': {}
-
-  '@jridgewell/sourcemap-codec@1.5.5': {}
 
   '@iconify/collections@1.0.722':
     dependencies:
@@ -19182,10 +19176,6 @@ snapshots:
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
 
-  '@shikijs/vscode-textmate@10.0.2': {}
-
-  '@types/estree@1.0.9': {}
-
   '@shikijs/types@4.4.3':
     dependencies:
       '@shikijs/vscode-textmate': 10.0.2
@@ -20666,11 +20656,11 @@ snapshots:
       hookable: 5.5.3
       perfect-debounce: 2.1.0
 
-  '@vue/devtools-shared@8.2.1': {}
-
   '@vue/devtools-shared@7.7.10':
     dependencies:
       rfdc: 1.4.1
+
+  '@vue/devtools-shared@8.2.1': {}
 
   '@vue/language-core@3.3.9':
     dependencies:
@@ -20730,8 +20720,6 @@ snapshots:
       '@vueuse/shared': 14.4.0(vue@3.5.41)
       vue: 3.5.41
 
-  '@vueuse/metadata@14.4.0': {}
-
   '@vueuse/integrations@12.8.2(focus-trap@7.8.0)':
     dependencies:
       '@vueuse/core': 12.8.2
@@ -20743,6 +20731,8 @@ snapshots:
       - typescript
 
   '@vueuse/metadata@12.8.2': {}
+
+  '@vueuse/metadata@14.4.0': {}
 
   '@vueuse/shared@12.8.2':
     dependencies:
@@ -21363,8 +21353,6 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
-  alien-signals@3.2.1: {}
-
   algoliasearch@5.56.0:
     dependencies:
       '@algolia/abtesting': 1.22.0
@@ -21382,15 +21370,7 @@ snapshots:
       '@algolia/requester-fetch': 5.56.0
       '@algolia/requester-node-http': 5.56.0
 
-  birpc@2.9.0: {}
-
-  ccount@2.0.1: {}
-
-  character-entities-html4@2.1.0: {}
-
-  character-entities-legacy@3.0.0: {}
-
-  comma-separated-tokens@2.0.3: {}
+  alien-signals@3.2.1: {}
 
   ansi-align@3.0.1:
     dependencies:
@@ -22184,15 +22164,11 @@ snapshots:
 
   cookie@2.0.1: {}
 
-  core-util-is@1.0.3: {}
-
   copy-anything@4.0.5:
     dependencies:
       is-what: 5.5.0
 
-  csstype@3.2.3: {}
-
-  dequal@2.0.3: {}
+  core-util-is@1.0.3: {}
 
   cors@2.8.6:
     dependencies:
@@ -22678,6 +22654,8 @@ snapshots:
       string-range-expander: 4.1.3
       string-uglify: 3.1.3
 
+  emoji-regex-xs@1.0.0: {}
+
   emoji-regex@10.6.0: {}
 
   emoji-regex@8.0.0: {}
@@ -22808,8 +22786,6 @@ snapshots:
       '@esbuild/win32-arm64': 0.21.5
       '@esbuild/win32-ia32': 0.21.5
       '@esbuild/win32-x64': 0.21.5
-
-  estree-walker@2.0.2: {}
 
   esbuild@0.25.12:
     optionalDependencies:
@@ -24103,6 +24079,8 @@ snapshots:
 
   is-valid-glob@1.0.0: {}
 
+  is-what@5.5.0: {}
+
   is-wsl@2.2.0:
     dependencies:
       is-docker: 2.2.1
@@ -24626,6 +24604,8 @@ snapshots:
       type-fest: 4.41.0
       web-worker: 1.5.0
 
+  mark.js@8.11.1: {}
+
   markdown-exit@1.0.0-beta.9:
     dependencies:
       '@types/linkify-it': 5.0.0
@@ -25089,9 +25069,13 @@ snapshots:
 
   minipass@7.1.3: {}
 
+  minisearch@7.2.0: {}
+
   minizlib@3.1.0:
     dependencies:
       minipass: 7.1.3
+
+  mitt@3.0.1: {}
 
   mixpart@0.0.4: {}
 
@@ -25592,10 +25576,6 @@ snapshots:
       regex: 6.1.0
       regex-recursion: 6.0.2
 
-  perfect-debounce@1.0.0: {}
-
-  picocolors@1.1.1: {}
-
   oniguruma-to-es@4.3.6:
     dependencies:
       oniguruma-parser: 0.12.2
@@ -26060,6 +26040,8 @@ snapshots:
 
   pend@1.2.0: {}
 
+  perfect-debounce@1.0.0: {}
+
   perfect-debounce@2.1.0: {}
 
   pg-cloudflare@1.4.0:
@@ -26332,6 +26314,8 @@ snapshots:
   postgres@3.4.9: {}
 
   powershell-utils@0.1.0: {}
+
+  preact@10.29.8: {}
 
   prebuild-install@7.1.3:
     dependencies:
@@ -26844,6 +26828,8 @@ snapshots:
 
   scule@1.3.0: {}
 
+  search-insights@2.17.3: {}
+
   section-matter@1.0.0:
     dependencies:
       extend-shallow: 2.0.1
@@ -26980,12 +26966,6 @@ snapshots:
       '@shikijs/types': 2.5.0
       '@shikijs/vscode-textmate': 10.0.2
       '@types/hast': 3.0.5
-
-  source-map-js@1.2.1: {}
-
-  space-separated-tokens@2.0.2: {}
-
-  speakingurl@14.0.1: {}
 
   shiki@4.4.3:
     dependencies:
@@ -27182,6 +27162,8 @@ snapshots:
   sparse-bitfield@3.0.3:
     dependencies:
       memory-pager: 1.5.0
+
+  speakingurl@14.0.1: {}
 
   split-on-first@3.0.0: {}
 
@@ -27400,15 +27382,11 @@ snapshots:
       make-asynchronous: 1.1.0
       time-span: 5.1.0
 
-  supports-color@10.2.2: {}
-
   superjson@2.2.6:
     dependencies:
       copy-anything: 4.0.5
 
-  tabbable@6.5.0: {}
-
-  trim-lines@3.0.1: {}
+  supports-color@10.2.2: {}
 
   supports-color@7.2.0:
     dependencies:
@@ -27447,6 +27425,8 @@ snapshots:
       use-sync-external-store: 1.6.0(react@19.2.8)
 
   system-architecture@1.0.0: {}
+
+  tabbable@6.5.0: {}
 
   tagged-tag@1.0.0: {}
 
