@@ -60,11 +60,14 @@ export default defineNuxtConfig({
         storageKey: 'agent-zero-marketing-color-mode',
       },
     ],
-    // Registers `modules/{shared,home,contact}` as component and composable roots. Kept as a real
-    // local module (`./modules/register-features`) rather than inline `components`/`imports`
-    // config here, matching `apps/dashboard/modules/vitehub.ts` and wolfstar.rocks' own top-level
-    // `modules/` convention.
-    './modules/register-features',
+    // One local module per feature directory (each its own `defineNuxtModule`, following the
+    // nuxt-modules skill's local-module convention: `modules/<name>/index.ts` registered as
+    // `./modules/<name>`) rather than inline `components`/`imports` config here or one module
+    // covering all three — matching `apps/dashboard/modules/vitehub.ts` and wolfstar.rocks' own
+    // top-level `modules/` convention.
+    './modules/shared',
+    './modules/home',
+    './modules/contact',
   ],
   css: ['~/assets/css/main.css'],
   icon: {

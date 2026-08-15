@@ -34,10 +34,12 @@ app/
   layouts/default.vue         skip link, header, main landmark, footer
   pages/                      /, /pricing, /contact, /legal/privacy, /legal/terms
 modules/
-  register-features.ts        local Nuxt module: registers the component/composable roots below
   home/                       landing-page sections (Hero, Faq, PricingTable, ...) and composables
+    index.ts                  its own local Nuxt module, registering components/ and composables/
   contact/                    the contact page's channel list
+    index.ts                  local Nuxt module, registering components/
   shared/                     header, footer, locale switcher, color-mode toggle, error page
+    index.ts                  local Nuxt module, registering components/
   blog/, changelog/,
   analytics/                  reserved, not built yet — see each module's README.md
 content/
