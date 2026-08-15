@@ -6,7 +6,8 @@ Agent Zero is a dependency-directed monorepo managed with [Turborepo](https://tu
 agent-zero
 ├── apps
 │   ├── dashboard        # the single deployable app (Nuxt)
-│   └── docs             # this documentation site (VitePress)
+│   ├── docs             # this documentation site (VitePress)
+│   └── mail-preview     # dev-only Maizzle preview for packages/mail templates
 ├── packages
 │   ├── agent            # orchestration and state transitions
 │   ├── api              # oRPC router and control-plane operations
