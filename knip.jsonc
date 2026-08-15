@@ -27,6 +27,18 @@
       // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
       "ignoreDependencies": ["@maizzle/tailwindcss"],
     },
+    "apps/mail-preview": {
+      // maizzle.config.ts is discovered by the Maizzle CLI by filesystem convention, not
+      // imported by anything.
+      "entry": ["maizzle.config.ts"],
+      "ignoreDependencies": [
+        // Consumed through the emails/ symlink and turbo's ^build ordering, never imported.
+        "@agent-zero/mail",
+        // Resolved by Maizzle's Tailwind integration from the package name (same as
+        // packages/mail).
+        "@maizzle/tailwindcss",
+      ],
+    },
     "apps/docs": {
       // VitePress discovers its config (and an optional theme) from the
       // filesystem; nothing imports them.

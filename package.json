@@ -20,6 +20,7 @@
     "knip": "turbo run build --filter=@agent-zero/i18n --filter=@agent-zero/auth && knip",
     "lint": "turbo run lint",
     "lint:ci": "aube run format:check && aube run lint && aube run knip",
+    "mail:preview": "turbo run dev --filter=@agent-zero/mail-preview",
     "prepare": "node .husky/install.mjs && skilld prepare --agent codex",
     "skills:install": "skilld install --agent codex",
     "skills:list": "skilld list",
