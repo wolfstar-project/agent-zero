@@ -30,6 +30,7 @@ import {
   SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   translateSubscriptionError,
+  type ClaudeCodeProcessSpawner,
   type SubscriptionModelProviderKind,
   type SubscriptionSession,
 } from './providers/subscription.js';
@@ -45,6 +46,7 @@ export {
   subscriptionProviderDescriptor,
   SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
+  type ClaudeCodeProcessSpawner,
   type SubscriptionModelProviderKind,
   type SubscriptionProviderDescriptor,
   type SubscriptionSession,
@@ -363,10 +365,23 @@ export class FallbackModelProvider implements ModelProvider {
 export function modelFromEnvironment(
   selection: ModelSelection,
   environment: NodeJS.ProcessEnv = process.env,
+  /**
+   * Backs the `claude-code` transport's CLI spawn with the runner boundary instead of the vendor
+   * SDK's own default `child_process.spawn`. Ignored by every other provider, including `codex-cli`
+   * — its vendor SDK exposes no equivalent hook, so that transport's process cannot be routed
+   * through the runner regardless of what is supplied here. A composition root typically passes
+   * `@agent-zero/runner`'s `spawnManagedProcess` wrapped to this shape.
+   */
+  spawnClaudeCodeProcess?: ClaudeCodeProcessSpawner,
 ): ModelProvider {
   const { provider } = selection;
   if (isSubscriptionModelProvider(provider))
-    return subscriptionModelFromEnvironment(selection, provider, environment);
+    return subscriptionModelFromEnvironment(
+      selection,
+      provider,
+      environment,
+      spawnClaudeCodeProcess,
+    );
 
   const apiKey = providerApiKey(provider, environment);
   const baseUrl = environment.AGENT_ZERO_MODEL_BASE_URL;
@@ -443,6 +458,7 @@ function subscriptionModelFromEnvironment(
   selection: ModelSelection,
   provider: SubscriptionModelProviderKind,
   environment: NodeJS.ProcessEnv,
+  spawnClaudeCodeProcess: ClaudeCodeProcessSpawner | undefined,
 ): ModelProvider {
   if (!isSubscriptionProviderEnabled(provider, environment)) return new UnconfiguredModelProvider();
 
@@ -454,7 +470,13 @@ function subscriptionModelFromEnvironment(
     model: selection.name,
     // The session lives in the CLI's own state; Agent Zero never holds a credential to redact.
     credentialSecrets: [],
-    languageModel: subscriptionLanguageModel(provider, selection.name, environment, session),
+    languageModel: subscriptionLanguageModel(
+      provider,
+      selection.name,
+      environment,
+      session,
+      spawnClaudeCodeProcess,
+    ),
     translateError: translateSubscriptionError(provider, session),
     ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
     ...(selection.inputCostPerMillionTokens === undefined

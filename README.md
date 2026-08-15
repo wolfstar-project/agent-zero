@@ -221,6 +221,12 @@ Known limits, all of which follow from the session being local:
   a metered transport for shared work.
 - **Host-bound.** The run must execute where `claude login` / `codex login` was completed, and the
   Agent Zero process must be allowed to spawn subprocesses.
+- **`codex-cli`'s process is not runner-routed.** `claude-code`'s CLI process is spawned through
+  `packages/runner`'s `spawnManagedProcess`, the same boundary as every repository check; a
+  composition root wires this in (`modelFromEnvironment`'s `ClaudeCodeProcessSpawner` parameter).
+  `ai-sdk-provider-codex-cli` exposes no equivalent hook, so Codex's process is always spawned by
+  the vendor SDK directly. Its read-only sandbox, disabled approvals, and disabled MCP servers are
+  the containment for that one transport instead.
 - **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
   `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
   transport to degrade to it automatically when the CLI is missing, its session expired, or its

@@ -1,3 +1,5 @@
+import { spawn } from 'node:child_process';
+
 import type { AgentDecision, ReviewInput } from '@agent-zero/shared';
 import { describe, expect, it } from 'vitest';
 
@@ -15,6 +17,7 @@ import {
   SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   UnconfiguredModelProvider,
+  type ClaudeCodeProcessSpawner,
   type ModelContext,
   type ModelProvider,
 } from './index.js';
@@ -39,6 +42,7 @@ const NON_DURATION_WAIT = /must be a non-negative number of milliseconds/;
 const INCOMPLETE_FALLBACK = /must be set together/;
 const SUBSCRIPTION_FALLBACK = /must be an API-key provider/;
 const UNKNOWN_FALLBACK = /Invalid AGENT_ZERO_MODEL_FALLBACK_PROVIDER/;
+const CLI_EXITED = /exited/iu;
 
 const input: ReviewInput = {
   repository: '/checkout',
@@ -301,6 +305,29 @@ describe('subscription transports', () => {
     expect(
       isModelConfigured('claude-code', { AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true' }),
     ).toBe(true);
+  });
+
+  it('reaches the composition root spawner through the full chain, not just the factory', async () => {
+    // `modelFromEnvironment` is what a composition root actually calls; the deeper unit test on
+    // `subscriptionLanguageModel` in subscription.test.ts proves the spawner is honored once
+    // wired, this proves the third parameter here actually reaches it end to end.
+    let spawnedCommand: string | undefined;
+    const spawnClaudeCodeProcess: ClaudeCodeProcessSpawner = (options) => {
+      spawnedCommand = options.command;
+      return spawn(options.command, options.args, { stdio: 'pipe' });
+    };
+    const configured = modelFromEnvironment(
+      claudeCode,
+      {
+        AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+        AGENT_ZERO_CLAUDE_CODE_PATH: process.execPath,
+      },
+      spawnClaudeCodeProcess,
+    );
+    // Node itself is not the Claude Code CLI, so the call fails once the protocol mismatches —
+    // after the spawn already happened, which is the only thing this test needs to prove.
+    await expect(configured.decide(context())).rejects.toThrow(CLI_EXITED);
+    expect(spawnedCommand).toBe(process.execPath);
   });
 
   it('wraps the transport when an operator configured a credentialed fallback', () => {

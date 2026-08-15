@@ -16,12 +16,14 @@ import {
   modelProviderCredentialKind,
   subscriptionProbeCommand,
   subscriptionProviderDescriptor,
+  type ClaudeCodeProcessSpawner,
   type SubscriptionModelProviderKind,
 } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
   runnerOptionsFromPolicy,
+  spawnManagedProcess,
   type Runner,
 } from '@agent-zero/runner';
 import {
@@ -36,6 +38,17 @@ import * as p from '@clack/prompts';
 import { parseCliArguments } from './args.js';
 
 const cwd = process.cwd();
+
+/**
+ * Backs the `claude-code` transport's CLI process with the runner boundary instead of the vendor
+ * SDK's own default `child_process.spawn`, so this is the only place in the CLI that spawns one.
+ */
+const spawnClaudeCodeProcess: ClaudeCodeProcessSpawner = (options) =>
+  spawnManagedProcess(options.command, options.args, {
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    env: options.env,
+    signal: options.signal,
+  });
 
 /**
  * Exit codes are part of the contract.
@@ -238,7 +251,7 @@ async function runAgent(
   );
 
   const agent = new AgentZero({
-    model: modelFromEnvironment(config.model),
+    model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess),
     runner,
     config,
     onEvent: (event) => {

@@ -2,11 +2,12 @@ import { createHash } from 'node:crypto';
 
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
-import { modelFromEnvironment } from '@agent-zero/models';
+import { modelFromEnvironment, type ClaudeCodeProcessSpawner } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
   runnerOptionsFromPolicy,
+  spawnManagedProcess,
   type Runner,
   type RunnerPool,
 } from '@agent-zero/runner';
@@ -52,6 +53,18 @@ import {
 } from './control-plane.js';
 
 const TRAILING_SLASH = /\/$/u;
+
+/**
+ * Backs the `claude-code` transport's CLI process with the runner boundary instead of the vendor
+ * SDK's own default `child_process.spawn`, so this is the only place in the control plane that
+ * spawns one.
+ */
+const spawnClaudeCodeProcess: ClaudeCodeProcessSpawner = (options) =>
+  spawnManagedProcess(options.command, options.args, {
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    env: options.env,
+    signal: options.signal,
+  });
 
 const defaultStore = new MemoryTaskStore();
 const defaultScheduler = new TaskScheduler({
@@ -186,7 +199,7 @@ export async function runTask(
       const runner =
         lease?.runner ?? createRunner(input.repository, runnerOptionsFromPolicy(config, writable));
       const agent = new AgentZero({
-        model: modelFromEnvironment(config.model),
+        model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess),
         runner,
         config,
         taskIdentifier: identifier,

@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { analyzeShellCommand } from '@vite-hub/shell';
@@ -40,7 +40,8 @@ export type ProcessRunner = (
 ) => Promise<ProcessOutcome>;
 
 /**
- * The only place Agent Zero spawns a process.
+ * The bounded-command half of the only place Agent Zero spawns a process; {@link spawnManagedProcess}
+ * is the other half, for a caller that needs a live process instead of one buffered result.
  *
  * There is no shell: the program and its arguments are passed as an argv array, so untrusted text
  * can never become shell syntax. Output is bounded and a timeout always applies.
@@ -59,6 +60,41 @@ export const execFileProcessRunner: ProcessRunner = async (program, args, option
     return outcomeFromFailure(error);
   }
 };
+
+export interface ManagedSpawnOptions {
+  cwd?: string;
+  env?: NodeJS.ProcessEnv;
+  signal?: AbortSignal;
+}
+
+/**
+ * The streaming half of the only place Agent Zero spawns a process: a live, long-running child a
+ * caller talks to over `stdin`/`stdout` rather than a single buffered result.
+ *
+ * This exists for adapters that must hand a real process handle to code Agent Zero does not
+ * control — a CLI-backed model transport's vendor SDK, for one, which drives the child itself over
+ * a duplex stream and cannot be satisfied by a request/response command. `execFileProcessRunner`
+ * stays the right primitive for everything that only needs a command's finished output.
+ *
+ * There is no shell here either: the program and its arguments are passed as an argv array, so
+ * untrusted text can never become shell syntax. Unlike `execFileProcessRunner`, this applies no
+ * timeout or output limit of its own — a live process has no fixed end, so bounding its lifetime
+ * and its output is the caller's responsibility once it holds the handle.
+ */
+export function spawnManagedProcess(
+  program: string,
+  args: readonly string[],
+  options: ManagedSpawnOptions = {},
+): ChildProcess {
+  return spawn(program, [...args], {
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    ...(options.env === undefined ? {} : { env: options.env }),
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    shell: false,
+    windowsHide: true,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
 
 function outcomeFromFailure(error: unknown): ProcessOutcome {
   const failure = isRecord(error) ? error : {};

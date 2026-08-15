@@ -1,3 +1,4 @@
+import type { ChildProcess } from 'node:child_process';
 import { access, constants } from 'node:fs/promises';
 import { delimiter, join, sep } from 'node:path';
 
@@ -110,6 +111,26 @@ export function createSubscriptionSession(): SubscriptionSession {
   return { id: undefined, resume: undefined, resetsAt: undefined, rejected: false };
 }
 
+/**
+ * Spawns the Claude Code CLI process on the vendor SDK's behalf.
+ *
+ * `packages/models` never calls `child_process` itself: this is the vendor SDK's own
+ * `spawnClaudeCodeProcess` hook, structurally typed against Node's `ChildProcess` rather than
+ * against the vendor's re-exported type names (`ai-sdk-provider-claude-code` does not publicly
+ * export `SpawnOptions`/`SpawnedProcess`, and `ChildProcess` already satisfies the vendor's shape
+ * per its own documentation). A composition root supplies an implementation backed by
+ * `@agent-zero/runner`'s `spawnManagedProcess`, so the CLI this transport drives is spawned through
+ * the same boundary as every other command Agent Zero runs, not through the vendor SDK's own
+ * default `child_process.spawn` call.
+ */
+export type ClaudeCodeProcessSpawner = (options: {
+  command: string;
+  args: string[];
+  cwd?: string;
+  env: Record<string, string | undefined>;
+  signal: AbortSignal;
+}) => ChildProcess;
+
 export function isSubscriptionModelProvider(
   provider: ModelProviderKind,
 ): provider is SubscriptionModelProviderKind {
@@ -153,10 +174,32 @@ export function subscriptionProbeCommand(
 ): string {
   const descriptor = descriptors[provider];
   const executable = environment[descriptor.executableEnvironmentVariable] ?? descriptor.executable;
-  // An override is an operator-supplied absolute path, so quote it: the runner tokenizes the
-  // command itself and a directory containing a space would otherwise split into two arguments.
-  const program = WHITESPACE.test(executable) ? `"${executable}"` : executable;
+  const program = quoteProbeExecutable(executable, descriptor);
   return `${program} ${descriptor.probeArgument}`;
+}
+
+/**
+ * Quote an executable path for the runner's command-string surface, only when it needs it.
+ *
+ * The runner's parser accepts a `"..."` or `'...'` token but supports no escaping inside either —
+ * embedding the same quote character the token uses is not expressible at all. Wrapping
+ * unconditionally in double quotes therefore breaks on a path that itself contains a literal `"`:
+ * the parser reads the embedded quote as closing the token early, `LocalRunner.check` rejects the
+ * resulting command, and `zero doctor` reports a perfectly good CLI as not installed. Choosing
+ * whichever quote character the path does not contain avoids that for every path but one.
+ */
+function quoteProbeExecutable(
+  executable: string,
+  descriptor: SubscriptionProviderDescriptor,
+): string {
+  if (!WHITESPACE.test(executable)) return executable;
+  if (!executable.includes('"')) return `"${executable}"`;
+  if (!executable.includes("'")) return `'${executable}'`;
+  // A path with both quote characters and a space has no token this parser can express; refusing
+  // loudly here is better than probing a truncated path and reporting a working CLI as missing.
+  throw new Error(
+    `${descriptor.executableEnvironmentVariable} contains both a single and a double quote, and a space: no probe command can express that path safely.`,
+  );
 }
 
 const WHITESPACE = /\s/u;
@@ -174,12 +217,13 @@ export function subscriptionLanguageModel(
   model: string,
   environment: NodeJS.ProcessEnv,
   session: SubscriptionSession = createSubscriptionSession(),
+  spawnProcess?: ClaudeCodeProcessSpawner,
 ): () => Promise<LanguageModel> {
   const executable = environment[descriptors[provider].executableEnvironmentVariable];
   return async () => {
     await assertExecutableResolves(provider, executable, environment);
     return provider === 'claude-code'
-      ? claudeCodeLanguageModel(model, executable, session)
+      ? claudeCodeLanguageModel(model, executable, session, spawnProcess)
       : codexCliLanguageModel(model, executable);
   };
 }
@@ -266,6 +310,7 @@ async function claudeCodeLanguageModel(
   model: string,
   executable: string | undefined,
   session: SubscriptionSession,
+  spawnProcess: ClaudeCodeProcessSpawner | undefined,
 ): Promise<LanguageModel> {
   const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
   return createClaudeCode({
@@ -288,8 +333,44 @@ async function claudeCodeLanguageModel(
       // alongside it: the provider rejects that combination.
       ...(session.resume ? { resume: session.resume } : {}),
       ...(executable ? { pathToClaudeCodeExecutable: executable } : {}),
+      // Without this, the vendor SDK spawns the CLI itself via its own default `child_process`
+      // call — a runtime command executing outside the runner boundary. When a composition root
+      // supplies one, the same boundary that runs every repository check spawns this process too.
+      ...(spawnProcess ? { spawnClaudeCodeProcess: adaptSpawnedProcess(spawnProcess) } : {}),
     },
   })(model);
+}
+
+/**
+ * Bridge a `ChildProcess`-returning spawner to the vendor SDK's own process shape.
+ *
+ * Structurally, `ChildProcess` (Node's own type) satisfies every individual member the vendor's
+ * shape declares, but does not satisfy the interface as a single bulk assignment — an artifact of
+ * how the type checker compares several overloaded `EventEmitter` methods (`on`/`once`/`off`)
+ * together rather than one at a time. Re-expressing the same members as a plain object literal
+ * checks cleanly, so that is what this returns instead of the `ChildProcess` itself.
+ */
+function adaptSpawnedProcess(spawnProcess: ClaudeCodeProcessSpawner) {
+  return (options: Parameters<ClaudeCodeProcessSpawner>[0]) => {
+    const child = spawnProcess(options);
+    return {
+      stdin: child.stdin!,
+      stdout: child.stdout!,
+      get killed() {
+        return child.killed;
+      },
+      get exitCode() {
+        return child.exitCode;
+      },
+      get signalCode() {
+        return child.signalCode;
+      },
+      kill: (signal: NodeJS.Signals) => child.kill(signal),
+      on: child.on.bind(child),
+      once: child.once.bind(child),
+      off: child.off.bind(child),
+    };
+  };
 }
 
 /**

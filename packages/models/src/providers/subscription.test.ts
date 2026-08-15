@@ -1,4 +1,6 @@
-import { APICallError } from 'ai';
+import { spawn } from 'node:child_process';
+
+import { APICallError, generateText } from 'ai';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -14,10 +16,14 @@ import {
   SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   translateSubscriptionError,
+  type ClaudeCodeProcessSpawner,
 } from './subscription.js';
 
 /** A fixed clock, so a reported delay resolves to the same instant on every run. */
 const NOW = () => Date.parse('2026-08-15T12:00:00.000Z');
+
+/** Matches the vendor SDK's real failure once a stand-in executable's protocol mismatches. */
+const CLI_EXITED = /exited/iu;
 
 /** Asserts the classification and narrows it, so the reset instant can be read without a cast. */
 function limitError(value: Error | undefined): SubscriptionLimitReachedError {
@@ -85,6 +91,29 @@ describe('subscriptionProbeCommand', () => {
       subscriptionProbeCommand('codex-cli', { AGENT_ZERO_CODEX_PATH: '/opt/my tools/codex' }),
     ).toBe('"/opt/my tools/codex" --version');
   });
+
+  it('switches to single quotes for a path the double-quote grammar cannot express', () => {
+    // The runner's command parser has no escaping: a literal `"` inside a `"..."` token reads as
+    // the token's end, so `LocalRunner.check` would reject this and doctor would misreport the
+    // CLI as missing. Single-quoting it is what a real shell would do too.
+    expect(
+      subscriptionProbeCommand('codex-cli', { AGENT_ZERO_CODEX_PATH: '/tmp/vendor" cli/probe' }),
+    ).toBe(`'/tmp/vendor" cli/probe' --version`);
+  });
+
+  it('keeps double-quoting a path that merely contains an apostrophe', () => {
+    expect(
+      subscriptionProbeCommand('codex-cli', { AGENT_ZERO_CODEX_PATH: "/opt/user's tools/codex" }),
+    ).toBe(`"/opt/user's tools/codex" --version`);
+  });
+
+  it('refuses a path no quoting can express, rather than probing a truncated one', () => {
+    expect(() =>
+      subscriptionProbeCommand('codex-cli', {
+        AGENT_ZERO_CODEX_PATH: `/tmp/both" and' quotes/codex`,
+      }),
+    ).toThrow('AGENT_ZERO_CODEX_PATH contains both a single and a double quote');
+  });
 });
 
 describe('subscriptionLanguageModel', () => {
@@ -111,6 +140,32 @@ describe('subscriptionLanguageModel', () => {
       AGENT_ZERO_CLAUDE_CODE_PATH: process.execPath,
     });
     await expect(build()).resolves.toBeDefined();
+  });
+
+  it('spawns the claude-code CLI through the supplied spawner, not the vendor default', async () => {
+    // Reproduces the security finding this closes: without a spawner, the vendor SDK calls
+    // `child_process.spawn` itself, outside the runner boundary. `process.execPath` stands in for
+    // `claude` so this runs offline — the call still reaches a real spawn and a real (expected)
+    // protocol failure, it just never talks to a network or an actual CLI installation.
+    let spawnedCommand: string | undefined;
+    const spawnProcess: ClaudeCodeProcessSpawner = (options) => {
+      spawnedCommand = options.command;
+      return spawn(options.command, options.args, { stdio: 'pipe' });
+    };
+    const build = subscriptionLanguageModel(
+      'claude-code',
+      'opus',
+      { AGENT_ZERO_CLAUDE_CODE_PATH: process.execPath },
+      undefined,
+      spawnProcess,
+    );
+    const model = await build();
+    // Node itself is not the Claude Code CLI, so the call fails once the protocol mismatches —
+    // after the spawn already happened, which is the only thing this test needs to prove.
+    await expect(
+      generateText({ model, prompt: 'irrelevant: the spawner intercepts before this matters' }),
+    ).rejects.toThrow(CLI_EXITED);
+    expect(spawnedCommand).toBe(process.execPath);
   });
 });
 
