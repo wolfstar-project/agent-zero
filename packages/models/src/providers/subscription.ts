@@ -221,7 +221,14 @@ export function subscriptionLanguageModel(
 ): () => Promise<LanguageModel> {
   const executable = environment[descriptors[provider].executableEnvironmentVariable];
   return async () => {
-    await assertExecutableResolves(provider, executable, environment);
+    // The host `PATH` check only applies when the vendor SDK will do its own default host spawn.
+    // A supplied `spawnProcess` (a composition root's containerized or runner-backed spawner) takes
+    // over both spawning and the SpawnedProcess.on('error', ...) handling the vendor SDK relies on —
+    // and under container isolation, the executable is only ever expected to exist inside the
+    // configured image, never on the control-plane host, so probing the host here would refuse a
+    // correctly configured containerized transport before its spawner ever ran.
+    if (!(provider === 'claude-code' && spawnProcess))
+      await assertExecutableResolves(provider, executable, environment);
     return provider === 'claude-code'
       ? claudeCodeLanguageModel(model, executable, session, spawnProcess)
       : codexCliLanguageModel(model, executable);

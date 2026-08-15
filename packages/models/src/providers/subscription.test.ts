@@ -167,6 +167,41 @@ describe('subscriptionLanguageModel', () => {
     ).rejects.toThrow(CLI_EXITED);
     expect(spawnedCommand).toBe(process.execPath);
   });
+
+  it('does not probe the host PATH when a spawner is supplied: the executable may only exist in a container', async () => {
+    // A composition root's containerized spawner runs the CLI inside a configured image; the host
+    // running Agent Zero never needs `claude` installed at all. Probing the host PATH here would
+    // refuse a correctly configured containerized transport before the spawner ever ran.
+    let spawnedCommand: string | undefined;
+    const spawnProcess: ClaudeCodeProcessSpawner = (options) => {
+      spawnedCommand = options.command;
+      return spawn(process.execPath, options.args, { stdio: 'pipe' });
+    };
+    const build = subscriptionLanguageModel(
+      'claude-code',
+      'opus',
+      { PATH: '/nonexistent/bin' },
+      undefined,
+      spawnProcess,
+    );
+    const model = await build();
+    await expect(
+      generateText({ model, prompt: 'irrelevant: the spawner intercepts before this matters' }),
+    ).rejects.toThrow(CLI_EXITED);
+    // Reaching a real spawn attempt (rather than the pre-flight PATH check's error) proves the
+    // check was skipped, not that it happened to pass.
+    expect(spawnedCommand).toBeDefined();
+  });
+
+  it('still probes the host PATH for codex-cli, which has no custom spawner to take over error handling', async () => {
+    // ai-sdk-provider-codex-cli@2 crashes the process on an unhandled spawn ENOENT; only the
+    // pre-flight check here prevents that, and codex-cli never gets a spawner to skip it with.
+    const build = subscriptionLanguageModel('codex-cli', 'gpt-5.2-codex', {
+      AGENT_ZERO_CODEX_PATH: '/nonexistent/codex',
+      PATH: '/nonexistent/bin',
+    });
+    await expect(build()).rejects.toBeInstanceOf(SubscriptionProviderUnavailableError);
+  });
 });
 
 describe('translateSubscriptionError', () => {
