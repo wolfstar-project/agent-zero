@@ -1,8 +1,7 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
 import { faqEntries } from '~~/config/content.js';
-
-import Faq from '~/modules/marketing/components/Faq.vue';
+import Faq from '~~/modules/home/components/Faq.vue';
 
 describe('MarketingFaq', () => {
   it('renders one disclosure per configured entry', async () => {

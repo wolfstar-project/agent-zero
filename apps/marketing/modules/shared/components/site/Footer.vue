@@ -9,7 +9,7 @@
           >
             <span class="font-mono text-xs text-accent font-750">AZ</span>
           </span>
-          <span class="text-sm font-750 tracking-tight">{{ app.name }}</span>
+          <span class="text-sm font-750 tracking-tight">{{ site.name }}</span>
         </div>
         <p class="m-0 mt-4 text-sm text-muted leading-relaxed">
           {{ $t('marketing.footer.tagline') }}
@@ -46,8 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { app, links } from '~~/config/app.js';
-
+const { site, links } = useAppConfig();
 const localePath = useLocalePath();
 
 // Rendered on the server and hydrated on the client, so it has to be stable across both. The

@@ -80,15 +80,23 @@
     },
     "apps/marketing": {
       // Same shape as apps/dashboard: Nuxt 4 keeps application code in app/, which knip's Nuxt
-      // plugin does not scan, and Nuxt auto-imports components and composables.
+      // plugin does not scan, and Nuxt auto-imports components and composables. `modules/` sits at
+      // the project root (matching wolfstar.rocks) rather than under app/, same as `app.config.ts`,
+      // `i18n/i18n.config.ts` and `content.config.ts` sit at the project root (Nuxt Content and
+      // wolfstar.rocks' own convention); `app.config.ts` sits in `app/` (srcDir) alongside
+      // `app.vue`, per Nuxt's own convention for that file specifically. All three are discovered
+      // by Nuxt/Nuxt Content from those locations, not imported by anything.
       "entry": [
         "app/app.vue",
+        "app/app.config.ts",
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",
-        "app/modules/**/*.vue",
-        "app/modules/**/*.ts",
+        "modules/**/*.vue",
+        "modules/**/*.ts",
         "config/**/*.ts",
+        "i18n/i18n.config.ts",
+        "content.config.ts",
       ],
       // The `nuxt` Vitest environment resolves to vitest-environment-nuxt, which
       // `@nuxt/test-utils` ships as its own dependency. @nuxt/icon loads the lucide collection by

@@ -53,8 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { links } from '~~/config/app.js';
-
+const { links } = useAppConfig();
 const localePath = useLocalePath();
 
 // Static sample output, not a live run: the marketing site holds no credentials and never calls

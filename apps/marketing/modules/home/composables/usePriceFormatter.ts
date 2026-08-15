@@ -5,7 +5,7 @@ import { computed } from 'vue';
 import type { ComputedRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { pricingCurrency } from '../../../../config/content.js';
+import { pricingCurrency } from '../../../config/content.js';
 
 /**
  * BCP 47 tag per locale code, widened to a plain string index.

@@ -70,7 +70,7 @@ export const faqEntries = [
   { id: 'cancel' },
 ] as const satisfies readonly FaqEntry[];
 
-export const pricingPlans = [
+const pricingPlansConst = [
   {
     id: 'community',
     price: { monthly: 0, yearly: 0 },
@@ -92,6 +92,12 @@ export const pricingPlans = [
     ctaTarget: 'contact',
   },
 ] as const satisfies readonly PricingPlan[];
+
+// Widened to the general interface: `as const` gives each array element its own literal type, so
+// only the plan that sets `recommended: true` would type-check as having that property at all,
+// and consumers would need an `'recommended' in plan` guard just to read it. `satisfies` above
+// still validates every literal against `PricingPlan` at the declaration site.
+export const pricingPlans: readonly PricingPlan[] = pricingPlansConst;
 
 /**
  * Tools the pipeline already speaks, rendered as a wordmark row instead of customer logos: the

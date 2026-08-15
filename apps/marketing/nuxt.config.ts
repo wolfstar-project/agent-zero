@@ -1,10 +1,10 @@
 import { dirname, join } from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
-import { app, dashboardUrlFromEnvironment, siteUrlFromEnvironment, ui } from './config/app.js';
 import { featureCards, logoCloud } from './config/content.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 
@@ -24,7 +24,11 @@ const resolvedI18nLocales = i18nLocalesFor(['common.json', 'errors.json', 'marke
   }),
 );
 
-const siteUrl = siteUrlFromEnvironment();
+// Read directly here rather than through a `config/app.ts` wrapper: each is used exactly once, to
+// populate the two Nuxt config fields below, and neither is needed anywhere else in the app —
+// components that need the dashboard's origin read it back from `runtimeConfig.public`.
+const siteUrl = process.env.MARKETING_SITE_URL?.trim() || 'http://localhost:3001';
+const dashboardUrl = process.env.MARKETING_DASHBOARD_URL?.trim() || 'http://localhost:3000';
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -36,39 +40,33 @@ export default defineNuxtConfig({
     compatibilityVersion: 5,
   },
   devServer: {
-    // 3000 is the dashboard, 3002 the auth adapter, 4040 the control plane.
+    // 3000 is the dashboard (the single deployable app, UI + API + auth).
     port: 3001,
   },
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
+    '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
     [
       '@nuxtjs/color-mode',
       {
-        preference: ui.colorModePreference,
-        fallback: ui.colorModeFallback,
+        preference: 'system',
+        fallback: 'dark',
         dataValue: 'theme',
-        storageKey: ui.colorModeStorageKey,
+        // Deliberately distinct from the dashboard's key: the two apps are separate origins in
+        // production, and sharing a key would only couple them if they were ever proxied under one.
+        storageKey: 'agent-zero-marketing-color-mode',
       },
     ],
+    // Registers `modules/{shared,home,contact}` as component and composable roots. Kept as a real
+    // local module (`./modules/register-features`) rather than inline `components`/`imports`
+    // config here, matching `apps/dashboard/modules/vitehub.ts` and wolfstar.rocks' own top-level
+    // `modules/` convention.
+    './modules/register-features',
   ],
   css: ['~/assets/css/main.css'],
-  // Components live under per-module roots instead of the default `app/components`, matching the
-  // dashboard's modules/<feature> layout (with `shared` as its own module), so each root is
-  // registered explicitly.
-  components: [
-    { path: '~/modules/shared/components' },
-    // Prefixed so the module's generic names (Hero, Faq, Pricing) cannot collide with a component
-    // another module — or Nuxt itself — already registers.
-    { path: '~/modules/marketing/components', prefix: 'Marketing' },
-  ],
-  imports: {
-    // Composables also moved out of `app/composables`; Nuxt auto-imports by exported symbol name,
-    // so call sites (useBillingInterval(), usePriceFormatter()) are unaffected.
-    dirs: ['modules/marketing/composables'],
-  },
   icon: {
     // The site must render identically without reaching the Iconify API at request time, so every
     // icon is compiled into the client bundle at build time from the locally installed lucide
@@ -90,6 +88,15 @@ export default defineNuxtConfig({
     // back to the default locale instead of rendering "".
     plugins: [stripEmptyI18nMessagesPlugin()],
   },
+  content: {
+    experimental: {
+      // Node's built-in `node:sqlite` (Node 22.5+; this repo requires 24.2+) rather than the
+      // `better-sqlite3` connector, which needs a native build step this repo's dependency
+      // policy does not allow-list and CI does not run interactively to approve.
+      nativeSqlite: true,
+      sqliteConnector: 'native',
+    },
+  },
   i18n: {
     locales: resolvedI18nLocales,
     defaultLocale,
@@ -109,7 +116,9 @@ export default defineNuxtConfig({
   },
   site: {
     url: siteUrl,
-    name: app.name,
+    // Mirrors `app.config.ts`'s `site.name`: that file is runtime-only (`useAppConfig()`), while
+    // `@nuxtjs/seo` needs a literal value here at build time, so the two cannot share one source.
+    name: 'Agent Zero',
   },
   robots: {
     allow: '*',
@@ -126,7 +135,7 @@ export default defineNuxtConfig({
   ogImage: { enabled: false },
   runtimeConfig: {
     public: {
-      dashboardUrl: dashboardUrlFromEnvironment(),
+      dashboardUrl,
     },
   },
   app: {

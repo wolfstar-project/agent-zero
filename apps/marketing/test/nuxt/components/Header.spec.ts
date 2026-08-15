@@ -1,7 +1,6 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
-
-import Header from '~/modules/shared/components/site/Header.vue';
+import Header from '~~/modules/shared/components/site/Header.vue';
 
 describe('SiteHeader', () => {
   it('labels its navigation landmarks', async () => {

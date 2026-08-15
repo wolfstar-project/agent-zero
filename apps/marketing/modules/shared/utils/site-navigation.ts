@@ -1,5 +1,3 @@
-import { links } from '../../../../config/app.js';
-
 export interface NavigationLink {
   /** Stable list key, also the suffix of its `marketing.nav.*` label key. */
   readonly id: string;
@@ -15,13 +13,17 @@ export interface NavigationLink {
  * Written as a plain function over `localePath` rather than a composable so it can be checked by
  * the package's plain `tsc` pass and exercised in the `unit` Vitest project: `useLocalePath` has
  * no public export from `@nuxtjs/i18n`, so a composable form would only type-check under
- * `vue-tsc`. Callers pass `useLocalePath()` in.
+ * `vue-tsc`. Callers pass `useLocalePath()` in, and — for the same reason — the docs URL from
+ * `useAppConfig().links` rather than reading it here.
  *
  * The two section entries are anchors on the home page rather than routes of their own. They
  * exist to move a visitor down one page, and giving them URLs would split the landing page's
  * ranking across three thin documents.
  */
-export function siteNavigation(localePath: (path: string) => string): readonly NavigationLink[] {
+export function siteNavigation(
+  localePath: (path: string) => string,
+  docsUrl: string,
+): readonly NavigationLink[] {
   const home = localePath('/');
   // `localePath('/')` is "/" for the default locale and "/it" otherwise; both need exactly one
   // separator before the fragment.
@@ -32,6 +34,6 @@ export function siteNavigation(localePath: (path: string) => string): readonly N
     { id: 'pricing', to: localePath('/pricing'), external: false },
     { id: 'faq', to: anchor('faq'), external: false },
     { id: 'contact', to: localePath('/contact'), external: false },
-    { id: 'docs', to: links.docs, external: true },
+    { id: 'docs', to: docsUrl, external: true },
   ];
 }

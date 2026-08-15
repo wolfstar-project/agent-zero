@@ -4,7 +4,7 @@
       <NuxtLink
         class="focus-ring flex shrink-0 items-center gap-2.5"
         :to="localePath('/')"
-        :aria-label="app.name"
+        :aria-label="site.name"
       >
         <span
           class="h-8 w-8 grid shrink-0 place-items-center border border-accent/45 bg-accent/8"
@@ -12,7 +12,7 @@
         >
           <span class="font-mono text-xs text-accent font-750">AZ</span>
         </span>
-        <span class="text-sm font-750 tracking-tight">{{ app.name }}</span>
+        <span class="text-sm font-750 tracking-tight">{{ site.name }}</span>
       </NuxtLink>
 
       <nav :aria-label="$t('marketing.nav.aria')" class="ms-4 hidden items-center gap-1 lg:flex">
@@ -80,12 +80,11 @@
 </template>
 
 <script setup lang="ts">
-import { app } from '~~/config/app.js';
+import { siteNavigation } from '~~/modules/shared/utils/site-navigation';
 
-import { siteNavigation } from '~/modules/shared/utils/site-navigation';
-
+const { site, links } = useAppConfig();
 const localePath = useLocalePath();
-const navigation = computed(() => siteNavigation(localePath));
+const navigation = computed(() => siteNavigation(localePath, links.docs));
 const dashboardUrl = useRuntimeConfig().public.dashboardUrl;
 
 const menuOpen = ref(false);

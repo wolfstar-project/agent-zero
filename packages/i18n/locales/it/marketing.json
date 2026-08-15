@@ -190,19 +190,10 @@
         "emailBody": "Deployment enterprise, acquisti e contratti di supporto.",
         "securityTitle": "Segnala una vulnerabilità",
         "securityBody": "Segui il processo di divulgazione coordinata invece di aprire una issue pubblica."
-      },
-      "privacy": {
-        "title": "Informativa sulla privacy",
-        "description": "Come il progetto Agent Zero tratta i dati che invii a questo sito e al servizio gestito."
-      },
-      "terms": {
-        "title": "Termini di servizio",
-        "description": "I termini che si applicano al sito di Agent Zero e ai piani gestiti Team ed Enterprise."
       }
     },
     "legal": {
-      "lastUpdated": "Ultimo aggiornamento",
-      "placeholder": "Questo documento è un punto di partenza incluso nel progetto e non costituisce consulenza legale. Sostituiscilo con termini rivisti per la tua giurisdizione e la tua attività prima di accettare clienti reali."
+      "lastUpdated": "Ultimo aggiornamento"
     }
   }
 }

@@ -1,8 +1,7 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
 import { pricingPlans } from '~~/config/content.js';
-
-import PricingTable from '~/modules/marketing/components/PricingTable.vue';
+import PricingTable from '~~/modules/home/components/PricingTable.vue';
 
 describe('MarketingPricingTable', () => {
   it('renders one card per configured plan', async () => {

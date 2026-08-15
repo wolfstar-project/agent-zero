@@ -1,12 +1,12 @@
 <template>
   <div>
-    <MarketingHero />
-    <MarketingLogoCloud />
-    <MarketingFeatureGrid />
-    <MarketingTestimonials />
-    <MarketingPricingTable />
-    <MarketingFaq />
-    <MarketingCallToAction />
+    <HomeHero />
+    <HomeLogoCloud />
+    <HomeFeatureGrid />
+    <HomeTestimonials />
+    <HomePricingTable />
+    <HomeFaq />
+    <HomeCallToAction />
   </div>
 </template>
 

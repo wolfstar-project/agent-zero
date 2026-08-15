@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { mainContentId } from '~/modules/shared/utils/landmarks';
+import { mainContentId } from '~~/modules/shared/utils/landmarks';
 </script>
 
 <style scoped>

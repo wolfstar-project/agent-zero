@@ -1,8 +1,8 @@
 <template>
   <div>
-    <MarketingPricingTable />
-    <MarketingFaq />
-    <MarketingCallToAction />
+    <HomePricingTable />
+    <HomeFaq />
+    <HomeCallToAction />
   </div>
 </template>
 

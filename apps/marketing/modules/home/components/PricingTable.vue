@@ -94,10 +94,10 @@
 </template>
 
 <script setup lang="ts">
-import { links } from '~~/config/app.js';
 import { pricingPlans } from '~~/config/content.js';
 import type { BillingInterval, PricingPlan } from '~~/config/content.js';
 
+const { links } = useAppConfig();
 const { t } = useI18n();
 const localePath = useLocalePath();
 const interval = useBillingInterval();

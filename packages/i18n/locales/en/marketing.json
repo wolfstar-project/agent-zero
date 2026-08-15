@@ -190,19 +190,10 @@
         "emailBody": "Enterprise deployment, procurement, and support agreements.",
         "securityTitle": "Report a vulnerability",
         "securityBody": "Please follow the coordinated disclosure process instead of opening a public issue."
-      },
-      "privacy": {
-        "title": "Privacy policy",
-        "description": "How the Agent Zero project handles the data you send to this website and to the hosted service."
-      },
-      "terms": {
-        "title": "Terms of service",
-        "description": "The terms that apply to the Agent Zero website and to the hosted Team and Enterprise tiers."
       }
     },
     "legal": {
-      "lastUpdated": "Last updated",
-      "placeholder": "This document is a starting point shipped with the project and is not legal advice. Replace it with terms reviewed for your own jurisdiction and business before you take real customers."
+      "lastUpdated": "Last updated"
     }
   }
 }

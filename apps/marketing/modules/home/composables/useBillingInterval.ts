@@ -3,7 +3,7 @@ import { useState } from 'nuxt/app';
 // checks `app/**/*.ts` without the generated auto-import declarations that `vue-tsc` sees.
 import type { Ref } from 'vue';
 
-import type { BillingInterval } from '../../../../config/content.js';
+import type { BillingInterval } from '../../../config/content.js';
 
 /**
  * The monthly/yearly choice, shared by every pricing surface on the page.
