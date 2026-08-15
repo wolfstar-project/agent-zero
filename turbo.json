@@ -11,7 +11,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo"]
+      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -28,6 +28,17 @@
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
+      "outputs": []
+    },
+    "db:generate": {
+      "cache": false,
+      "outputs": []
+    },
+    "db:migrate": {
+      "cache": false,
+      // Declared because Turborepo's strict env mode would otherwise hide the connection string
+      // from drizzle-kit and silently migrate the local default instead.
+      "env": ["DATABASE_URL", "AUTH_DATABASE_URL"],
       "outputs": []
     },
     "i18n:check": {

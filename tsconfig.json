@@ -5,13 +5,12 @@
     { "path": "packages/config" },
     { "path": "packages/models" },
     { "path": "packages/runner" },
-    { "path": "packages/github" },
+    { "path": "packages/source-control" },
     { "path": "packages/agent" },
     { "path": "packages/cli" },
     { "path": "packages/auth" },
-    { "path": "apps/auth-server" },
+    { "path": "packages/api" },
     { "path": "apps/dashboard" },
-    { "path": "apps/marketing" },
-    { "path": "apps/server" }
+    { "path": "apps/marketing" }
   ]
 }

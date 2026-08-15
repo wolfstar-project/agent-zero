@@ -1,0 +1,58 @@
+{
+  "name": "@agent-zero/api",
+  "version": "0.3.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/types.d.mts",
+        "default": "./dist/types.mjs"
+      },
+      "require": {
+        "types": "./dist/types.d.cts",
+        "default": "./dist/types.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "tsc -b --clean",
+    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src",
+    "test": "vitest run src",
+    "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "@agent-zero/agent": "workspace:*",
+    "@agent-zero/config": "workspace:*",
+    "@agent-zero/models": "workspace:*",
+    "@agent-zero/runner": "workspace:*",
+    "@agent-zero/shared": "workspace:*",
+    "@agent-zero/source-control": "workspace:*",
+    "@orpc/evlog": "2.0.0-beta.26",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "evlog": "^2.26.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "oxlint": "^1.44.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

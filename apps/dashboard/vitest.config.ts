@@ -44,9 +44,9 @@ export default defineConfig({
               overrides: {
                 runtimeConfig: {
                   public: {
-                    // Point the Better Auth client at the test environment's mock server instead
-                    // of the real auth adapter origin, so session fetches stay off the network
-                    // and resolve through `registerEndpoint` (see test/nuxt/setup.ts).
+                    // Leave unset so the Better Auth client falls through to same-origin
+                    // resolution; the fetch stub in test/nuxt/setup.ts keeps `/api/auth/**`
+                    // requests off the network regardless of what that origin resolves to.
                     siteUrl: '',
                   },
                 },

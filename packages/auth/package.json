@@ -31,19 +31,15 @@
   "scripts": {
     "build": "tsdown",
     "clean": "tsc -b --clean",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src",
     "test": "vitest run src --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },
   "dependencies": {
-    "better-auth": "^1.6.26",
-    "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.9"
+    "@agent-zero/database": "workspace:*",
+    "better-auth": "^1.6.26"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.10",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
     "tsdown": "^0.22.14",

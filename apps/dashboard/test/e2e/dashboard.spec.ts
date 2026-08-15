@@ -21,31 +21,6 @@ test.describe('Dashboard', () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
-  test('refreshes local dashboard state without requests beyond the auth origin', async ({
-    page,
-    goto,
-    consoleErrors,
-  }) => {
-    // The dashboard owns no backend of its own. Authentication is the single sanctioned network
-    // dependency, and it lives on a separate origin, so nothing may hit a local API or RPC route.
-    const localBackendRequests: string[] = [];
-    page.on('request', (request) => {
-      const url = new URL(request.url());
-      if (url.origin !== new URL(page.url() || 'http://localhost').origin) return;
-      if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/rpc/')) {
-        localBackendRequests.push(url.pathname);
-      }
-    });
-    await goto('/', { waitUntil: 'networkidle' });
-    const refresh = page.getByRole('button', { name: 'Refresh' });
-
-    await refresh.click();
-
-    await expect(refresh).toBeEnabled();
-    expect(localBackendRequests).toHaveLength(0);
-    expect(consoleErrors).toHaveLength(0);
-  });
-
   test('switches between persistent light and dark themes', async ({
     page,
     goto,

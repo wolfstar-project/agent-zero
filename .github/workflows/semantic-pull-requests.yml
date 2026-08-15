@@ -33,6 +33,7 @@ jobs:
             ci
             cli
             config
+            database
             deps
             docs
             github
@@ -42,6 +43,7 @@ jobs:
             safety
             server
             shared
+            source-control
             test
           subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |

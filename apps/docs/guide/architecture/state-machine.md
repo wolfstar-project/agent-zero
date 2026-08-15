@@ -1,0 +1,10 @@
+---
+title: State machine
+---
+
+<!-- Included verbatim from the canonical docs/architecture.md at the
+repository root. Edit it there. -->
+
+<!--@include: ../../../../docs/architecture.md#state-transitions-->
+
+<!--@include: ../../../../docs/architecture.md#verdicts-and-evidence-->
