@@ -219,7 +219,21 @@ async function probeSubscriptionCli(
   loginCommand: string;
 }> {
   const descriptor = subscriptionProviderDescriptor(provider);
-  const command = subscriptionProbeCommand(provider, process.env);
+  let command: string;
+  try {
+    command = subscriptionProbeCommand(provider, process.env);
+  } catch {
+    // An executable override that cannot be expressed as a single probe token (it contains both
+    // quote characters) is not "installed" from doctor's point of view — report the same
+    // diagnostic shape a failed probe would, rather than letting doctor itself throw and skip its
+    // JSON document entirely.
+    return {
+      executable: descriptor.executable,
+      installed: false,
+      pathVariable: descriptor.executableEnvironmentVariable,
+      loginCommand: descriptor.loginCommand,
+    };
+  }
   const result = await inspector.check(command, 15_000).catch(() => undefined);
   return {
     executable: command.split(' ')[0] ?? descriptor.executable,
