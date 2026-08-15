@@ -3,6 +3,7 @@
   "common": {
     "error": "Errore",
     "retry": "Riprova",
+    "skipToContent": "Vai al contenuto",
     "brand": {
       "subtitle": "Dashboard"
     },

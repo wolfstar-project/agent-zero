@@ -10,6 +10,7 @@ oRPC server ────┘        │
                          └──> shared contracts
 
 Nuxt dashboard ───> operational interface ──> auth adapter ──> session store
+Nuxt marketing ───> public site (no inbound dependencies)
 ```
 
 ## Dependency direction
@@ -20,6 +21,7 @@ Nuxt dashboard ───> operational interface ──> auth adapter ──> ses
 - `cli` is an entry-point adapter. It may depend on the runtime, but the runtime must not depend on it.
 - `apps/server` is an entry-point adapter and composition root. Like `cli`, it may depend on the runtime; the runtime must not depend on it.
 - `apps/dashboard` is a frontend-only Nuxt interface and does not import runtime packages.
+- `apps/marketing` is a frontend-only Nuxt site with no dependents and no dependencies beyond `packages/i18n`. Nothing may import it.
 - `auth` holds authentication policy and the Better Auth instance; `apps/auth-server` is the entry-point adapter that exposes it over HTTP. Neither may depend on the runtime.
 
 If a change creates a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime.
@@ -43,6 +45,12 @@ Model transports follow the same adapter rule. `packages/models` owns the AI SDK
 ## Dashboard boundary
 
 `apps/dashboard` owns presentation only. It has no custom Nitro server routes, RPC contracts, persistence adapters, scheduler, runtime-package dependencies, shell capability, or target-filesystem capability. Any future live data source must be implemented as a separate adapter with an explicit contract rather than composed into the dashboard.
+
+## Marketing boundary
+
+`apps/marketing` is the public site and holds the weakest position in the graph: no persistence, no credentials, no session, and no runtime-package imports. It links to the dashboard by origin rather than importing anything from it, so the two deploy and fail independently.
+
+It differs from the dashboard in exactly one respect. The dashboard renders as a single-page app because a server render can never observe a cookie scoped to the auth adapter's origin; the marketing site renders on the server and prerenders every route, because being crawlable is the entire point of it. That gives it a Nitro server, but the only routes on it are the ones `@nuxtjs/seo` generates — `robots.txt` and the sitemaps. Anything that needs to read or write state belongs behind the control plane, not here.
 
 ## Control-plane boundary
 

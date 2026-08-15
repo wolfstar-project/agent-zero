@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Agent Zero">
+  <rect width="32" height="32" fill="#0a1410" />
+  <rect x="1.5" y="1.5" width="29" height="29" fill="none" stroke="#8ee34a" stroke-width="1.5" />
+  <text
+    x="16"
+    y="21.5"
+    fill="#8ee34a"
+    font-family="ui-monospace, SFMono-Regular, Consolas, monospace"
+    font-size="15"
+    font-weight="700"
+    text-anchor="middle"
+  >AZ</text>
+</svg>

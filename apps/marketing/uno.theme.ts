@@ -1,0 +1,32 @@
+import type { Theme } from '@unocss/preset-wind4/theme';
+
+/**
+ * Same brand tokens the dashboard ships, resolved from the CSS custom properties in
+ * `app/assets/css/main.css`. The marketing site adds display-scale type steps the dashboard has
+ * no use for: an operations console never renders a headline.
+ */
+export const theme = {
+  font: {
+    mono: "'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
+    sans: "'Geist', Inter, ui-sans-serif, system-ui, sans-serif",
+  },
+  text: {
+    '3xs': { fontSize: '0.625rem' },
+    '4xs': { fontSize: '0.5625rem' },
+    // Fluid display steps so the hero does not need a breakpoint ladder.
+    display: { fontSize: 'clamp(2.5rem, 1.6rem + 4vw, 4.5rem)', lineHeight: '1.04' },
+    headline: { fontSize: 'clamp(1.875rem, 1.35rem + 2.2vw, 3rem)', lineHeight: '1.12' },
+  },
+  colors: {
+    canvas: 'var(--az-canvas)',
+    panel: 'var(--az-panel)',
+    raised: 'var(--az-raised)',
+    line: 'var(--az-line)',
+    ink: 'var(--az-ink)',
+    muted: 'var(--az-muted)',
+    accent: 'var(--az-accent)',
+    warning: 'var(--az-warning)',
+    danger: 'var(--az-danger)',
+    link: 'var(--az-link)',
+  },
+} satisfies Theme;

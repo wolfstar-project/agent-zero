@@ -60,5 +60,26 @@
         "~~/*": ["*"],
       },
     },
+    "apps/marketing": {
+      // Same shape as apps/dashboard: Nuxt 4 keeps application code in app/, which knip's Nuxt
+      // plugin does not scan, and Nuxt auto-imports components and composables.
+      "entry": [
+        "app/app.vue",
+        "app/error.vue",
+        "app/pages/**/*.vue",
+        "app/layouts/**/*.vue",
+        "app/modules/**/*.vue",
+        "app/modules/**/*.ts",
+        "config/**/*.ts",
+      ],
+      // The `nuxt` Vitest environment resolves to vitest-environment-nuxt, which
+      // `@nuxt/test-utils` ships as its own dependency. @nuxt/icon loads the lucide collection by
+      // name at build time, so no source file imports @iconify-json/lucide directly.
+      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
+      "paths": {
+        "~/*": ["app/*"],
+        "~~/*": ["*"],
+      },
+    },
   },
 }

@@ -1,0 +1,20 @@
+{
+  // Lives beside the specs rather than at the app root because Oxlint discovers the nearest
+  // `tsconfig.json` walking up from each file: the app-root project deliberately covers only
+  // `app/` and `config/`, so without this the specs would be linted with no type information and
+  // no Nuxt aliases.
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "rootDir": "..",
+    // Mirror the Nuxt source aliases for the specs under test/nuxt.
+    "paths": {
+      "~/*": ["../app/*"],
+      "~~/*": ["../*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.d.ts"]
+}

@@ -1,3 +1,10 @@
 {
-  "features": ["common.json", "errors.json", "auth.json", "dashboard.json", "organizations.json"]
+  "features": [
+    "common.json",
+    "errors.json",
+    "auth.json",
+    "dashboard.json",
+    "organizations.json",
+    "marketing.json"
+  ]
 }

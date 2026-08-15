@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
+import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
@@ -25,7 +25,16 @@ const i18nPackageDirectory = dirname(
   fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
 );
 const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
-const resolvedI18nLocales = i18nLocales.map((locale) => ({
+// Only the scopes this app renders: every listed file is deep-merged into the bundle whether or
+// not a key from it is read, so the marketing site's copy has no business being here.
+const dashboardLocales = i18nLocalesFor([
+  'common.json',
+  'errors.json',
+  'auth.json',
+  'dashboard.json',
+  'organizations.json',
+]);
+const resolvedI18nLocales = dashboardLocales.map((locale) => ({
   ...locale,
   files: locale.files.map((file) => join(i18nLocalesDirectory, file)),
 }));

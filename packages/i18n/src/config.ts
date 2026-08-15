@@ -28,19 +28,37 @@ export const localeCookieName = 'agent-zero-locale';
  * Translations are split by scope rather than kept in one file per locale, which is also the unit
  * Lunaria reports progress on.
  */
-const localeFeatureFiles = localeFeatures.features as readonly string[];
+export const localeFeatureFiles = localeFeatures.features as readonly string[];
 
-function localeFilesFor(localeCode: string): string[] {
-  return localeFeatureFiles.map((feature) => `${localeCode}/${feature}`);
+/** A feature file name (`common.json`, `marketing.json`, …) this package ships translations for. */
+export type LocaleFeatureFile = (typeof localeFeatureFiles)[number];
+
+function localeFilesFor(localeCode: string, features: readonly string[]): string[] {
+  return features.map((feature) => `${localeCode}/${feature}`);
 }
 
 /**
- * `@nuxtjs/i18n` wants a flat array, while the dashboard configuration keeps locales keyed by code
- * so the switcher and the head metadata can look one up directly.
+ * `@nuxtjs/i18n` wants a flat array, while the app configuration keeps locales keyed by code so
+ * the switcher and the head metadata can look one up directly.
+ *
+ * Apps pass the scopes they actually render: the dashboard and the marketing site share `common`
+ * and `errors` but have no use for each other's copy, and every listed file is deep-merged into
+ * the bundle whether or not a key from it is ever read.
+ *
+ * @throws If a requested feature file is not one this package ships, which would otherwise fail
+ *   later as a missing-file error inside the module's locale loader.
  */
-export const i18nLocales = Object.entries(locales).map(([code, definition]) => ({
-  code,
-  language: definition.language,
-  name: definition.label,
-  files: localeFilesFor(code),
-}));
+export function i18nLocalesFor(features: readonly LocaleFeatureFile[]) {
+  const unknown = features.filter((feature) => !localeFeatureFiles.includes(feature));
+  if (unknown.length > 0) throw new Error(`unknown locale feature file(s): ${unknown.join(', ')}`);
+
+  return Object.entries(locales).map(([code, definition]) => ({
+    code,
+    language: definition.language,
+    name: definition.label,
+    files: localeFilesFor(code, features),
+  }));
+}
+
+/** Every scope this package ships, for consumers that render all of them. */
+export const i18nLocales = i18nLocalesFor(localeFeatureFiles);

@@ -1,0 +1,208 @@
+{
+  "$schema": "../../schemas/marketing.schema.json",
+  "marketing": {
+    "nav": {
+      "aria": "Navigazione principale",
+      "features": "Funzionalità",
+      "pricing": "Prezzi",
+      "faq": "FAQ",
+      "docs": "Documentazione",
+      "contact": "Contatti",
+      "signIn": "Accedi",
+      "openMenu": "Apri il menu",
+      "closeMenu": "Chiudi il menu"
+    },
+    "hero": {
+      "eyebrow": "Open source · Apache-2.0",
+      "title": "L'ingegnere autonomo che non fa merge di un'ipotesi",
+      "subtitle": "Agent Zero legge le tue pull request, riproduce il problema, scrive la correzione e la dimostra con un'esecuzione che passa. La modalità osservazione è il default: finché non lo autorizzi, il repository non viene toccato.",
+      "primaryCta": "Inizia in modalità osservazione",
+      "secondaryCta": "Leggi la documentazione",
+      "note": "Nessuna carta di credito. Gira sulla tua infrastruttura.",
+      "terminalTitle": "agent-zero review",
+      "terminalCaption": "Un'esecuzione in modalità osservazione: solo risultati, nessuna scrittura."
+    },
+    "logos": {
+      "title": "Costruito sugli strumenti che la tua pipeline già usa"
+    },
+    "features": {
+      "title": "Tutto ciò che sta tra un commento di review e una correzione verificata",
+      "subtitle": "Agent Zero è un runtime, non una finestra di chat. Ogni fase è una transizione di stato esplicita che puoi ispezionare, rieseguire e sottoporre ad approvazione.",
+      "items": {
+        "observe": {
+          "title": "Osservazione come default",
+          "description": "Ogni esecuzione parte in sola lettura. Agent Zero riporta ciò che ha trovato e ciò che cambierebbe; passare alla modalità correzione è un passo deliberato e tracciabile."
+        },
+        "runner": {
+          "title": "Un solo confine di esecuzione",
+          "description": "Comandi e scritture su file passano da un unico confine runner con validazione dei percorsi e rifiuto delle uscite dalla directory: c'è esattamente un punto da controllare."
+        },
+        "verify": {
+          "title": "Correzioni con la prova allegata",
+          "description": "Una modifica viene proposta solo dopo che i controlli del repository sono passati su di essa. Se la verifica fallisce l'esecuzione termina, invece di aprire una pull request ottimista."
+        },
+        "models": {
+          "title": "Qualsiasi provider di modelli",
+          "description": "Adapter nativi per OpenAI, Anthropic e Google, AI Gateway o qualsiasi endpoint compatibile con OpenAI. Il runtime non dipende mai da un provider specifico."
+        },
+        "sandbox": {
+          "title": "Sandbox in leasing",
+          "description": "Esecuzione gestita tramite un pool di runner neutrale rispetto al provider: ogni lease ha una durata massima, le quote sono verificate prima del provisioning e le sandbox scadute vengono fermate."
+        },
+        "policy": {
+          "title": "Policy versionate in git",
+          "description": "Modalità, selezione del modello e comandi permessi vivono nella configurazione del repository e si revisionano come qualsiasi altra modifica al codice."
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Cosa ci fanno i team",
+      "subtitle": "Agent Zero viene usato dove una modifica automatica sbagliata costa cara.",
+      "items": {
+        "one": {
+          "quote": "L'abbiamo puntato su un arretrato di commenti di review fermi da mesi, lasciandolo in modalità osservazione per una settimana. Ha fatto emergere due dereferenziazioni null reali che i nostri linter non avevano mai segnalato.",
+          "author": "Maya Chen",
+          "role": "Staff Engineer, Northline"
+        },
+        "two": {
+          "quote": "Ciò che ci ha convinti è il confine runner. C'è un solo file da leggere per sapere tutto quello che l'agente può eseguire.",
+          "author": "Jonas Weber",
+          "role": "Platform Lead, Latticeworks"
+        },
+        "three": {
+          "quote": "Non apre mai una pull request che non sappia sostenere con un'esecuzione verde, e così i nostri revisori hanno smesso di trattare l'output dell'agente come rumore.",
+          "author": "Amelia Ortiz",
+          "role": "Head of Engineering, Harbor Studio"
+        }
+      }
+    },
+    "pricing": {
+      "title": "Gestiscilo tu, oppure lascialo gestire a noi",
+      "subtitle": "Il runtime è Apache-2.0 e lo resterà. I piani a pagamento coprono esecuzione gestita, conservazione dei dati e supporto.",
+      "intervalLabel": "Periodo di fatturazione",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "yearlyHint": "2 mesi gratis",
+      "perMonth": "/ mese",
+      "perYear": "/ anno",
+      "recommended": "Consigliato",
+      "custom": "Su misura",
+      "plans": {
+        "community": {
+          "name": "Community",
+          "description": "Il runtime completo, self-hosted, con le tue credenziali per i modelli.",
+          "cta": "Clona il repository",
+          "features": {
+            "one": "Modalità osservazione, correzione e verifica",
+            "two": "Runner self-hosted",
+            "three": "Provider di modelli a tua scelta",
+            "four": "Supporto della community su GitHub"
+          }
+        },
+        "team": {
+          "name": "Team",
+          "description": "Sandbox gestite e policy condivise per un'intera organizzazione tecnica.",
+          "cta": "Inizia la prova",
+          "features": {
+            "one": "Tutto ciò che c'è in Community",
+            "two": "Pool di sandbox gestite con lease e quote",
+            "three": "Policy e audit log a livello di organizzazione",
+            "four": "Conservazione delle esecuzioni per 90 giorni",
+            "five": "Supporto via email"
+          }
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "description": "Deployment privato, documentazione per gli acquisti e un contratto di supporto.",
+          "cta": "Parla con noi",
+          "features": {
+            "one": "Tutto ciò che c'è in Team",
+            "two": "Deployment single-tenant o on-premise",
+            "three": "SSO e provisioning SCIM",
+            "four": "Conservazione e residenza dei dati su misura",
+            "five": "Referente di supporto dedicato"
+          }
+        }
+      }
+    },
+    "faq": {
+      "title": "Le domande che arrivano prima della prima esecuzione",
+      "subtitle": "Per tutto il resto, la risposta è quasi sempre nella documentazione.",
+      "items": {
+        "write": {
+          "question": "Agent Zero può modificare il mio repository senza chiedere?",
+          "answer": "No. La modalità osservazione è il default e non scrive mai su un repository di destinazione. La modalità correzione va selezionata esplicitamente nella policy del repository e ogni scrittura passa comunque dal confine runner."
+        },
+        "models": {
+          "question": "Quali provider di modelli sono supportati?",
+          "answer": "OpenAI, Anthropic e Google Generative AI in modo nativo, più AI Gateway e qualsiasi endpoint compatibile con OpenAI. Il provider si sceglie nella policy del repository e la credenziale arriva dall'ambiente."
+        },
+        "selfhost": {
+          "question": "Sono obbligato a usare i piani gestiti?",
+          "answer": "No. Il runtime è rilasciato con licenza Apache-2.0 ed è pienamente funzionante self-hosted. I piani a pagamento esistono per i team che preferiscono non gestire in proprio il pool di sandbox."
+        },
+        "secrets": {
+          "question": "Che fine fanno il mio codice e i miei segreti?",
+          "answer": "I segreti non vengono mai scritti in log, prompt, fixture o messaggi di errore. Nelle esecuzioni self-hosted il codice non lascia la tua infrastruttura, se non per le chiamate ai modelli che configuri."
+        },
+        "cancel": {
+          "question": "Posso disdire o cambiare piano in seguito?",
+          "answer": "Sì, in qualsiasi momento e dalla tua dashboard. Il downgrade conserva tutte le esecuzioni già registrate; viene eliminato solo ciò che eccede la finestra di conservazione del nuovo piano."
+        }
+      }
+    },
+    "cta": {
+      "title": "Puntalo su una sola pull request",
+      "subtitle": "La modalità osservazione ti costa solo una chiamata al modello, e dopo una singola esecuzione saprai se merita un posto nella tua pipeline.",
+      "primary": "Inizia ora",
+      "secondary": "Parla con noi"
+    },
+    "footer": {
+      "aria": "Piè di pagina",
+      "tagline": "L'ingegnere autonomo open source che trova, corregge e verifica i problemi nelle pull request.",
+      "product": "Prodotto",
+      "resources": "Risorse",
+      "legal": "Note legali",
+      "changelog": "Changelog",
+      "github": "GitHub",
+      "architecture": "Architettura",
+      "privacy": "Informativa sulla privacy",
+      "terms": "Termini di servizio",
+      "copyright": "Contributori di Agent Zero. Rilasciato con licenza Apache-2.0."
+    },
+    "pages": {
+      "home": {
+        "title": "Correzioni verificate, non ipotesi",
+        "description": "Agent Zero è l'ingegnere autonomo open source che trova, corregge e verifica i problemi nelle pull request. La modalità osservazione è il default: nulla cambia finché non lo permetti."
+      },
+      "pricing": {
+        "title": "Prezzi",
+        "description": "Il runtime di Agent Zero è Apache-2.0 e self-hostabile gratuitamente. Esecuzione gestita, conservazione dei dati e supporto sono disponibili nei piani Team ed Enterprise."
+      },
+      "contact": {
+        "title": "Contatti",
+        "description": "Parla con il team di Agent Zero di esecuzione gestita, deployment enterprise o di una questione di sicurezza.",
+        "heading": "Raccontaci cosa stai cercando di automatizzare",
+        "body": "Per qualsiasi cosa tecnica la strada più rapida è una issue su GitHub, dove la risposta resta visibile a tutto il progetto. Per acquisti, revisione di sicurezza o deployment enterprise è meglio l'email.",
+        "issuesTitle": "Apri una issue",
+        "issuesBody": "Segnalazioni di bug, richieste di funzionalità e domande sul runtime.",
+        "emailTitle": "Scrivici",
+        "emailBody": "Deployment enterprise, acquisti e contratti di supporto.",
+        "securityTitle": "Segnala una vulnerabilità",
+        "securityBody": "Segui il processo di divulgazione coordinata invece di aprire una issue pubblica."
+      },
+      "privacy": {
+        "title": "Informativa sulla privacy",
+        "description": "Come il progetto Agent Zero tratta i dati che invii a questo sito e al servizio gestito."
+      },
+      "terms": {
+        "title": "Termini di servizio",
+        "description": "I termini che si applicano al sito di Agent Zero e ai piani gestiti Team ed Enterprise."
+      }
+    },
+    "legal": {
+      "lastUpdated": "Ultimo aggiornamento",
+      "placeholder": "Questo documento è un punto di partenza incluso nel progetto e non costituisce consulenza legale. Sostituiscilo con termini rivisti per la tua giurisdizione e la tua attività prima di accettare clienti reali."
+    }
+  }
+}

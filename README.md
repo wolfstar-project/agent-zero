@@ -62,6 +62,7 @@ Nuxt dashboard ─── frontend-only operational interface ─── auth adap
 | [`apps/server`](./apps/server)           | oRPC control-plane transport and composition root               |
 | [`apps/auth-server`](./apps/auth-server) | Standalone auth adapter; the only component with a database     |
 | [`apps/dashboard`](./apps/dashboard)     | Nuxt operational dashboard, authenticated client of the adapter |
+| [`apps/marketing`](./apps/marketing)     | Nuxt public marketing site; frontend only, no persistence       |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
@@ -181,7 +182,8 @@ in the same environment the adapter runs with, or the login page will keep adver
 capabilities (the adapter still enforces its own policy either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
-`apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
+`packages/i18n/locales/<locale>/` and shared with the marketing site; each app loads only the
+scopes it renders. `aube run i18n:status` builds a
 [Lunaria](https://lunaria.dev) report showing which translations went stale relative to the English
 source; it reads git history, so it needs the dictionaries committed.
 

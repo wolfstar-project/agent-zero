@@ -32,6 +32,7 @@ These instructions apply to humans and coding agents working in this repository.
 - `apps/server`: oRPC control-plane transport and composition root.
 - `apps/auth-server`: the only component that owns a persistence layer. Serves the Better Auth handler and nothing else.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard. Presentation plus an authenticated client of `apps/auth-server`. No Nitro server routes, no persistence, no runtime-package imports.
+- `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, no credentials, no session, no runtime-package imports; nothing imports it. Server-rendered and prerendered because it must be crawlable, so the only Nitro routes are the ones `@nuxtjs/seo` generates. Copy lives in `packages/i18n` (`locales/<locale>/marketing.json`), never in the app.
 
 The runtime must remain independent from HTTP, GitHub, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/auth` nor `apps/auth-server` may import a runtime package, and neither may execute repository work.
 

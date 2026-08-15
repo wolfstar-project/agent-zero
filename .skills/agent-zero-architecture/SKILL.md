@@ -18,6 +18,7 @@ Keep dependency direction explicit while changing the monorepo.
 - `cli`: argument parsing and terminal presentation.
 - `apps/server`: oRPC transport, task persistence, scheduling, and the composition root that constructs a runner. See the `orpc-server` skill.
 - `apps/dashboard`: frontend-only Nuxt operational dashboard with no runtime-package dependencies.
+- `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, credentials, session, or runtime-package dependencies, and nothing imports it. Copy lives in `packages/i18n`, not in the app.
 
 ## Workflow
 
