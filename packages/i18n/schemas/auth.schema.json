@@ -52,6 +52,60 @@
           },
           "additionalProperties": false
         },
+        "invite": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "loading": {
+              "type": "string"
+            },
+            "organizationName": {
+              "type": "string"
+            },
+            "organizationSlug": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "string"
+            },
+            "submitPending": {
+              "type": "string"
+            },
+            "confirmPrompt": {
+              "type": "string"
+            },
+            "confirm": {
+              "type": "string"
+            },
+            "confirmPending": {
+              "type": "string"
+            },
+            "signInPrompt": {
+              "type": "string"
+            },
+            "signIn": {
+              "type": "string"
+            },
+            "accepted": {
+              "type": "string"
+            },
+            "acceptedSignedIn": {
+              "type": "string"
+            },
+            "continue": {
+              "type": "string"
+            },
+            "invalid": {
+              "type": "string"
+            },
+            "missingToken": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "session": {
           "type": "object",
           "properties": {
@@ -89,6 +143,30 @@
               "type": "string"
             },
             "UNREACHABLE": {
+              "type": "string"
+            },
+            "INVITE_NOT_FOUND": {
+              "type": "string"
+            },
+            "INVITE_EXPIRED": {
+              "type": "string"
+            },
+            "INVITE_REVOKED": {
+              "type": "string"
+            },
+            "INVITE_ALREADY_USED": {
+              "type": "string"
+            },
+            "INVITE_USES_EXHAUSTED": {
+              "type": "string"
+            },
+            "EMAIL_MISMATCH": {
+              "type": "string"
+            },
+            "SEAT_LIMIT_REACHED": {
+              "type": "string"
+            },
+            "ORG_DISABLED": {
               "type": "string"
             }
           },

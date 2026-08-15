@@ -1,4 +1,19 @@
+// Imported for their names only, which is a use the linter cannot see. The client plugin's
+// phantom server type mentions these, and without a nameable path to them the inferred type of
+// this file's default export cannot be written down: the plugin declares them in an internal
+// chunk that only the package root re-exports. Widening the plugin instead would remove the need
+// for them and also erase the typed `invite.*` client methods.
+/* oxlint-disable no-unused-vars -- referenced by the inferred export type, see comment above */
+import type {
+  InviteAdditionalFieldType,
+  InviteKind,
+  InviteMode,
+  InviteStatus,
+  InviteType,
+  InviteUse,
+} from '@octopi-ai/better-enrollment';
 import { betterEnrollmentClient } from '@octopi-ai/better-enrollment/client';
+/* oxlint-enable no-unused-vars */
 import { defineClientAuth } from '@onmax/nuxt-better-auth/config';
 import type { BetterAuthClientPlugin } from 'better-auth/client';
 import { organizationClient } from 'better-auth/client/plugins';
