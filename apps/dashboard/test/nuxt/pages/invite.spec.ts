@@ -25,7 +25,12 @@ const query = ref<Record<string, string>>({});
 const getInvite = vi.fn<() => Promise<InviteResult>>();
 const redeemInvite = vi.fn<() => Promise<{ error?: { code?: string } }>>();
 
-mockNuxtImport('useRoute', () => () => ({ query: query.value }));
+// `fullPath` (token included) is what the sign-in link round-trips through `/login`'s `redirect`
+// query param, so the mocked route has to carry the same shape `useRoute()` does, not just `query`.
+mockNuxtImport('useRoute', () => () => ({
+  query: query.value,
+  fullPath: `/invite?token=${query.value.token ?? ''}`,
+}));
 mockNuxtImport('useAuth', () => () => ({
   client: { invite: { get: getInvite, redeem: redeemInvite } },
 }));
@@ -100,6 +105,18 @@ describe('invite page', () => {
     const wrapper = await mountSuspended(InvitePage);
 
     expect(wrapper.text()).toContain('Sign in to accept this invitation.');
+  });
+
+  it('carries the invitation through sign-in so redemption is not lost', async () => {
+    // `useSignIn`/`useSignUp` on the login page navigate to whatever this query param names once
+    // they complete, so without it a signed-out invitee would land on "/" after sign-in and the
+    // token, still sitting in this now-unmounted page, would never reach `invite.redeem`.
+    respondWith('SIGN_IN');
+
+    const wrapper = await mountSuspended(InvitePage);
+    const href = wrapper.find('a').attributes('href');
+
+    expect(href).toBe('/login?redirect=%2Finvite%3Ftoken%3Da-token');
   });
 
   it('reports a spent invitation rather than rendering a form', async () => {

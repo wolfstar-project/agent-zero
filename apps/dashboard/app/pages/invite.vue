@@ -83,7 +83,7 @@
 
     <template v-else-if="stage === 'SIGN_IN'">
       <p class="m-0 mt-4 text-xs text-muted">{{ $t('auth.invite.signInPrompt') }}</p>
-      <NuxtLink class="btn-subtle mt-4 w-full" :to="loginPath">
+      <NuxtLink class="btn-subtle mt-4 w-full" :to="signInLink">
         {{ $t('auth.invite.signIn') }}
       </NuxtLink>
     </template>
@@ -120,6 +120,20 @@ const route = useRoute();
 const { client } = useAuth();
 const { localizeAuthError } = useAuthErrorMessage();
 const i18n = useI18n();
+
+/**
+ * Where "sign in to accept" sends a signed-out invitee in open mode.
+ *
+ * `@onmax/nuxt-better-auth` reads this same query param off the login page's own URL and, when
+ * `signInEmail`/`signInSocial` complete without an explicit `onSuccess` (which `login.vue` does
+ * not pass), navigates there automatically. Without it, sign-in would land on `/` and the token
+ * would never reach `invite.redeem`, silently dropping the invitation.
+ */
+const authRuntimeConfig = useRuntimeConfig().public.auth;
+const signInLink = computed(() => ({
+  path: loginPath,
+  query: { [authRuntimeConfig?.redirectQueryKey ?? 'redirect']: route.fullPath },
+}));
 
 /** What the page is currently showing. Mirrors `nextAction`, plus the states it has no value for. */
 type Stage =
