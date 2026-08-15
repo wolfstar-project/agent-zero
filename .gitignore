@@ -1,8 +1,10 @@
-node_modules/
+# Also matches a node_modules symlink, which the trailing-slash form does not.
+node_modules
 .turbo/
 dist/
 .output/
 .nuxt/
+.vitepress/cache/
 .vitehub/
 *.tsbuildinfo
 coverage/

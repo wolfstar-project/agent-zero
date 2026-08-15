@@ -1,0 +1,8 @@
+---
+title: Source-control providers
+---
+
+<!-- The canonical reference lives at docs/source-control-providers.md in the
+repository so coding agents and the site read the same source. Edit it there. -->
+
+<!--@include: ../../../docs/source-control-providers.md-->

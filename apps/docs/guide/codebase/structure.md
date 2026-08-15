@@ -1,0 +1,72 @@
+# Codebase structure
+
+Agent Zero is a dependency-directed monorepo managed with [Turborepo](https://turborepo.dev) and [aube](https://aube.jdx.dev). Workspaces live under `apps/*` and `packages/*` (declared in `pnpm-workspace.yaml`).
+
+```text
+agent-zero
+├── apps
+│   ├── dashboard        # the single deployable app (Nuxt)
+│   └── docs             # this documentation site (VitePress)
+├── packages
+│   ├── agent            # orchestration and state transitions
+│   ├── api              # oRPC router and control-plane operations
+│   ├── auth             # authentication policy and Better Auth options factory
+│   ├── cli              # argument parsing and terminal presentation
+│   ├── config           # configuration parsing and policy
+│   ├── database         # the schema, the Drizzle client, and the migrations
+│   ├── i18n             # locale definitions and translation tooling
+│   ├── mail             # transactional email templates and providers
+│   ├── models           # model-provider abstractions
+│   ├── runner           # the only boundary that executes commands
+│   ├── shared           # stable cross-package contracts
+│   └── source-control   # provider-neutral source-control contracts and adapters
+├── docs                 # canonical architecture and provider references
+├── scripts              # repository checks and the shared tsdown config
+└── .skills              # Agent Skills for coding agents
+```
+
+## Package responsibilities
+
+| Package                   | Responsibility                                                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/agent`          | Orchestration and state transitions only. Knows nothing of HTTP or terminals.                                                                                                              |
+| `packages/runner`         | The only boundary allowed to execute repository commands or mutate a checkout.                                                                                                             |
+| `packages/models`         | Model-provider abstractions: one `ModelProvider` contract over OpenAI, Anthropic, Google, AI Gateway, and OpenAI-compatible endpoints.                                                     |
+| `packages/source-control` | Provider-neutral source-control contracts, with GitHub, GitLab, Bitbucket, and Gitea adapters underneath.                                                                                  |
+| `packages/config`         | Configuration parsing and policy for `.agent-zero.yml`.                                                                                                                                    |
+| `packages/shared`         | Stable cross-package contracts. Zero dependencies; must not import feature packages.                                                                                                       |
+| `packages/cli`            | Argument parsing and terminal presentation for the `zero` binary.                                                                                                                          |
+| `packages/database`       | The schema, the Drizzle client, and the checked-in migrations. The only package that talks to Postgres. No policy, no HTTP, no runtime imports.                                            |
+| `packages/auth`           | Authentication policy and the Better Auth options factory. Reads the store through `packages/database`. No HTTP server, no runtime imports.                                                |
+| `packages/api`            | The oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own. |
+| `packages/i18n`           | Locale definitions (English, Italian) plus translation status tooling.                                                                                                                     |
+| `packages/mail`           | Maizzle-based transactional email templates and delivery providers.                                                                                                                        |
+| `apps/dashboard`          | The single deployable app and composition root: UI, `/rpc/**` + `/api/v1/**`, `/api/auth/**`, and the only persistence layer.                                                              |
+| `apps/docs`               | This documentation site.                                                                                                                                                                   |
+
+## Dependency direction
+
+The core decides what should happen; adapters decide how external systems communicate with it; the runner controls what is allowed to happen to a checkout.
+
+- Adapters depend on the runtime; **the runtime must not depend on adapters**.
+- `shared` contains stable data contracts and must not import feature packages.
+- `packages/api` may depend on the runtime, source-control, models, and config packages; none of them may depend on it. It does not depend on `auth`.
+- `apps/dashboard` is the composition root and the only component with HTTP capability and a database connection.
+
+If a change would create a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime. The full rules live in [Architecture overview](/guide/architecture/overview).
+
+## Choose the right package
+
+| Change                                               | Location                  |
+| ---------------------------------------------------- | ------------------------- |
+| Agent lifecycle and decisions                        | `packages/agent`          |
+| Commands and repository mutation                     | `packages/runner`         |
+| LLM providers                                        | `packages/models`         |
+| Source-control provider adapters                     | `packages/source-control` |
+| Configuration and policy                             | `packages/config`         |
+| Shared contracts                                     | `packages/shared`         |
+| CLI parsing and presentation                         | `packages/cli`            |
+| Database schema and migrations                       | `packages/database`       |
+| Authentication policy                                | `packages/auth`           |
+| oRPC router and control-plane operations             | `packages/api`            |
+| UI, HTTP host (RPC, OpenAPI, auth, dashboard routes) | `apps/dashboard`          |

@@ -27,6 +27,11 @@
       // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
       "ignoreDependencies": ["@maizzle/tailwindcss"],
     },
+    "apps/docs": {
+      // VitePress discovers its config (and an optional theme) from the
+      // filesystem; nothing imports them.
+      "entry": [".vitepress/config.ts"],
+    },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does
       // not scan, and Nuxt auto-imports components, composables, and utils.

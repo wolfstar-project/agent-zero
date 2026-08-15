@@ -1,0 +1,55 @@
+# What is Agent Zero?
+
+Agent Zero is an open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.
+
+It runs one trustworthy loop: ingest review feedback, inspect a pull-request diff proactively, or take on a scoped GitHub issue, validate the finding, apply a narrowly scoped policy-approved fix, run the repository's real checks, inspect the resulting diff, and produce evidence.
+
+Feedback is never treated as truth merely because it came from a human or an AI reviewer.
+
+## Principles
+
+- **Evidence over assertion** — every fix carries the commands that verified it.
+- **Proactive, not speculative** — diff review reports the highest-priority finding only when checkout evidence supports it.
+- **Confidence and impact gates** — automatic fixes require confidence, an allowed change-risk class, repository permission, and verification.
+- **Issues become reviewable pull requests** — a labeled, repository-scoped issue can be investigated, implemented on an isolated branch, verified, and published as a pull request that carries its acceptance criteria and evidence; never as a direct commit.
+- **`observe` by default** — the safe mode inspects and reports, and never writes to a target repository.
+- **One execution boundary** — the runner package is the only code allowed to run commands or mutate a checkout.
+- **Adapters at the edges** — the runtime stays independent of HTTP, source-control platforms, terminal UI, and model providers.
+
+## How a run works
+
+Every run walks the same lifecycle, whether it was triggered by reviewer feedback, a proactive diff inspection, or a labeled issue:
+
+```text
+discover → understand → validate → plan → execute → verify → review
+                                     ↑                    │
+                                     └────── repair ◀─────┘
+```
+
+1. **Discover** collects the checkout, its diff, and its native check commands.
+2. **Understand** asks the model to interpret the untrusted feedback, diff, or issue in repository context.
+3. **Validate** decides a verdict from repository evidence — never from the reviewer's or the model's assertion. A claim can be **confirmed**, **not confirmed** (with every rejection reason), or **inconclusive** for a human.
+4. **Plan** records the plan and resolves authorization; each refusal is a distinct reportable outcome.
+5. **Execute** applies changes restricted to the validated scope, through the runner.
+6. **Verify** runs the repository's own checks and captures their output.
+7. **Review** inspects the resulting diff before a run may call itself complete.
+
+See [State machine](/guide/architecture/state-machine) for the full transition rules.
+
+## Execution modes
+
+| Mode         | May write? | Purpose                                              |
+| ------------ | ---------- | ---------------------------------------------------- |
+| `observe`    | never      | The default. Inspect and report only.                |
+| `suggest`    | never      | Report with proposed changes, without applying them. |
+| `fix`        | gated      | Validate, edit, and verify when policy permits.      |
+| `autonomous` | gated      | Fix plus autonomous triggers, under the same gates.  |
+
+`fix` and `autonomous` additionally require `autofix.enabled` in repository policy, sufficient confidence, an allowed change-risk class, repository-native checks, and — by default for proactive, issue, or autonomous work — an isolated runner. High-impact changes always require human approval. See the [Safety model](/guide/safety).
+
+## Where to go next
+
+- [Installation](/guide/installation) — get a local environment running.
+- [Codebase structure](/guide/codebase/structure) — how the monorepo is organized.
+- [Repository policy](/guide/configuration) — every `.agent-zero.yml` key.
+- [CLI reference](/reference/cli) — the `zero` command surface.

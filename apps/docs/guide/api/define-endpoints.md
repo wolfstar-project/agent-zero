@@ -1,0 +1,59 @@
+# Define endpoints
+
+Procedures are defined once in `packages/api/src/orpc/router.ts` and served over both transports automatically. Before changing routes, read the `orpc-server` [Agent Skill](/guide/codebase/agent-skills).
+
+## Anatomy of a procedure
+
+```ts
+import { openapi } from '@orpc/openapi';
+import { os } from '@orpc/server';
+import { z } from 'zod';
+
+const procedure = os.$context<RpcContext>();
+
+export const rpcRouter = {
+  tasks: {
+    get: procedure
+      .meta(
+        openapi({
+          method: 'GET',
+          path: '/tasks/{id}',
+          tags: ['Tasks'],
+          summary: 'Get a task by id',
+        }),
+      )
+      .input(z.object({ id: z.string().min(1) }))
+      .handler(({ input, context }) => getStoredTask(input.id, context.store)),
+  },
+};
+```
+
+Three rules shape every procedure:
+
+- **Validate at the boundary with Zod, then delegate.** Handlers call operations from `packages/api/src/operations.ts`; they never invoke a shell or touch a checkout.
+- **Mutations build on the `authenticated` middleware**, which requires a resolved principal and fails closed. Reads stay open for the dashboard. See [Protect endpoints](/guide/api/protect-endpoints).
+- **OpenAPI metadata goes through `.meta(openapi(...))`, not `.route()`.** The metadata (method, path, tags) exists purely for the OpenAPI transport and has no effect on the RPC transport. It is attached through a real, regularly-imported function rather than `@orpc/openapi`'s bare side-effect import, because Nitro's production bundler tree-shakes an unused side-effect import away — procedures would build fine but lose all `/api/v1/**` routing at runtime.
+
+## Context
+
+`RpcContext` carries what the transport resolved for the request:
+
+```ts
+export interface RpcContext {
+  store: TaskStore;
+  /** Authenticated caller resolved by the transport; absent for anonymous requests. */
+  principal?: Principal;
+  /** Whether tasks.create may target this repository. Fails closed when absent. */
+  mayTargetRepository?: (repository: string) => boolean;
+}
+```
+
+Transport concerns stop at the route handlers in `apps/dashboard/server/`: headers, status mapping, and request objects never reach a runtime package.
+
+## Request logging
+
+`EvlogHandlerPlugin` attaches structured request logs through one `AsyncLocalStorage`-backed logger shared by every transport (`packages/api/src/orpc/logging.ts`). Procedures read it defensively — `requestLoggerStorage?.getStore()?.set(...)` — so router tests that call procedures directly through `createRouterClient`, without a transport's plugin attached, still pass.
+
+## Testing
+
+Call procedures directly through `createRouterClient` in unit tests — no HTTP server needed, and the same authorization rules apply. Add deterministic tests for success, rejection, and policy cases beside the source as `*.test.ts`.
