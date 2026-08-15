@@ -4,8 +4,21 @@ import { createMailer, sendEmail } from './mail.js';
 import type { OutgoingMail } from './provider/types.js';
 
 const INLINE_STYLE_PATTERN = /style="/;
-const LEAKED_CLASS_ATTRIBUTE_PATTERN = /class="/;
+/** The call-to-action's light-mode fill, which only reaches the anchor if utilities were inlined. */
+const INLINED_BUTTON_FILL_PATTERN = /<a[^>]+style="[^"]*background-color: #1c6a00[^"]*"/;
+const DARK_MODE_MEDIA_QUERY_PATTERN = /@media \(prefers-color-scheme: dark\)/;
+const CLASS_ATTRIBUTE_PATTERN = /class="([^"]*)"/g;
+/** Maizzle's `safeSelectors` step rewrites `dark:` to `dark-`, so that prefix marks the hooks. */
+const DARK_VARIANT_CLASS_PATTERN = /^dark-/;
+const WHITESPACE_PATTERN = /\s+/;
 const MISSING_MAIL_FROM_PATTERN = /MAIL_FROM/;
+
+/** Every class token left in the markup, so the assertion can name the offender it found. */
+function classTokens(html: string): string[] {
+  return [...html.matchAll(CLASS_ATTRIBUTE_PATTERN)].flatMap(([, value]) =>
+    (value ?? '').split(WHITESPACE_PATTERN).filter(Boolean),
+  );
+}
 
 /**
  * These render through the real Maizzle pipeline rather than a stub. Rendering is local and
@@ -74,9 +87,18 @@ describe('sendEmail', () => {
     const [mail] = sent;
     assertSent(mail);
     expect(mail.html).toMatch(INLINE_STYLE_PATTERN);
-    // Utility classes are inlined and purged; a leftover class attribute means the CSS step
-    // silently did nothing and the message would arrive unstyled.
-    expect(mail.html).not.toMatch(LEAKED_CLASS_ATTRIBUTE_PATTERN);
+    // Light-mode utilities have to end up in the style attribute itself, because the clients that
+    // drop stylesheets are exactly the ones that would otherwise render the message unstyled.
+    expect(mail.html).toMatch(INLINED_BUTTON_FILL_PATTERN);
+    // Dark mode cannot be inlined: a media query has no element to attach to. It stays in the head
+    // stylesheet, which is also why the classes it selects on legitimately survive purging.
+    expect(mail.html).toMatch(DARK_MODE_MEDIA_QUERY_PATTERN);
+    // So the guard is narrow rather than blanket: a surviving class that is *not* a dark-mode hook
+    // means an ordinary utility went un-inlined and the CSS step silently did nothing.
+    const leaked = classTokens(mail.html).filter(
+      (token) => !DARK_VARIANT_CLASS_PATTERN.test(token),
+    );
+    expect(leaked).toEqual([]);
   });
 
   it('lets the caller override the registered subject', async () => {
