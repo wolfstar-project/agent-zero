@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AISdkModelProvider,
+  createSubscriptionSession,
   FallbackModelProvider,
   isModelConfigured,
   isAgentDecision,
@@ -10,6 +11,8 @@ import {
   modelFromEnvironment,
   OpenAICompatibleProvider,
   renderPrompt,
+  ResumingSubscriptionProvider,
+  SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   UnconfiguredModelProvider,
   type ModelContext,
@@ -32,6 +35,7 @@ const decision: AgentDecision = {
 };
 
 const REDACTED_MARKER = /\[redacted]/;
+const NON_DURATION_WAIT = /must be a non-negative number of milliseconds/;
 const INCOMPLETE_FALLBACK = /must be set together/;
 const SUBSCRIPTION_FALLBACK = /must be an API-key provider/;
 const UNKNOWN_FALLBACK = /Invalid AGENT_ZERO_MODEL_FALLBACK_PROVIDER/;
@@ -290,8 +294,10 @@ describe('subscription transports', () => {
     const configured = modelFromEnvironment(claudeCode, {
       AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
     });
-    expect(configured).toBeInstanceOf(AISdkModelProvider);
-    expect(configured).toMatchObject({ provider: 'claude-code', model: 'opus' });
+    // Every subscription transport is wrapped so a spent usage window can be waited out; the
+    // wrapped transport is the one the selection named.
+    expect(configured).toBeInstanceOf(ResumingSubscriptionProvider);
+    expect(configured).toMatchObject({ inner: { provider: 'claude-code', model: 'opus' } });
     expect(
       isModelConfigured('claude-code', { AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true' }),
     ).toBe(true);
@@ -315,7 +321,17 @@ describe('subscription transports', () => {
         AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'anthropic',
         AGENT_ZERO_MODEL_FALLBACK_MODEL: 'claude-sonnet-4-5',
       }),
-    ).toBeInstanceOf(AISdkModelProvider);
+    ).toBeInstanceOf(ResumingSubscriptionProvider);
+  });
+
+  it('rejects a wait budget that is not a duration', () => {
+    for (const value of ['soon', '-1'])
+      expect(() =>
+        modelFromEnvironment(claudeCode, {
+          AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+          AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS: value,
+        }),
+      ).toThrow(NON_DURATION_WAIT);
   });
 
   it('rejects a fallback that cannot degrade anything', () => {
@@ -381,5 +397,159 @@ describe('isAgentDecision', () => {
       { ...decision, changeRisk: 'anything-goes' },
     ])
       expect(isAgentDecision(candidate)).toBe(false);
+  });
+});
+
+describe('ResumingSubscriptionProvider', () => {
+  const START = Date.parse('2026-08-15T12:00:00.000Z');
+
+  /**
+   * A transport that reports a spent window once per entry in `resets`, then succeeds.
+   *
+   * The clock and the sleep are injected so the suite asserts on the waits that were requested
+   * rather than on time actually passing. `forever` keeps reporting the last window, standing in
+   * for a transport whose reset instant never actually arrives.
+   */
+  function spentWindow(resets: readonly (Date | undefined)[], forever = false) {
+    const slept: number[] = [];
+    let clock = START;
+    let calls = 0;
+    const inner: ModelProvider = {
+      decide: async () => {
+        calls += 1;
+        const spent = forever ? resets.at(-1) : resets[calls - 1];
+        if (calls <= resets.length || forever)
+          throw new SubscriptionLimitReachedError('claude-code', 'limit reached', spent);
+        return decision;
+      },
+    };
+    return {
+      inner,
+      slept,
+      calls: () => calls,
+      now: () => clock,
+      sleep: async (ms: number) => {
+        slept.push(ms);
+        clock += ms;
+      },
+    };
+  }
+
+  it('waits for the window to reopen and resumes the interrupted session', async () => {
+    const harness = spentWindow([new Date(START + 600_000)]);
+    const session = createSubscriptionSession();
+    session.id = 'session-abc';
+    const provider = new ResumingSubscriptionProvider(harness.inner, session, {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    await expect(provider.decide(context())).resolves.toMatchObject({
+      finding: { title: 'Null return' },
+    });
+    // Ten minutes plus the grace margin, so the retry cannot race the reset instant.
+    expect(harness.slept).toEqual([605_000]);
+    expect(session.resume).toBe('session-abc');
+  });
+
+  it('reissues rather than resuming when the transport never reported a session', async () => {
+    const harness = spentWindow([new Date(START + 60_000)]);
+    const session = createSubscriptionSession();
+    const provider = new ResumingSubscriptionProvider(harness.inner, session, {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    await expect(provider.decide(context())).resolves.toBeDefined();
+    expect(session.resume).toBeUndefined();
+  });
+
+  it('refuses to wait on a reset it was never told about', async () => {
+    const harness = spentWindow([undefined]);
+    const provider = new ResumingSubscriptionProvider(harness.inner, createSubscriptionSession(), {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    await expect(provider.decide(context())).rejects.toBeInstanceOf(SubscriptionLimitReachedError);
+    expect(harness.slept).toEqual([]);
+  });
+
+  it('propagates a reset further out than this deployment agreed to wait', async () => {
+    const harness = spentWindow([new Date(START + 7_200_000)]);
+    const provider = new ResumingSubscriptionProvider(harness.inner, createSubscriptionSession(), {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    // The error keeps its reset instant so a fallback still gets its turn and an operator still
+    // learns when the window reopens.
+    await expect(provider.decide(context())).rejects.toMatchObject({
+      resetsAt: new Date(START + 7_200_000),
+    });
+    expect(harness.slept).toEqual([]);
+  });
+
+  it('never waits at all when the deployment set the budget to zero', async () => {
+    const harness = spentWindow([new Date(START + 1_000)]);
+    const provider = new ResumingSubscriptionProvider(harness.inner, createSubscriptionSession(), {
+      maxWaitMs: 0,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    await expect(provider.decide(context())).rejects.toBeInstanceOf(SubscriptionLimitReachedError);
+    expect(harness.calls()).toBe(1);
+  });
+
+  it('spends the budget across successive windows instead of restarting it', async () => {
+    const harness = spentWindow([new Date(START + 600_000), new Date(START + 1_500_000)]);
+    const provider = new ResumingSubscriptionProvider(harness.inner, createSubscriptionSession(), {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    // The injected clock advances with each sleep, so the second window's wait is measured from
+    // when the first one ended — the budget shrinks, it does not reset. Ten minutes then the
+    // fifteen-minute mark, which is only nine more minutes away by the time it is reached.
+    await expect(provider.decide(context())).resolves.toBeDefined();
+    expect(harness.slept).toEqual([605_000, 900_000]);
+  });
+
+  it('stops retrying a transport that keeps reporting a reset that never arrives', async () => {
+    const harness = spentWindow([new Date(START + 1_000)], true);
+    const provider = new ResumingSubscriptionProvider(harness.inner, createSubscriptionSession(), {
+      maxWaitMs: 3_600_000,
+      now: harness.now,
+      sleep: harness.sleep,
+    });
+
+    await expect(provider.decide(context())).rejects.toBeInstanceOf(SubscriptionLimitReachedError);
+    expect(harness.calls()).toBe(3);
+  });
+
+  it('leaves every other failure alone, including the ones it cannot wait out', async () => {
+    for (const error of [
+      new SubscriptionProviderUnavailableError('claude-code', 'run `claude login`'),
+      new Error('Model returned an invalid decision'),
+    ]) {
+      const inner: ModelProvider = {
+        decide: async () => {
+          throw error;
+        },
+      };
+      const provider = new ResumingSubscriptionProvider(inner, createSubscriptionSession(), {
+        maxWaitMs: 3_600_000,
+        sleep: async () => {
+          throw new Error('must not wait');
+        },
+      });
+      await expect(provider.decide(context())).rejects.toBe(error);
+    }
   });
 });

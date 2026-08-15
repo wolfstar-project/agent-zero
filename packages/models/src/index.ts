@@ -22,25 +22,32 @@ import {
 import { z } from 'zod';
 
 import {
+  createSubscriptionSession,
   isSubscriptionModelProvider,
   isSubscriptionProviderEnabled,
   providerStderr,
   subscriptionLanguageModel,
+  SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   translateSubscriptionError,
   type SubscriptionModelProviderKind,
+  type SubscriptionSession,
 } from './providers/subscription.js';
 
 export {
+  createSubscriptionSession,
   isSubscriptionModelProvider,
   isSubscriptionProviderEnabled,
   modelProviderCredentialKind,
+  parseLimitReset,
   providerStderr,
   subscriptionProbeCommand,
   subscriptionProviderDescriptor,
+  SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   type SubscriptionModelProviderKind,
   type SubscriptionProviderDescriptor,
+  type SubscriptionSession,
 } from './providers/subscription.js';
 
 export interface ModelContext {
@@ -134,8 +141,6 @@ interface AISdkModelOptions {
 export class AISdkModelProvider implements ModelProvider {
   readonly provider: ModelProviderKind;
   readonly model: string;
-  /** Memoized so a repaired multi-attempt run imports and configures the transport once. */
-  #languageModel: Promise<LanguageModel> | undefined;
 
   constructor(private readonly options: AISdkModelOptions) {
     this.provider = options.provider;
@@ -205,14 +210,10 @@ export class AISdkModelProvider implements ModelProvider {
 
   private async languageModel(): Promise<LanguageModel> {
     const source = this.options.languageModel;
-    if (typeof source !== 'function') return source;
-    // Assigned before the await so concurrent decisions share one import, and cleared on failure
-    // so a transient module-load error does not poison every later attempt.
-    this.#languageModel ??= source().catch((error: unknown) => {
-      this.#languageModel = undefined;
-      throw error;
-    });
-    return this.#languageModel;
+    // Rebuilt per call rather than memoized: the vendor module is already cached by the module
+    // loader, and a factory's inputs can change between attempts — a retry after a spent usage
+    // window has to build a model that resumes the interrupted session.
+    return typeof source === 'function' ? source() : source;
   }
 }
 
@@ -269,13 +270,79 @@ export class UnconfiguredModelProvider implements ModelProvider {
   }
 }
 
+/** Small margin so a retry never races the reset instant the transport reported. */
+const RESET_GRACE_MS = 5_000;
+
+/**
+ * Waits out a spent subscription window and resumes the interrupted session.
+ *
+ * A subscription plan refuses work for a stated period and then simply allows it again, which is
+ * the one transport failure that repairs itself. Failing the run at that point throws away every
+ * check and every verified change it already produced, so this waits instead — bounded, because a
+ * control plane must not block on someone's plan for an unbounded time.
+ *
+ * Three rules keep the wait honest:
+ *
+ * - Only a reported reset instant is waited on. An unknown reset is reported, never guessed, so a
+ *   run cannot block for a duration nobody chose.
+ * - The wait is bounded twice, by a cumulative time budget and by an attempt count, so neither a
+ *   distant reset nor a transport that reports a stale instant can spin.
+ * - When the budget cannot cover the wait, the error propagates with its reset instant intact, so
+ *   a configured API-key fallback still gets its turn and an operator still learns when to return.
+ */
+export class ResumingSubscriptionProvider implements ModelProvider {
+  constructor(
+    private readonly inner: ModelProvider,
+    private readonly session: SubscriptionSession,
+    private readonly options: {
+      maxWaitMs: number;
+      now?: () => number;
+      sleep?: (ms: number) => Promise<void>;
+    },
+  ) {}
+
+  async decide(context: ModelContext): Promise<AgentDecision> {
+    const now = this.options.now ?? Date.now;
+    const sleep = this.options.sleep ?? defaultSleep;
+    let budgetMs = this.options.maxWaitMs;
+
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await this.inner.decide(context);
+      } catch (error) {
+        if (!(error instanceof SubscriptionLimitReachedError)) throw error;
+        if (error.resetsAt === undefined || attempt >= MAX_LIMIT_WAITS) throw error;
+        const waitMs = error.resetsAt.getTime() - now() + RESET_GRACE_MS;
+        if (waitMs > budgetMs) throw error;
+        budgetMs -= Math.max(waitMs, 0);
+        // Continue the session the spent window cut short rather than paying to rebuild the
+        // conversation. Absent when the transport never reported one, which is a plain reissue.
+        this.session.resume = this.session.id;
+        this.session.rejected = false;
+        this.session.resetsAt = undefined;
+        if (waitMs > 0) await sleep(waitMs);
+      }
+    }
+  }
+}
+
+/**
+ * Two waits is already an unusual run: it means a second window closed on the same decision.
+ * A third is far more likely to be a transport reporting a reset instant that never arrives.
+ */
+const MAX_LIMIT_WAITS = 2;
+
+async function defaultSleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Falls back to a second transport when the first one cannot serve the run at all.
  *
- * Only a subscription transport is wrapped, and only for the two failures that mean "this host
- * cannot reach the model" — a missing CLI or an expired session. Every other failure, including a
- * model that produced an invalid decision, propagates unchanged: a run must never quietly swap
- * transports because it disliked an answer.
+ * Only a subscription transport is wrapped, and only for the failures that mean "this host cannot
+ * reach the model" — a missing CLI, an expired session, or a spent usage window this run could not
+ * wait out. Every other failure, including a model that produced an invalid decision, propagates
+ * unchanged: a run must never quietly swap transports because it disliked an answer.
  */
 export class FallbackModelProvider implements ModelProvider {
   constructor(
@@ -379,13 +446,16 @@ function subscriptionModelFromEnvironment(
 ): ModelProvider {
   if (!isSubscriptionProviderEnabled(provider, environment)) return new UnconfiguredModelProvider();
 
-  const primary = new AISdkModelProvider({
+  // One handle per selection, shared by the model factory that writes to it and the error
+  // translator that reads it, so a spent window and the session it interrupted stay connected.
+  const session = createSubscriptionSession();
+  const transport = new AISdkModelProvider({
     provider,
     model: selection.name,
     // The session lives in the CLI's own state; Agent Zero never holds a credential to redact.
     credentialSecrets: [],
-    languageModel: subscriptionLanguageModel(provider, selection.name, environment),
-    translateError: translateSubscriptionError(provider),
+    languageModel: subscriptionLanguageModel(provider, selection.name, environment, session),
+    translateError: translateSubscriptionError(provider, session),
     ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),
     ...(selection.inputCostPerMillionTokens === undefined
       ? {}
@@ -393,6 +463,12 @@ function subscriptionModelFromEnvironment(
     ...(selection.outputCostPerMillionTokens === undefined
       ? {}
       : { outputCostPerMillionTokens: selection.outputCostPerMillionTokens }),
+  });
+
+  // Waiting sits inside the fallback, not outside it: the subscription is already paid for, so a
+  // window that reopens shortly is worth waiting for before spending a metered credential.
+  const primary = new ResumingSubscriptionProvider(transport, session, {
+    maxWaitMs: limitWaitMs(environment),
   });
 
   const fallback = fallbackSelection(environment);
@@ -403,6 +479,27 @@ function subscriptionModelFromEnvironment(
   return configured instanceof UnconfiguredModelProvider
     ? primary
     : new FallbackModelProvider(primary, configured);
+}
+
+/** Longest a run may block in total waiting for subscription windows to reopen. */
+const DEFAULT_LIMIT_WAIT_MS = 3_600_000;
+
+/**
+ * How long this deployment is willing to wait out a spent window.
+ *
+ * Bounded by default rather than unlimited: a weekly window can be days away, and a control plane
+ * that blocks a task that long has stopped being a control plane. `0` disables waiting entirely,
+ * which is the right setting for a deployment that would rather fail fast onto its fallback.
+ */
+function limitWaitMs(environment: NodeJS.ProcessEnv): number {
+  const raw = environment.AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS;
+  if (raw === undefined || raw.trim() === '') return DEFAULT_LIMIT_WAIT_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0)
+    throw new Error(
+      `AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS must be a non-negative number of milliseconds: ${raw}`,
+    );
+  return parsed;
 }
 
 /**

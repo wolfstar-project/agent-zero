@@ -50,8 +50,9 @@ const descriptors = {
 /**
  * A subscription transport that cannot serve this run.
  *
- * Raised for the two failures an operator can actually fix — the CLI is missing, or its session
- * expired — so the message names the command instead of surfacing a spawn or protocol error.
+ * Raised for the failures an operator can act on — the CLI is missing, its session expired, or the
+ * plan's usage window is spent — so the message names the remedy instead of surfacing a spawn or
+ * protocol error. A caller that has somewhere else to go degrades on this type and nothing else.
  */
 export class SubscriptionProviderUnavailableError extends Error {
   readonly provider: SubscriptionModelProviderKind;
@@ -61,6 +62,52 @@ export class SubscriptionProviderUnavailableError extends Error {
     this.name = 'SubscriptionProviderUnavailableError';
     this.provider = provider;
   }
+}
+
+/**
+ * The plan's usage window is spent.
+ *
+ * Distinct from the other unavailable reasons because it is the only one that fixes itself: the
+ * window reopens at `resetsAt`, and the interrupted CLI session can be resumed from there rather
+ * than restarted. `resetsAt` is absent when the transport reported the rejection without saying
+ * when it lifts, which is the one case a caller cannot wait out.
+ */
+export class SubscriptionLimitReachedError extends SubscriptionProviderUnavailableError {
+  readonly resetsAt: Date | undefined;
+
+  constructor(
+    provider: SubscriptionModelProviderKind,
+    message: string,
+    resetsAt: Date | undefined,
+    options?: ErrorOptions,
+  ) {
+    super(provider, message, options);
+    this.name = 'SubscriptionLimitReachedError';
+    this.resetsAt = resetsAt;
+  }
+}
+
+/**
+ * What one run learned about the CLI session it is driving.
+ *
+ * The vendor SDKs report the session id and the plan's limit state out of band, as events on the
+ * running query rather than as call results, so a run collects them here as they arrive. Holding
+ * them is what lets an interrupted call resume the same session instead of opening a new one and
+ * paying for the conversation twice.
+ */
+export interface SubscriptionSession {
+  /** Session the last call ran in, captured from the transport's own events. */
+  id: string | undefined;
+  /** Session the next call should continue. Set only after an interruption worth resuming. */
+  resume: string | undefined;
+  /** When the plan's window reopens, as last reported by the transport. */
+  resetsAt: Date | undefined;
+  /** Whether the transport's most recent report was an outright rejection. */
+  rejected: boolean;
+}
+
+export function createSubscriptionSession(): SubscriptionSession {
+  return { id: undefined, resume: undefined, resetsAt: undefined, rejected: false };
 }
 
 export function isSubscriptionModelProvider(
@@ -115,23 +162,61 @@ export function subscriptionProbeCommand(
 const WHITESPACE = /\s/u;
 
 /**
- * Build the language model lazily.
+ * Build the language model lazily, once per call.
  *
  * The vendor SDKs are several megabytes and are irrelevant to every run that uses an API-key
- * transport, so they are imported on first use rather than at module load.
+ * transport, so they are imported on first use rather than at module load; Node caches the module,
+ * so later builds cost an executable lookup and an object. Rebuilding per call is what lets a
+ * retry pick up `session.resume`, which is only known after the interrupted call failed.
  */
 export function subscriptionLanguageModel(
   provider: SubscriptionModelProviderKind,
   model: string,
   environment: NodeJS.ProcessEnv,
+  session: SubscriptionSession = createSubscriptionSession(),
 ): () => Promise<LanguageModel> {
   const executable = environment[descriptors[provider].executableEnvironmentVariable];
   return async () => {
     await assertExecutableResolves(provider, executable, environment);
     return provider === 'claude-code'
-      ? claudeCodeLanguageModel(model, executable)
+      ? claudeCodeLanguageModel(model, executable, session)
       : codexCliLanguageModel(model, executable);
   };
+}
+
+/**
+ * Record what the Agent SDK reports out of band.
+ *
+ * `onSdkMessage` is the provider's documented escape hatch for subtypes it does not model itself,
+ * and the two facts a resumable run needs — the session id and a `rejected` rate-limit window —
+ * only arrive that way. The payloads are narrowed structurally rather than against the SDK's
+ * message union, so a new subtype cannot turn an observation into a type error.
+ */
+function observeSdkMessage(session: SubscriptionSession, message: unknown): void {
+  if (typeof message !== 'object' || message === null) return;
+  const record: Record<string, unknown> = { ...message };
+  if (typeof record.session_id === 'string' && record.session_id.length > 0)
+    session.id = record.session_id;
+  if (record.type !== 'rate_limit_event') return;
+  const info = record.rate_limit_info;
+  if (typeof info !== 'object' || info === null) return;
+  const { status, resetsAt } = info as { status?: unknown; resetsAt?: unknown };
+  session.rejected = status === 'rejected';
+  session.resetsAt = epochToDate(resetsAt) ?? session.resetsAt;
+}
+
+/**
+ * Read an epoch stamp whose unit the vendor does not state.
+ *
+ * Anthropic's rate-limit stamps are seconds while most JavaScript stamps are milliseconds, and
+ * misreading one for the other turns a two-minute wait into a fifty-year one. Anything below the
+ * threshold is too small to be a plausible millisecond stamp for a current date, so it is seconds.
+ */
+function epochToDate(value: unknown): Date | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
+  const milliseconds = value < 1e12 ? value * 1_000 : value;
+  const date = new Date(milliseconds);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 /**
@@ -180,22 +265,41 @@ async function assertExecutableResolves(
 async function claudeCodeLanguageModel(
   model: string,
   executable: string | undefined,
+  session: SubscriptionSession,
 ): Promise<LanguageModel> {
   const { createClaudeCode } = await import('ai-sdk-provider-claude-code');
   return createClaudeCode({
     defaultSettings: {
-      // Agent Zero owns every repository read and write through the runner boundary. Disabling the
-      // CLI's built-in tools and every MCP server keeps it a text generator: it cannot read outside
-      // the supplied context, and it cannot edit a checkout behind the runner's back. The provider
-      // already pins `settingSources: []`, so nothing on disk can add tools back.
+      // Agent Zero owns every repository read and write through the runner boundary, so the CLI is
+      // reduced to a text generator: no built-in tools, no MCP servers, and the provider already
+      // pins `settingSources: []` so nothing on disk can add either back.
       tools: [],
       mcpServers: {},
       permissionMode: 'default',
+      // Account-level claude.ai connectors are fetched from the server, so neither an empty
+      // `mcpServers` nor a scrubbed environment keeps them out — only this does. Without it a
+      // subscription whose account has connectors enabled hands the model tools that reach past
+      // the runner boundary, and pays for their definitions on every call.
+      settings: { disableClaudeAiConnectors: true },
+      onSdkMessage: (message) => {
+        observeSdkMessage(session, message);
+      },
+      // Continue the session the spent window interrupted. `sessionId` is deliberately never set
+      // alongside it: the provider rejects that combination.
+      ...(session.resume ? { resume: session.resume } : {}),
       ...(executable ? { pathToClaudeCodeExecutable: executable } : {}),
     },
   })(model);
 }
 
+/**
+ * Codex runs in `exec` mode, which cannot resume a thread.
+ *
+ * `codex exec resume <id>` exists in the CLI, but `ai-sdk-provider-codex-cli@2` always builds a
+ * plain `exec` argument vector and exposes no resume setting, so an interrupted Codex call can
+ * only be reissued after the window reopens. Claude Code resumes its session properly; the wait
+ * itself works for both.
+ */
 async function codexCliLanguageModel(
   model: string,
   executable: string | undefined,
@@ -215,6 +319,43 @@ async function codexCliLanguageModel(
   })(model);
 }
 
+/** Whether the transport refused because the plan's usage window is spent. */
+const LIMIT_REACHED =
+  /usage[ _-]?limit[ _-]?(?:reached|exceeded)|(?:you(?:'ve| have) (?:hit|reached) your)|rate[ _-]?limit[ _-]?(?:reached|exceeded)|too many requests/iu;
+
+/**
+ * When the window reopens, as the transports actually report it.
+ *
+ * Codex serializes `resets_at` (an ISO stamp or an epoch) and `reset_after_seconds`; HTTP layers
+ * underneath either CLI use `retry-after`. Each pattern targets a named field rather than loose
+ * prose, so a sentence that merely mentions a time cannot be mistaken for a reset.
+ */
+const RESET_PATTERNS = [
+  /"?resets?_?at"?\s*[:=]\s*"([^"]+)"/iu,
+  /"?resets?_?at"?\s*[:=]\s*(\d{9,13})\b/iu,
+  /"?(?:reset_after|resets_in|retry[_-]?after)(?:_seconds)?"?\s*[:=]\s*"?(\d+)"?/iu,
+] as const;
+
+/**
+ * Read the reset instant out of a transport's own words.
+ *
+ * Returns nothing rather than guessing: an unknown reset is reported as such, because waiting a
+ * made-up interval would block a run for a duration no one chose.
+ */
+export function parseLimitReset(text: string, now: number): Date | undefined {
+  for (const [index, pattern] of RESET_PATTERNS.entries()) {
+    const captured = pattern.exec(text)?.[1];
+    if (captured === undefined) continue;
+    // The third pattern is a duration in seconds; the first two are absolute stamps.
+    if (index === 2) return new Date(now + Number(captured) * 1_000);
+    const epoch = epochToDate(Number(captured));
+    if (epoch) return epoch;
+    const parsed = new Date(captured);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return undefined;
+}
+
 /**
  * Rewrite the failures an operator can act on.
  *
@@ -223,6 +364,8 @@ async function codexCliLanguageModel(
  */
 export function translateSubscriptionError(
   provider: SubscriptionModelProviderKind,
+  session: SubscriptionSession = createSubscriptionSession(),
+  now: () => number = Date.now,
 ): (error: unknown, message: string) => Promise<Error | undefined> {
   const descriptor = descriptors[provider];
   return async (error, message) => {
@@ -234,6 +377,11 @@ export function translateSubscriptionError(
         `The ${descriptor.executable} CLI is not installed or not on PATH. Install it, or set ${descriptor.executableEnvironmentVariable} to its absolute path.\n${message}`,
         { cause: error },
       );
+    // Checked before authentication: a spent plan and an expired login both mention credentials
+    // and usage, and sending an operator to `login` for a limit they simply have to wait out is
+    // the more expensive mistake of the two.
+    const limit = limitReached(provider, error, message, session, now());
+    if (limit) return limit;
     if (await isSessionExpired(provider, error))
       return new SubscriptionProviderUnavailableError(
         provider,
@@ -242,6 +390,34 @@ export function translateSubscriptionError(
       );
     return undefined;
   };
+}
+
+/**
+ * Classify a spent usage window, preferring what the transport stated over what it printed.
+ *
+ * A `rejected` rate-limit event is unambiguous and carries the reset instant, so it wins. Text is
+ * the fallback for Codex, whose exec mode reports the same condition as an ordinary non-zero exit.
+ */
+function limitReached(
+  provider: SubscriptionModelProviderKind,
+  error: unknown,
+  message: string,
+  session: SubscriptionSession,
+  now: number,
+): SubscriptionLimitReachedError | undefined {
+  const text = `${message}\n${providerStderr(error)}`;
+  if (!session.rejected && !LIMIT_REACHED.test(text)) return undefined;
+  const resetsAt = session.resetsAt ?? parseLimitReset(text, now);
+  const descriptor = descriptors[provider];
+  const when = resetsAt
+    ? `The window reopens at ${resetsAt.toISOString()}.`
+    : 'The transport did not report when the window reopens.';
+  return new SubscriptionLimitReachedError(
+    provider,
+    `The ${descriptor.executable} subscription usage limit is reached. ${when}\n${message}`,
+    resetsAt,
+    { cause: error },
+  );
 }
 
 /**

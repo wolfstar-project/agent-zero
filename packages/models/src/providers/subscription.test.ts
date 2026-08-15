@@ -2,16 +2,29 @@ import { APICallError } from 'ai';
 import { describe, expect, it } from 'vitest';
 
 import {
+  createSubscriptionSession,
   isSubscriptionModelProvider,
   isSubscriptionProviderEnabled,
   modelProviderCredentialKind,
+  parseLimitReset,
   providerStderr,
   subscriptionLanguageModel,
   subscriptionProbeCommand,
   subscriptionProviderDescriptor,
+  SubscriptionLimitReachedError,
   SubscriptionProviderUnavailableError,
   translateSubscriptionError,
 } from './subscription.js';
+
+/** A fixed clock, so a reported delay resolves to the same instant on every run. */
+const NOW = () => Date.parse('2026-08-15T12:00:00.000Z');
+
+/** Asserts the classification and narrows it, so the reset instant can be read without a cast. */
+function limitError(value: Error | undefined): SubscriptionLimitReachedError {
+  expect(value).toBeInstanceOf(SubscriptionLimitReachedError);
+  if (!(value instanceof SubscriptionLimitReachedError)) throw new Error('unreachable');
+  return value;
+}
 
 /** The shape a CLI-backed transport raises when its subprocess exits non-zero. */
 function cliExit(stderr: string): APICallError {
@@ -175,5 +188,98 @@ describe('translateSubscriptionError', () => {
     const looping: { cause?: unknown } = {};
     looping.cause = looping;
     expect(await translateSubscriptionError('codex-cli')(looping, 'detail')).toBeUndefined();
+  });
+});
+
+describe('parseLimitReset', () => {
+  const now = Date.parse('2026-08-15T12:00:00.000Z');
+
+  it('reads the reset instant Codex serializes beside the rejection', () => {
+    expect(
+      parseLimitReset('{"type":"usage_limit_reached","resets_at":"2026-08-15T17:30:00Z"}', now),
+    ).toEqual(new Date('2026-08-15T17:30:00Z'));
+  });
+
+  it('reads an epoch reset in either unit the transports use', () => {
+    const seconds = parseLimitReset('resets_at=1786000000', now);
+    const milliseconds = parseLimitReset('"resetsAt": 1786000000000', now);
+    expect(seconds).toEqual(new Date(1_786_000_000_000));
+    expect(seconds).toEqual(milliseconds);
+  });
+
+  it('turns a reported delay into an instant relative to the caller, not the clock', () => {
+    expect(parseLimitReset('{"reset_after_seconds":900}', now)).toEqual(new Date(now + 900_000));
+    expect(parseLimitReset('retry-after: 60', now)).toEqual(new Date(now + 60_000));
+  });
+
+  it('reports nothing rather than guessing at prose', () => {
+    // Waiting on a duration nobody stated is worse than saying the reset is unknown: the run
+    // blocks for an interval no operator chose.
+    expect(parseLimitReset('usage limit reached, try again later today', now)).toBeUndefined();
+    expect(parseLimitReset('resets_at: not-a-time', now)).toBeUndefined();
+  });
+});
+
+describe('translateSubscriptionError on a spent usage window', () => {
+  it('prefers the rejection the Agent SDK reported over anything it printed', async () => {
+    const session = createSubscriptionSession();
+    session.rejected = true;
+    session.resetsAt = new Date('2026-08-15T14:00:00.000Z');
+    const translated = await translateSubscriptionError(
+      'claude-code',
+      session,
+      NOW,
+    )(new Error('Claude Code SDK error'), 'detail');
+    expect(limitError(translated).resetsAt).toEqual(new Date('2026-08-15T14:00:00.000Z'));
+    expect(translated?.message).toContain('2026-08-15T14:00:00.000Z');
+  });
+
+  it('recognizes the condition from a bare Codex exit, which reports no rejection event', async () => {
+    const translated = await translateSubscriptionError(
+      'codex-cli',
+      undefined,
+      NOW,
+    )(
+      cliExit('{"error":{"type":"usage_limit_reached","resets_at":"2026-08-15T18:00:00Z"}}'),
+      'Codex CLI exited with code 1',
+    );
+    expect(limitError(translated).resetsAt).toEqual(new Date('2026-08-15T18:00:00Z'));
+  });
+
+  it('still classifies the limit when no reset instant was reported', async () => {
+    const translated = await translateSubscriptionError(
+      'codex-cli',
+      undefined,
+      NOW,
+    )(cliExit('Usage limit reached. Increase your limits to continue using codex.'), 'detail');
+    expect(limitError(translated).resetsAt).toBeUndefined();
+    expect(translated?.message).toContain('did not report when the window reopens');
+  });
+
+  it('sends an operator to the limit, not to a pointless re-login', async () => {
+    // A spent plan and an expired login both talk about usage and credentials. Classifying this
+    // as authentication would tell someone to fix the one thing that is not broken.
+    const { createAuthenticationError } = await import('ai-sdk-provider-claude-code');
+    const translated = await translateSubscriptionError(
+      'claude-code',
+      undefined,
+      NOW,
+    )(
+      createAuthenticationError({ message: "You've reached your usage limit" }),
+      "You've reached your usage limit",
+    );
+    expect(translated).toBeInstanceOf(SubscriptionLimitReachedError);
+  });
+
+  it('leaves an expired login classified as authentication', async () => {
+    const { createAuthenticationError } = await import('ai-sdk-provider-claude-code');
+    const translated = await translateSubscriptionError(
+      'claude-code',
+      undefined,
+      NOW,
+    )(createAuthenticationError({ message: 'OAuth token revoked' }), 'OAuth token revoked');
+    expect(translated).toBeInstanceOf(SubscriptionProviderUnavailableError);
+    expect(translated).not.toBeInstanceOf(SubscriptionLimitReachedError);
+    expect(translated?.message).toContain('claude login');
   });
 });

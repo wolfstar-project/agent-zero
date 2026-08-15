@@ -223,15 +223,53 @@ Known limits, all of which follow from the session being local:
   Agent Zero process must be allowed to spawn subprocesses.
 - **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
   `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
-  transport to degrade to it automatically when the CLI is missing or its session expired. The
-  fallback applies to that failure only; an invalid model decision never silently switches
-  transports.
+  transport to degrade to it automatically when the CLI is missing, its session expired, or its
+  usage window is spent and too far from reopening to wait out. The fallback applies to those
+  failures only; an invalid model decision never silently switches transports.
+- **Rate-limited by plan.** A spent usage window is the one failure that repairs itself, so a run
+  waits it out and resumes rather than throwing away the checks and changes it already produced
+  (see below).
 - **Not metered per call.** Cost accounting reports `0` unless explicit rates are configured, since
   the subscription is billed to the account, not the request.
 
 The CLI is configured as a text generator only: built-in tools are disabled for Claude Code and
 Codex runs read-only with approvals off, so neither can read outside the supplied context or edit a
-checkout behind the runner boundary.
+checkout behind the runner boundary. Claude Code additionally sets `disableClaudeAiConnectors`,
+because account-level claude.ai connectors are fetched from the server rather than read from disk —
+without it, a subscription whose account has connectors enabled hands the model MCP tools that
+reach past the runner boundary and pays for their definitions on every call.
+
+##### Waiting out a spent usage window
+
+When the plan's usage window is exhausted, the run does not fail. It waits for the window to reopen
+and continues, resuming the interrupted CLI session so the conversation is not rebuilt and paid for
+twice. This applies only to the subscription transports; a metered transport has no window to wait
+on.
+
+```
+AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS=3600000   # default; 0 disables waiting entirely
+```
+
+The wait is deliberately bounded, because a control plane must not block on someone's personal plan
+for an unbounded time:
+
+- **Only a reported reset is waited on.** Claude Code reports the reset instant in its rate-limit
+  event, and Codex serializes `resets_at` / `reset_after_seconds` alongside the rejection. When
+  neither is present the run reports the limit instead of guessing at an interval.
+- **`AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS` is a total, not a per-wait allowance.** A reset further
+  out than the remaining budget is never waited on; the error propagates with the reset instant
+  intact, so a configured fallback still gets its turn and an operator still learns when to return.
+  A weekly window is normally far past the default hour, so it fails fast by design.
+- **At most two waits per decision.** A third is far more likely to be a transport reporting a
+  reset that never arrives than a third window genuinely closing.
+
+Waiting sits _inside_ the fallback: the subscription is already paid for, so a window that reopens
+shortly is used before a metered credential is spent.
+
+Session resumption itself is Claude Code only. `codex exec resume <id>` exists in the CLI, but
+`ai-sdk-provider-codex-cli` builds a plain `exec` argument vector and exposes no resume setting, so
+an interrupted Codex call is reissued after the wait rather than resumed. The waiting behaviour is
+identical for both.
 
 To record cost, configure explicit rates; Agent Zero never guesses provider pricing:
 
