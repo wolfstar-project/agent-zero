@@ -26,9 +26,20 @@ Keep dependency direction explicit while changing the monorepo.
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
   Also the only exporter of a live process handle (`spawnManagedProcess`, alongside the bounded
   `execFileProcessRunner`) for an adapter that must hand a real child process to code it does not
-  control, such as a CLI-backed model transport's vendor SDK.
+  control, such as a CLI-backed model transport's vendor SDK. `spawnManagedProcess`'s optional
+  `container` option runs that process in its own container instead of on the host — a deliberately
+  different shape from `ContainerRunner`'s repository-command container (`containerizedProcessArgv`
+  mounts no checkout and applies no `--network`, since the process it isolates is not a repository
+  command and needs the vendor API regardless of `permissions.network`). `env` becomes `-e` flags on
+  the engine invocation, not on the engine's own local process — a container's client env sets
+  nothing inside the container it starts.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
-- `cli`: argument parsing and terminal presentation.
+- `cli`: argument parsing and terminal presentation. Composition-root glue that decides *how* to
+  isolate the `claude-code` CLI process lives here (`subscription-isolation.ts`, duplicated
+  identically in `api` rather than shared — it needs both `AgentZeroConfig` and an operator
+  environment variable, which neither `models` nor `runner` should own). Refuses the transport
+  outright when `runner.isolation: container` is declared but no CLI container image is configured,
+  rather than falling back to an unisolated host spawn.
 - `auth`: authentication policy and a Better Auth options factory (`authBetterAuthOptions`), plus a
   standalone instance factory (`createAuth`) for callers that own their own secret and origin. No
   HTTP server, no runtime imports.

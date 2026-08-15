@@ -227,6 +227,13 @@ Known limits, all of which follow from the session being local:
   `ai-sdk-provider-codex-cli` exposes no equivalent hook, so Codex's process is always spawned by
   the vendor SDK directly. Its read-only sandbox, disabled approvals, and disabled MCP servers are
   the containment for that one transport instead.
+- **Container isolation covers `claude-code`, not `codex-cli`, and not `RunnerPool` leases.** When
+  `runner.isolation: container` in `.agent-zero.yml`, `claude-code`'s CLI process runs in its own
+  container instead of on the host (see below) — Codex still can't be routed at all, per the point
+  above. A hosted deployment leasing sandboxes through `RunnerPool` is a separate isolation
+  mechanism this does not integrate with yet: `config.runner.isolation` there may not reflect how
+  the leased sandbox is actually isolated, so `claude-code`'s CLI still runs on the control-plane
+  host in that topology today.
 - **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
   `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
   transport to degrade to it automatically when the CLI is missing, its session expired, or its
@@ -244,6 +251,50 @@ checkout behind the runner boundary. Claude Code additionally sets `disableClaud
 because account-level claude.ai connectors are fetched from the server rather than read from disk —
 without it, a subscription whose account has connectors enabled hands the model MCP tools that
 reach past the runner boundary and pays for their definitions on every call.
+
+##### Isolating the `claude-code` CLI process under container isolation
+
+`runner.isolation: container` is an explicit declaration that command execution must run isolated.
+Leaving the subscription CLI unisolated while every repository check runs contained would be
+exactly the silent bypass this exists to prevent — so under container isolation, `claude-code`'s
+CLI process runs in its own ephemeral container too, and is refused outright rather than falling
+back to a host spawn when that container can't be built:
+
+```
+AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE=      # required under container isolation; must have `claude` on PATH
+AGENT_ZERO_CLAUDE_CODE_CONTAINER_EXECUTABLE= # optional; defaults to "claude" — set if the image installs it elsewhere
+CLAUDE_CONFIG_DIR=                           # optional; defaults to ~/.claude
+```
+
+Verified end to end against a real container and a real authenticated session — build an image with
+`claude` installed and set the variable above, and the full pipeline (spawn, mount, authenticate,
+stream a decision) runs isolated. Three things fell out of getting that working, each a genuine
+constraint rather than a design choice:
+
+- **No repository checkout mounted, and no `--network` flag.** The CLI is configured as a text
+  generator only (`tools: []`, `mcpServers: {}`) and never touches the checkout, so none is
+  provided. `permissions.network` is not reused either: that policy contains an _untrusted
+  checkout's_ own commands, and has nothing to do with Agent Zero's own necessary calls to the
+  vendor API — reusing it would simply break every subscription call under `restricted` or `none`.
+- **The vendor SDK resolves the CLI to an absolute host path** (its own bundled native binary, or
+  `AGENT_ZERO_CLAUDE_CODE_PATH`), which does not exist inside the container. The containerized spawn
+  always runs the bare executable name from `AGENT_ZERO_CLAUDE_CODE_CONTAINER_EXECUTABLE` instead —
+  whatever the configured image actually has installed.
+- **The CLI's login session spans two host locations that are not nested**: `~/.claude/`
+  (credentials, settings) and a sibling file, `~/.claude.json` (project/session record). Docker
+  refuses to bind-mount a file to a path inside an already-read-only directory mount, so both are
+  mounted as siblings under one synthetic directory instead, with the container's `$HOME` pointed at
+  it so the CLI's own default resolution finds both — no `CLAUDE_CONFIG_DIR` override needed unless
+  the host already customized it, in which case a single mount plus a matching override is used. The
+  container also runs as the host's own UID:GID, not `root`: the mounted credential file typically
+  has mode `0600`, `--cap-drop ALL` removes even `root`'s permission-bypass capability inside the
+  container, and the CLI verifies file ownership before it trusts a session — reading past that
+  check without the right UID is not enough. On a host where the session is Keychain-backed rather
+  than file-backed (some macOS configurations), this mount cannot forward it; use `local` isolation
+  there instead.
+
+Same hardening baseline as `ContainerRunner`: `--init`, `--cap-drop ALL`, `--security-opt
+no-new-privileges`, `--rm`.
 
 ##### Waiting out a spent usage window
 

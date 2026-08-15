@@ -4,6 +4,10 @@ import { promisify } from 'node:util';
 import { analyzeShellCommand } from '@vite-hub/shell';
 import { anyOf, charIn, charNotIn, createRegExp, exactly, global, oneOrMore } from 'magic-regexp';
 
+// Type-only: erased at compile time, so this does not create a runtime cycle with container.ts,
+// which imports `commandArgv` from this module.
+import type { ContainerEngine } from './container.js';
+
 const execFileAsync = promisify(execFile);
 
 /** Raised when a command could not be executed faithfully as an argv array. */
@@ -61,10 +65,39 @@ export const execFileProcessRunner: ProcessRunner = async (program, args, option
   }
 };
 
+/** A host directory a containerized process needs to read, mounted read-only. */
+export interface ManagedProcessMount {
+  hostPath: string;
+  containerPath: string;
+}
+
+/**
+ * How to isolate a long-running process behind a container instead of running it on the host.
+ *
+ * Deliberately not {@link ContainerOptions} from `container.ts`: that shape mounts the repository
+ * checkout and inherits the repository's own `permissions.network` policy, both wrong here. A
+ * managed process is not a repository command — it needs no checkout access, and a process such as
+ * a subscription model CLI needs outbound network access regardless of what the repository's
+ * network policy says, since that policy exists to contain an *untrusted checkout's* commands, not
+ * to block Agent Zero's own necessary calls. So this takes only what isolating one process actually
+ * requires: an engine, an image that has the program installed, and explicit read-only mounts for
+ * whatever state (such as an existing CLI login session) the process must read from the host.
+ */
+export interface ManagedProcessContainerOptions {
+  engine: ContainerEngine;
+  image: string;
+  mounts?: ManagedProcessMount[];
+  cpus?: string;
+  memory?: string;
+  user?: string;
+}
+
 export interface ManagedSpawnOptions {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
+  /** Runs the process inside a container instead of directly on the host when supplied. */
+  container?: ManagedProcessContainerOptions;
 }
 
 /**
@@ -86,14 +119,71 @@ export function spawnManagedProcess(
   args: readonly string[],
   options: ManagedSpawnOptions = {},
 ): ChildProcess {
-  return spawn(program, [...args], {
+  const [resolvedProgram, resolvedArgs] = options.container
+    ? [
+        options.container.engine,
+        containerizedProcessArgv(options.container, program, args, options.env),
+      ]
+    : [program, [...args]];
+  return spawn(resolvedProgram, resolvedArgs, {
     ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-    ...(options.env === undefined ? {} : { env: options.env }),
+    // `options.env` belongs to the process this call ultimately runs — inside the container when
+    // one is configured (forwarded as `-e` flags below, since a spawned engine CLI's own env sets
+    // nothing inside the container it starts), on the host otherwise. The local `docker`/`podman`
+    // client needs its own inherited environment (PATH, DOCKER_HOST) either way, so it is left
+    // alone — omitting `env` here means Node inherits `process.env` for that local process.
+    ...(options.container || options.env === undefined ? {} : { env: options.env }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
     shell: false,
     windowsHide: true,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
+}
+
+/**
+ * Build the `docker`/`podman run` invocation that isolates one long-running process.
+ *
+ * Same hardening baseline as `ContainerRunner.engineArguments()` (`--init`, dropped capabilities,
+ * no new privileges), `-i` so the vendor SDK's piped stdin actually reaches the process, and `--rm`
+ * so a killed or crashed process leaves nothing behind. No `--network` flag: unlike a repository
+ * command, this process is expected to reach the network, so the engine's normal default applies
+ * rather than the repository's `permissions.network` policy.
+ *
+ * `env` becomes `-e KEY=VALUE` flags rather than an option on the `docker`/`podman` process itself:
+ * a container engine's own env only configures the *client* (`DOCKER_HOST` and the like) and sets
+ * nothing inside the container it starts, so a caller's environment — `$HOME`, in particular, for a
+ * CLI whose config-file resolution depends on it — has to be threaded through explicitly like this
+ * to actually reach the process running inside. Passed as literal argv elements (`spawn` never
+ * invokes a shell), so no value here needs escaping regardless of what it contains.
+ *
+ * Exported directly, the same way `ContainerRunner.engineArguments()` is, so the invocation this
+ * builds can be asserted on without spawning a real container.
+ */
+export function containerizedProcessArgv(
+  container: ManagedProcessContainerOptions,
+  program: string,
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv,
+): string[] {
+  const argv = [
+    'run',
+    '-i',
+    '--rm',
+    '--init',
+    '--cap-drop',
+    'ALL',
+    '--security-opt',
+    'no-new-privileges',
+  ];
+  for (const mount of container.mounts ?? [])
+    argv.push('--volume', `${mount.hostPath}:${mount.containerPath}:ro`);
+  if (container.user) argv.push('--user', container.user);
+  if (container.cpus) argv.push('--cpus', container.cpus);
+  if (container.memory) argv.push('--memory', container.memory);
+  for (const [key, value] of Object.entries(env ?? {}))
+    if (value !== undefined) argv.push('-e', `${key}=${value}`);
+  argv.push(container.image, program, ...args);
+  return argv;
 }
 
 function outcomeFromFailure(error: unknown): ProcessOutcome {

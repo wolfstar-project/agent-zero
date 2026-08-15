@@ -2,12 +2,11 @@ import { createHash } from 'node:crypto';
 
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
-import { modelFromEnvironment, type ClaudeCodeProcessSpawner } from '@agent-zero/models';
+import { isSubscriptionProviderEnabled, modelFromEnvironment } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
   runnerOptionsFromPolicy,
-  spawnManagedProcess,
   type Runner,
   type RunnerPool,
 } from '@agent-zero/runner';
@@ -51,20 +50,9 @@ import {
   type StoredTask,
   type TaskStore,
 } from './control-plane.js';
+import { claudeCodeProcessSpawner, environmentForModel } from './subscription-isolation.js';
 
 const TRAILING_SLASH = /\/$/u;
-
-/**
- * Backs the `claude-code` transport's CLI process with the runner boundary instead of the vendor
- * SDK's own default `child_process.spawn`, so this is the only place in the control plane that
- * spawns one.
- */
-const spawnClaudeCodeProcess: ClaudeCodeProcessSpawner = (options) =>
-  spawnManagedProcess(options.command, options.args, {
-    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-    env: options.env,
-    signal: options.signal,
-  });
 
 const defaultStore = new MemoryTaskStore();
 const defaultScheduler = new TaskScheduler({
@@ -198,8 +186,16 @@ export async function runTask(
         : undefined;
       const runner =
         lease?.runner ?? createRunner(input.repository, runnerOptionsFromPolicy(config, writable));
+      // Refuses claude-code under container isolation when no CLI container image is configured,
+      // rather than silently spawning it unisolated on the control-plane host.
+      const modelEnvironment = environmentForModel(config, process.env);
+      const spawnClaudeCodeProcess =
+        config.model.provider === 'claude-code' &&
+        isSubscriptionProviderEnabled('claude-code', modelEnvironment)
+          ? claudeCodeProcessSpawner(config, modelEnvironment)
+          : undefined;
       const agent = new AgentZero({
-        model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess),
+        model: modelFromEnvironment(config.model, modelEnvironment, spawnClaudeCodeProcess),
         runner,
         config,
         taskIdentifier: identifier,

@@ -12,18 +12,17 @@ import {
 import {
   isModelConfigured,
   isSubscriptionModelProvider,
+  isSubscriptionProviderEnabled,
   modelFromEnvironment,
   modelProviderCredentialKind,
   subscriptionProbeCommand,
   subscriptionProviderDescriptor,
-  type ClaudeCodeProcessSpawner,
   type SubscriptionModelProviderKind,
 } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
   runnerOptionsFromPolicy,
-  spawnManagedProcess,
   type Runner,
 } from '@agent-zero/runner';
 import {
@@ -36,19 +35,9 @@ import {
 import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
+import { claudeCodeProcessSpawner, environmentForModel } from './subscription-isolation.js';
 
 const cwd = process.cwd();
-
-/**
- * Backs the `claude-code` transport's CLI process with the runner boundary instead of the vendor
- * SDK's own default `child_process.spawn`, so this is the only place in the CLI that spawns one.
- */
-const spawnClaudeCodeProcess: ClaudeCodeProcessSpawner = (options) =>
-  spawnManagedProcess(options.command, options.args, {
-    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-    env: options.env,
-    signal: options.signal,
-  });
 
 /**
  * Exit codes are part of the contract.
@@ -142,7 +131,10 @@ async function runDoctor(asJson: boolean): Promise<void> {
           packageJson: await inspector.read('package.json').catch(() => null),
           lockfiles,
         });
-  const modelConfigured = isModelConfigured(config.model.provider);
+  // Reflects the same refusal `runAgent` applies: under container isolation, claude-code is not
+  // "configured" unless a container image for its CLI is also set, even if the enable flag is on.
+  const modelEnvironment = environmentForModel(config, process.env);
+  const modelConfigured = isModelConfigured(config.model.provider, modelEnvironment);
   const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
@@ -170,10 +162,20 @@ async function runDoctor(asJson: boolean): Promise<void> {
   logCheck('Git repository', status.gitRepository);
   logCheck('Model configured', status.modelConfigured);
   p.log.info(`Model provider: ${status.modelProvider} (${status.modelCredentialKind})`);
-  if (!status.modelConfigured && isSubscriptionModelProvider(config.model.provider))
-    p.log.warn(
-      `Set ${subscriptionProviderDescriptor(config.model.provider).enableEnvironmentVariable}=true to enable this host's subscription session.`,
-    );
+  if (!status.modelConfigured && isSubscriptionModelProvider(config.model.provider)) {
+    if (
+      config.model.provider === 'claude-code' &&
+      config.runner.isolation === 'container' &&
+      !process.env.AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE
+    )
+      p.log.warn(
+        'Container isolation is required but no AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE is set, so claude-code is refused rather than run unisolated on the host.',
+      );
+    else
+      p.log.warn(
+        `Set ${subscriptionProviderDescriptor(config.model.provider).enableEnvironmentVariable}=true to enable this host's subscription session.`,
+      );
+  }
   if (status.modelCli) {
     logCheck(`${status.modelCli.executable} CLI installed`, status.modelCli.installed);
     if (!status.modelCli.installed)
@@ -250,8 +252,17 @@ async function runAgent(
     runnerOptionsFromPolicy(config, mayModifyRepository(config, mode)),
   );
 
+  // Refuses claude-code under container isolation when no CLI container image is configured,
+  // rather than silently spawning it unisolated on the host.
+  const modelEnvironment = environmentForModel(config, process.env);
+  const spawnClaudeCodeProcess =
+    config.model.provider === 'claude-code' &&
+    isSubscriptionProviderEnabled('claude-code', modelEnvironment)
+      ? claudeCodeProcessSpawner(config, modelEnvironment)
+      : undefined;
+
   const agent = new AgentZero({
-    model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess),
+    model: modelFromEnvironment(config.model, modelEnvironment, spawnClaudeCodeProcess),
     runner,
     config,
     onEvent: (event) => {
