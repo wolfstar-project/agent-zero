@@ -126,6 +126,9 @@ importers:
       '@nuxt/kit':
         specifier: ^4.4.2
         version: 4.5.2(magic-string@1.1.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
+      '@octopi-ai/better-enrollment':
+        specifier: ^0.3.0
+        version: 0.3.0(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41))(zod@4.4.3)
       '@onmax/nuxt-better-auth':
         specifier: ^0.0.7
         version: 0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))
@@ -134,7 +137,7 @@ importers:
         version: 1.9.1
       '@orpc/evlog':
         specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
+        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(ofetch@1.5.1)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
       '@orpc/openapi':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26
@@ -176,7 +179,7 @@ importers:
         version: 0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1)
       evlog:
         specifier: ^2.26.0
-        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(ofetch@1.5.1)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       express:
         specifier: '>=5.2.1'
         version: 5.2.1
@@ -200,7 +203,7 @@ importers:
         version: 4.5.2(@types/node@24.13.3)(rolldown@1.2.3)
       ofetch:
         specifier: ^1.5.1
-        version: 2.0.0-alpha.3
+        version: 1.5.1
       pg:
         specifier: ^8.0.0
         version: 8.23.0
@@ -232,7 +235,7 @@ importers:
         specifier: ^11.4.8
         version: 11.4.8(vue@3.5.41)
       zod:
-        specifier: '>=4.3.5'
+        specifier: '>=4.0.0'
         version: 4.4.3
     devDependencies:
       '@iconify-json/lucide':
@@ -367,7 +370,7 @@ importers:
         version: 4.5.2(magic-string@1.1.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
       '@orpc/evlog':
         specifier: 2.0.0-beta.26
-        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
+        version: 2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(ofetch@1.5.1)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))
       '@orpc/openapi':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26
@@ -391,7 +394,7 @@ importers:
         version: 0.4.10
       evlog:
         specifier: ^2.26.0
-        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+        version: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(ofetch@1.5.1)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
       express:
         specifier: '>=5.2.1'
         version: 5.2.1
@@ -409,7 +412,7 @@ importers:
         version: 2.13.4
       ofetch:
         specifier: ^1.5.1
-        version: 2.0.0-alpha.3
+        version: 1.5.1
       publint:
         specifier: ^0.3.8
         version: 0.3.23
@@ -450,6 +453,9 @@ importers:
       '@arethetypeswrong/core':
         specifier: ^0.18.1
         version: 0.18.5
+      '@octopi-ai/better-enrollment':
+        specifier: ^0.3.0
+        version: 0.3.0(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41))(zod@4.4.3)
       '@prisma/client':
         specifier: ^5.0.0 || ^6.0.0 || ^7.0.0
         version: 5.22.0(prisma@7.9.1)
@@ -501,6 +507,9 @@ importers:
       vue:
         specifier: ^3.0.0
         version: 3.5.41
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       oxlint:
         specifier: ^1.44.0
@@ -3744,6 +3753,13 @@ packages:
   '@oclif/plugin-help@6.2.37':
     resolution: {integrity: sha512-5N/X/FzlJaYfpaHwDC0YHzOzKDWa41s9t+4FpCDu4f9OMReds4JeNBaaWk9rlIzdKjh2M6AC5Q18ORfECRkHGA==}
     engines: {node: '>=18.0.0'}
+
+  '@octopi-ai/better-enrollment@0.3.0':
+    resolution: {integrity: sha512-i6YezFt04qsnOZ8KBh8wEZhE6bkSh3IVcN266KWIaf5L/hD/f/pH1Z0m3Xyzlt6+FyzKVMhbFlGDGtY/4uaKNQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      better-auth: '>=1.4.0'
+      zod: '>=4.0.0'
 
   '@one-ini/wasm@0.1.1':
     resolution: {integrity: sha512-XuySG1E38YScSJoMlqovLru4KTUNSjgVTIjyh7qMX6aNN5HY5Ct5LhRJdxO79JtTzKfzV/bnWpz+zquYrISsvw==}
@@ -15818,11 +15834,6 @@ snapshots:
 
   '@eslint-community/regexpp@4.12.2': {}
 
-  '@eslint-community/eslint-utils@4.10.1(eslint@10.8.1)':
-    dependencies:
-      eslint: 10.8.1
-      eslint-visitor-keys: 3.4.3
-
   '@eslint/config-array@0.23.5':
     dependencies:
       '@eslint/object-schema': 3.0.5
@@ -17287,6 +17298,11 @@ snapshots:
     dependencies:
       '@oclif/core': 4.11.4
 
+  '@octopi-ai/better-enrollment@0.3.0(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41))(zod@4.4.3)':
+    dependencies:
+      better-auth: 1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(happy-dom@20.11.2))(vue@3.5.41)
+      zod: 4.4.3
+
   '@one-ini/wasm@0.1.1': {}
 
   '@onmax/nuxt-better-auth@0.0.7(better-auth@1.6.26(@prisma/client@5.22.0(prisma@7.9.1))(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mongodb@7.5.0)(mysql2@3.15.3)(pg@8.23.0)(prisma@7.9.1)(react@19.2.8)(react-dom@19.2.8(react@19.2.8))(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))(vue@3.5.41))':
@@ -17415,16 +17431,6 @@ snapshots:
       '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
       '@standardserver/core': 0.7.1
       evlog: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(ofetch@1.5.1)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-    transitivePeerDependencies:
-      - fastify
-
-  '@orpc/evlog@2.0.0-beta.26(evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)))':
-    dependencies:
-      '@orpc/client': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
-      '@orpc/server': 2.0.0-beta.26(crossws@0.4.10)
-      '@orpc/shared': 2.0.0-beta.26(@opentelemetry/api@1.9.1)
-      '@standardserver/core': 0.7.1
-      evlog: 2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
     transitivePeerDependencies:
       - fastify
 
@@ -18099,13 +18105,6 @@ snapshots:
   '@prisma/debug@7.2.0': {}
 
   '@prisma/debug@7.9.1': {}
-
-  '@prisma/config@7.9.1(magicast@0.5.4)':
-    dependencies:
-      c12: 3.3.4(magicast@0.5.4)
-      deepmerge-ts: 7.1.5
-      effect: 3.20.0
-      empathic: 2.0.0
 
   '@prisma/dev@0.24.17':
     dependencies:
@@ -19531,7 +19530,7 @@ snapshots:
     dependencies:
       '@vite-hub/runtime': 0.0.3
       defu: 6.1.7
-      unstorage: 2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(chokidar@5.0.0)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(lru-cache@11.5.2)(mongodb@7.5.0)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))
+      unstorage: 2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(chokidar@5.0.0)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(lru-cache@11.5.2)(mongodb@7.5.0)(ofetch@1.5.1)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11))
       vite: 8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -19548,7 +19547,6 @@ snapshots:
       - aws4fetch
       - idb-keyval
       - ioredis
-      - ofetch
 
   '@vite-hub/markdown-template@0.0.3(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))':
     dependencies:
@@ -22258,18 +22256,6 @@ snapshots:
       react: 19.2.8
       vite: 8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
 
-  evlog@2.26.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nuxt/kit@4.5.2)(ai@7.0.58(zod@4.4.3))(express@5.2.1)(h3@1.15.11)(hono@4.13.1)(nitropack@2.13.4)(react@19.2.8)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)):
-    dependencies:
-      '@nestjs/common': 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nuxt/kit': 4.5.2(magic-string@1.1.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))
-      ai: 7.0.58(zod@4.4.3)
-      express: 5.2.1
-      h3: 1.15.11
-      hono: 4.13.1
-      nitropack: 2.13.4
-      react: 19.2.8
-      vite: 8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
-
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -23180,9 +23166,6 @@ snapshots:
   ini@6.0.0: {}
 
   ini@7.0.0: {}
-
-  ini@1.3.8:
-    optional: true
 
   inspect-with-kind@1.0.5:
     dependencies:
@@ -24236,9 +24219,6 @@ snapshots:
 
   mimic-response@4.0.0: {}
 
-  mimic-response@3.1.0:
-    optional: true
-
   minimatch@10.2.6:
     dependencies:
       brace-expansion: 5.0.9
@@ -24256,9 +24236,6 @@ snapshots:
       brace-expansion: 2.1.4
 
   minimist@1.2.8: {}
-
-  minimist@1.2.8:
-    optional: true
 
   minimisted@2.0.1:
     dependencies:
@@ -26193,9 +26170,6 @@ snapshots:
 
   simple-concat@1.0.1: {}
 
-  simple-concat@1.0.1:
-    optional: true
-
   simple-get@4.0.1:
     dependencies:
       decompress-response: 6.0.0
@@ -27164,7 +27138,7 @@ snapshots:
       ofetch: 1.5.1
       ufo: 1.6.4
 
-  unstorage@2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(chokidar@5.0.0)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(lru-cache@11.5.2)(mongodb@7.5.0)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11)):
+  unstorage@2.0.0-alpha.7(@azure/identity@4.13.1)(@azure/storage-blob@12.33.0)(@netlify/blobs@10.7.12)(chokidar@5.0.0)(db0@0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3))(lru-cache@11.5.2)(mongodb@7.5.0)(ofetch@1.5.1)(uploadthing@7.7.4(express@5.2.1)(h3@1.15.11)):
     dependencies:
       '@azure/identity': 4.13.1
       '@azure/storage-blob': 12.33.0
@@ -27173,6 +27147,7 @@ snapshots:
       db0: 0.3.4(@libsql/client@0.17.4)(drizzle-orm@0.45.2(@electric-sql/pglite@0.4.3)(@libsql/client@0.17.4)(@opentelemetry/api@1.9.1)(@prisma/client@5.22.0(prisma@7.9.1))(@types/pg@8.21.0)(kysely@0.29.4)(mysql2@3.15.3)(pg@8.23.0)(postgres@3.4.9)(prisma@7.9.1)(sql.js@1.14.1))(mysql2@3.15.3)
       lru-cache: 11.5.2
       mongodb: 7.5.0
+      ofetch: 1.5.1
       uploadthing: 7.7.4(express@5.2.1)(h3@1.15.11)
 
   untun@0.2.2: {}
@@ -27376,7 +27351,6 @@ snapshots:
       - next
       - node-appwrite
       - nodemailer
-      - ofetch
       - openai
       - openworkflow
       - pocketbase
