@@ -43,6 +43,7 @@ agent-zero
 | `packages/mail`           | Maizzle-based transactional email templates and delivery providers.                                                                                                                        |
 | `apps/dashboard`          | The single deployable app and composition root: UI, `/rpc/**` + `/api/v1/**`, `/api/auth/**`, and the only persistence layer.                                                              |
 | `apps/docs`               | This documentation site.                                                                                                                                                                   |
+| `apps/mail-preview`       | Dev-only Maizzle preview server for `packages/mail` templates. Not deployed.                                                                                                               |
 
 ## Dependency direction
 

@@ -4,6 +4,7 @@ node_modules
 dist/
 .output/
 .nuxt/
+.maizzle/
 .vitepress/cache/
 .vitehub/
 *.tsbuildinfo

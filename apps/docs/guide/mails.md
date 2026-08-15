@@ -26,6 +26,16 @@ Templates are authored with Maizzle and rendered through the package's template 
 
 Adding a template means adding it to the registry with a typed context, keeping delivery and content concerns separate: providers never know what a template says, and templates never know how mail is sent.
 
+## Previewing templates
+
+`apps/mail-preview` wraps Maizzle's dev server around the package's templates:
+
+```bash
+aube run mail:preview
+```
+
+This serves every template at `http://localhost:3005` with hot reload, rendered against the sample values in `apps/mail-preview/maizzle.config.ts`. The app owns no templates of its own — its `emails/` directory is a symlink into `packages/mail/emails/`, so edits there reload live. Its `build` script compiles every template to static HTML in `apps/mail-preview/dist/`, which CI runs as a template-compilation check.
+
 ::: tip Organizations depend on mail
 Organization invitations are delivered by email, so enabling [organizations](/guide/organizations) requires a real transport (`resend` or `smtp`).
 :::
