@@ -62,6 +62,10 @@ export default defineNuxtModule({
     name: 'i18n-strip-empty',
   },
   setup() {
-    addVitePlugin(stripEmptyI18nMessagesPlugin());
+    // `nuxt/kit`'s `addVitePlugin` types its `Plugin` parameter against its own bundled `vite`
+    // dependency, which this monorepo resolves to a different instance than the `vite` this file
+    // imports `Plugin` from — a duplicate-instance type mismatch, not a real structural one (the
+    // plugin object is duck-typed and works regardless of which `Plugin` alias checked it).
+    addVitePlugin(stripEmptyI18nMessagesPlugin() as Parameters<typeof addVitePlugin>[0]);
   },
 });

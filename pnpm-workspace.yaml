@@ -7,6 +7,20 @@ packages:
 # caret ranges never match.
 overrides:
   typescript: npm:typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2
+  # nuxt-site-config-kit (transitive via @nuxtjs/seo -> nuxt-site-config, apps/marketing and
+  # apps/dashboard) pins an older @nuxt/schema than the nuxt@4.5.2 this repo actually runs. Two
+  # @nuxt/schema instances means two nominally different `DefineNuxtConfig` types, so
+  # `defineNuxtConfig(...)` type-checks as "not callable" wherever the older one wins resolution.
+  '@nuxt/schema': npm:@nuxt/schema@4.5.2
 
 onlyBuiltDependencies:
   - esbuild
+
+# workbox-build (transitive via @vite-pwa/nuxt -> vite-plugin-pwa, apps/marketing) depends on
+# @trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1, the maintained successor to the
+# unmaintained @surma/rollup-plugin-off-main-thread. The new maintainer hasn't set up npm
+# provenance attestation for this release; verified against npm metadata (consistent publisher,
+# Apache-2.0, 9 published versions) before excluding — pinned to the exact version, not the bare
+# package name, so a future compromised release still fails the trust check.
+trustPolicyExclude:
+  - '@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1'

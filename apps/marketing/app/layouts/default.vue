@@ -10,12 +10,6 @@
     <SiteFooter />
   </div>
 </template>
-
-<script setup lang="ts">
-// `mainContentId` is auto-imported: the shared module registers `modules/shared/utils` via
-// `addImportsDir`.
-</script>
-
 <style scoped>
 /* Visually hidden until focused: a keyboard user should be able to jump the whole navigation, but
    the link must not push the header down for everyone else. */

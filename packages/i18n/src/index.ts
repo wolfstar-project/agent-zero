@@ -1,11 +1,18 @@
 export {
+  countryLocaleVariants,
+  createPluralRule,
+  currentLocales,
+  datetimeFormats,
   defaultLocale,
   i18nLocales,
   i18nLocalesFor,
   localeCookieName,
   localeFeatureFiles,
   locales,
+  numberFormats,
+  pluralRules,
   type LocaleCode,
   type LocaleDefinition,
   type LocaleFeatureFile,
+  type LocaleObjectData,
 } from './config.js';

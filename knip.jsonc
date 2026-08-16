@@ -97,11 +97,15 @@
         "config/**/*.ts",
         "i18n/i18n.config.ts",
         "content.config.ts",
+        "golar.config.ts",
+        "pwa-assets.config.ts",
       ],
       // The `nuxt` Vitest environment resolves to vitest-environment-nuxt, which
       // `@nuxt/test-utils` ships as its own dependency. @nuxt/icon loads the lucide collection by
-      // name at build time, so no source file imports @iconify-json/lucide directly.
-      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
+      // name at build time, so no source file imports @iconify-json/lucide directly. `@golar/vue`
+      // is a side-effect-only import in golar.config.ts (registers the Vue language plugin;
+      // nothing consumes an export from it).
+      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide", "@golar/vue"],
       "paths": {
         "~/*": ["app/*"],
         "~~/*": ["*"],

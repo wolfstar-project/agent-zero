@@ -1,34 +1,7 @@
-import { dirname, join } from 'node:path';
-import process from 'node:process';
-import { fileURLToPath } from 'node:url';
-
-import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
+import { currentLocales, defaultLocale, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { featureCards, logoCloud } from './config/content.js';
-import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
-
-// `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
-// locale directory has to be wired through each locale's `files` entries instead (the module's own
-// documented pattern for this). `@agent-zero/i18n` keeps the entries package-relative
-// (`en/common.json`) so they stay portable; this is the one place that resolves them against the
-// installed package's real `locales/` directory.
-const i18nPackageDirectory = dirname(
-  fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
-);
-const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
-const resolvedI18nLocales = i18nLocalesFor(['common.json', 'errors.json', 'marketing.json']).map(
-  (locale) => ({
-    ...locale,
-    files: locale.files.map((file) => join(i18nLocalesDirectory, file)),
-  }),
-);
-
-// Read directly here rather than through a `config/app.ts` wrapper: each is used exactly once, to
-// populate the two Nuxt config fields below, and neither is needed anywhere else in the app —
-// components that need the dashboard's origin read it back from `runtimeConfig.public`.
-const siteUrl = process.env.MARKETING_SITE_URL?.trim() || 'http://localhost:3001';
-const dashboardUrl = process.env.MARKETING_DASHBOARD_URL?.trim() || 'http://localhost:3000';
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -43,41 +16,31 @@ export default defineNuxtConfig({
     // 3000 is the dashboard (the single deployable app, UI + API + auth).
     port: 3001,
   },
+  // `modules/` is scanned by Nuxt itself, so the local feature modules (shared, home, contact,
+  // blog, i18n-strip-empty) register themselves without being listed here.
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
     '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
-    [
-      '@nuxtjs/color-mode',
-      {
-        preference: 'system',
-        fallback: 'dark',
-        dataValue: 'theme',
-        // Deliberately distinct from the dashboard's key: the two apps are separate origins in
-        // production, and sharing a key would only couple them if they were ever proxied under one.
-        storageKey: 'agent-zero-marketing-color-mode',
-      },
-    ],
-    // One local module per feature directory (each its own `defineNuxtModule`, following the
-    // nuxt-modules skill's local-module convention: `modules/<name>/index.ts` registered as
-    // `./modules/<name>`) rather than inline `components`/`imports` config here or one module
-    // covering all three — matching `apps/dashboard/modules/vitehub.ts` and wolfstar.rocks' own
-    // top-level `modules/` convention.
-    './modules/shared',
-    './modules/home',
-    './modules/contact',
-    './modules/blog',
+    '@nuxtjs/color-mode',
+    '@vite-pwa/nuxt',
   ],
   css: ['~/assets/css/main.css'],
+
+  colorMode: {
+    preference: 'system',
+    fallback: 'dark',
+    dataValue: 'theme',
+    classSuffix: '',
+    // Deliberately distinct from the dashboard's key: the two apps are separate origins in
+    // production, and sharing a key would only couple them if they were ever proxied under one.
+    storageKey: 'agent-zero-color-mode',
+  },
+
   icon: {
-    // The site must render identically without reaching the Iconify API at request time, so every
-    // icon is compiled into the client bundle at build time from the locally installed lucide
-    // collection.
-    provider: 'none',
-    serverBundle: false,
-    fallbackToApi: false,
+    provider: 'iconify',
     clientBundle: {
       // Catches every icon named as a literal in a template or SFC script block.
       scan: true,
@@ -87,11 +50,7 @@ export default defineNuxtConfig({
       icons: [...featureCards.map((card) => card.icon), ...logoCloud.map((entry) => entry.icon)],
     },
   },
-  vite: {
-    // Untranslated keys are stored as empty strings; drop them from the bundle so vue-i18n falls
-    // back to the default locale instead of rendering "".
-    plugins: [stripEmptyI18nMessagesPlugin()],
-  },
+
   content: {
     experimental: {
       // Node's built-in `node:sqlite` (Node 22.5+; this repo requires 24.2+) rather than the
@@ -101,12 +60,17 @@ export default defineNuxtConfig({
       sqliteConnector: 'native',
     },
   },
+
   i18n: {
-    locales: resolvedI18nLocales,
+    locales: currentLocales,
     defaultLocale,
     // Locale-prefixed URLs are the point on a public site: they give each translation its own
     // indexable URL, which is also what lets the sitemap and hreflang tags describe them.
     strategy: 'prefix_except_default',
+    // Paths are resolved relative to `restructureDir` (default "i18n/"), so this points at
+    // i18n/locales/ — a symlink to `packages/i18n/locales`, keeping one copy of the dictionaries
+    // for every app. The vue-i18n runtime config is auto-loaded from i18n/i18n.config.ts.
+    langDir: 'locales',
     // `baseUrl` is deliberately not set here: `site.url` below is the single origin, and
     // `@nuxtjs/seo` feeds it to the i18n module, the sitemap, and the canonical tags alike.
     detectBrowserLanguage: {
@@ -118,37 +82,86 @@ export default defineNuxtConfig({
       fallbackLocale: defaultLocale,
     },
   },
+
   site: {
-    url: siteUrl,
     // Mirrors `app.config.ts`'s `site.name`: that file is runtime-only (`useAppConfig()`), while
     // `@nuxtjs/seo` needs a literal value here at build time, so the two cannot share one source.
     name: 'Agent Zero',
   },
+
+  $development: {
+    site: {
+      url: 'http://localhost:3001',
+    },
+  },
+
   robots: {
     allow: '*',
   },
+
   sitemap: {
     // Every route — including blog posts — is prerendered ahead of time (`nitro.prerender.crawlLinks`
     // below follows every link it finds, starting from `/`), so the sitemap needs no dynamic source:
     // it is built from the same static file list the build already produced.
     sources: [],
   },
+
   // `nuxt-og-image` renders per-page social cards, but it resolves its fonts over the network at
   // build time, which a build that must succeed offline and byte-for-byte cannot depend on. The
   // site ships one static card instead (`public/og-image.svg`, referenced from `app/app.vue`);
   // see this app's README for swapping in a rasterised PNG or turning generation back on.
   ogImage: { enabled: false },
-  runtimeConfig: {
-    public: {
-      dashboardUrl,
+
+  pwa: {
+    // `disable: true` turns off the whole plugin — manifest injection included, not just the
+    // service worker (verified against npmx.dev's own production site, which sets this same
+    // option and ships no manifest link either). What's left is favicon/apple-touch-icon assets
+    // and their head links, generated ahead of time rather than at build or dev-server time.
+    disable: true,
+    pwaAssets: {
+      // `disabled: true` (not just `config: false`) so nothing tries to regenerate icons at
+      // dev-server or build time — they're pre-generated by
+      // `aube --filter @agent-zero/marketing run generate-pwa-icons` (see pwa-assets.config.ts)
+      // and committed as static files.
+      disabled: true,
+      config: false,
+    },
+    manifest: {
+      name: 'Agent Zero',
+      short_name: 'Agent Zero',
+      description:
+        'The open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.',
+      theme_color: '#0f1512',
+      background_color: '#0f1512',
+      icons: [
+        { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
+        { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+        { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        {
+          src: 'maskable-icon-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+      ],
     },
   },
+
+  runtimeConfig: {
+    public: {
+      // Falls back to the dashboard's dev port; a deployment overrides this with
+      // NUXT_PUBLIC_DASHBOARD_URL rather than a rebuild.
+      dashboardUrl: 'http://localhost:3000',
+    },
+  },
+
   app: {
     head: {
       meta: [{ name: 'color-scheme', content: 'dark light' }],
       link: [{ rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
     },
   },
+
   nitro: {
     prerender: {
       crawlLinks: true,
@@ -157,8 +170,31 @@ export default defineNuxtConfig({
       routes: ['/', '/robots.txt'],
     },
   },
+
   typescript: {
     strict: true,
     typeCheck: false,
+    // Extends the generated `.nuxt/tsconfig.*.json` projects rather than a hand-maintained
+    // `test/tsconfig.json` + `.vue` shim: `vue-tsc -b` already resolves `.vue` imports, so specs
+    // that import components only need to be in its scope, matching the pattern this pattern
+    // follows from npmx.dev and wolfstar.rocks.
+    tsConfig: {
+      compilerOptions: {
+        noUnusedLocals: true,
+        allowImportingTsExtensions: true,
+      },
+      // `test/nuxt/**` runs in a Nuxt/DOM context and imports `.vue` components directly.
+      // `pwa-assets.d.ts` types the `virtual:pwa-assets/*` modules the generated
+      // `.nuxt/pwa-icons-plugin.ts` imports (a `types` array entry can't resolve that package's
+      // subpath export the way a triple-slash reference does).
+      include: ['../test/nuxt/**/*.ts', '../pwa-assets.d.ts'],
+    },
+    nodeTsConfig: {
+      compilerOptions: {
+        allowImportingTsExtensions: true,
+      },
+      // `test/unit/**` is plain Node: no DOM, no `.vue` imports, explicit imports only.
+      include: ['../test/unit/**/*.ts'],
+    },
   },
 });

@@ -41,10 +41,16 @@
     "vue-i18n-extract": "2.0.7"
   },
   "devDependencies": {
+    "@intlify/core-base": "^11.4.8",
+    "@nuxtjs/i18n": "^10.6.0",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
     "tsdown": "^0.22.14",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@intlify/core-base": "^11.4.8",
+    "@nuxtjs/i18n": "^10.6.0"
   }
 }
