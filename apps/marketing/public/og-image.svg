@@ -13,9 +13,20 @@
   <rect width="1200" height="630" fill="url(#grid)" />
   <rect width="1200" height="630" fill="url(#halo)" />
 
-  <rect x="80" y="80" width="64" height="64" fill="#8ee34a" fill-opacity="0.08" stroke="#8ee34a" stroke-opacity="0.45" stroke-width="2" />
-  <text x="112" y="125" fill="#8ee34a" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="28" font-weight="700" text-anchor="middle">AZ</text>
-  <text x="164" y="123" fill="#f3f7f1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="700">Agent Zero</text>
+  <defs>
+    <mask id="cutlogo" maskUnits="userSpaceOnUse"
+          x="58.88" y="48" width="84.48" height="128">
+      <rect x="58.88" y="48" width="84.48" height="128" fill="#fff"/>
+      <g fill="#000"><rect x="53.12" y="106.729" width="96" height="10.542" transform="rotate(-62 101.12 112)"/></g>
+    </mask>
+    <clipPath id="cliplogo"><path d="M79.258,101.12A21.862,21.862 0 0 1 122.982,101.12L122.982,122.88A21.862,21.862 0 0 1 79.258,122.88Z"/></clipPath>
+  </defs>
+  <g mask="url(#cutlogo)" fill="none" stroke-width="7.424">
+    <path class="ink-s" d="M101.12,83.712A17.408,17.408 0 0 1 118.528,101.12L118.528,122.88A17.408,17.408 0 0 1 83.712,122.88L83.712,101.12A17.408,17.408 0 0 1 101.12,83.712Z" stroke="#f3f7f1" stroke-opacity=".3" stroke-dasharray="0 1.338 16.437 21.788 16.437 40.9 16.437 21.788 16.437 1.338"/>
+    <path class="ink-s" d="M101.12,83.712A17.408,17.408 0 0 1 118.528,101.12L118.528,122.88A17.408,17.408 0 0 1 83.712,122.88L83.712,101.12A17.408,17.408 0 0 1 101.12,83.712Z" stroke="#f3f7f1" stroke-dasharray="0 20.45 16.437 21.788 16.437 2.676 16.437 21.788 16.437 20.45"/>
+  </g>
+  <g class="acc" clip-path="url(#cliplogo)" fill="#8ee34a"><rect x="53.12" y="108.956" width="96" height="6.088" transform="rotate(-62 101.12 112)"/></g>
+  <text x="142" y="123" fill="#f3f7f1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30" font-weight="700">Agent Zero</text>
 
   <text x="80" y="300" fill="#f3f7f1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="66" font-weight="750">The autonomous engineer</text>
   <text x="80" y="378" fill="#f3f7f1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="66" font-weight="750">that never merges a guess</text>

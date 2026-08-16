@@ -12,7 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import { mainContentId } from '~~/modules/shared/utils/landmarks';
+// `mainContentId` is auto-imported: the shared module registers `modules/shared/utils` via
+// `addImportsDir`.
 </script>
 
 <style scoped>

@@ -1,4 +1,5 @@
 // Ported from wolfstar.rocks (Apache 2.0 license).
+import { addVitePlugin, defineNuxtModule } from 'nuxt/kit';
 import type { Plugin } from 'vite';
 
 /**
@@ -55,3 +56,12 @@ export function stripEmptyI18nMessagesPlugin(): Plugin {
     },
   };
 }
+
+export default defineNuxtModule({
+  meta: {
+    name: 'i18n-strip-empty',
+  },
+  setup() {
+    addVitePlugin(stripEmptyI18nMessagesPlugin());
+  },
+});
