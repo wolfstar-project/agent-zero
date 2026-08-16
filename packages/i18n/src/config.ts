@@ -168,12 +168,16 @@ export interface LocaleDefinition {
  * `currentLocales` keyed by code, for the switcher and head metadata, which look one up directly
  * rather than scanning the array.
  */
-export const locales = Object.fromEntries(
-  currentLocales.map((locale) => [
-    locale.code,
-    { label: locale.name ?? locale.code, language: locale.language ?? locale.code },
-  ]),
-) as Record<LocaleCode, LocaleDefinition>;
+export const locales = currentLocales.reduce<Record<LocaleCode, LocaleDefinition>>(
+  (acc, locale) => {
+    acc[locale.code as LocaleCode] = {
+      label: locale.name ?? locale.code,
+      language: locale.language ?? locale.code,
+    };
+    return acc;
+  },
+  {},
+);
 
 /**
  * `currentLocales` narrowed to the scopes an app actually renders.

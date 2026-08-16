@@ -4,7 +4,6 @@ export {
   currentLocales,
   datetimeFormats,
   defaultLocale,
-  i18nLocales,
   i18nLocalesFor,
   localeCookieName,
   localeFeatureFiles,
