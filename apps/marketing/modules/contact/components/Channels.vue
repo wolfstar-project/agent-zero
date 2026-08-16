@@ -26,8 +26,6 @@
 </template>
 
 <script setup lang="ts">
-const { links } = useAppConfig();
-
 const channels = [
   {
     id: 'issues',

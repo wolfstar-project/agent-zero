@@ -53,8 +53,6 @@
 </template>
 
 <script setup lang="ts">
-const { links } = useAppConfig();
-
 const name = ref('');
 const email = ref('');
 const message = ref('');

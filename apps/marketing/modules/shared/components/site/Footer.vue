@@ -46,7 +46,6 @@
 </template>
 
 <script setup lang="ts">
-const { site, links } = useAppConfig();
 const localePath = useLocalePath();
 
 // Rendered on the server and hydrated on the client, so it has to be stable across both. The

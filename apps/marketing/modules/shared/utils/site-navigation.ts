@@ -14,7 +14,7 @@ export interface NavigationLink {
  * the package's plain `tsc` pass and exercised in the `unit` Vitest project: `useLocalePath` has
  * no public export from `@nuxtjs/i18n`, so a composable form would only type-check under
  * `vue-tsc`. Callers pass `useLocalePath()` in, and — for the same reason — the docs URL from
- * `useAppConfig().links` rather than reading it here.
+ * `links` rather than reading it here.
  *
  * The two section entries are anchors on the home page rather than routes of their own. They
  * exist to move a visitor down one page, and giving them URLs would split the landing page's

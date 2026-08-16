@@ -80,7 +80,6 @@
 </template>
 
 <script setup lang="ts">
-const { site, links } = useAppConfig();
 const localePath = useLocalePath();
 const navigation = computed(() => siteNavigation(localePath, links.docs));
 const dashboardUrl = useRuntimeConfig().public.dashboardUrl;

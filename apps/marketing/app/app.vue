@@ -8,7 +8,6 @@
 
 <script setup lang="ts">
 const { t } = useI18n();
-const { site } = useAppConfig();
 
 // `<html lang>`, `<html dir>`, the `hreflang` alternates for every locale, and the `og:locale`
 // pair. Emitting these by hand is what makes a translated route indexable as its own document

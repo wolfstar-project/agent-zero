@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { links } from '../../app/app.config.js';
 import { siteNavigation } from '../../modules/shared/utils/site-navigation.js';
+import { links } from '../../modules/shared/utils/site.js';
 
 /** Stand-in for `useLocalePath()` under the `prefix_except_default` strategy. */
 function localePathFor(prefix: string): (path: string) => string {

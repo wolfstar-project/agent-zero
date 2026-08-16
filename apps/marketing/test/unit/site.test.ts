@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { links } from '../../app/app.config.js';
+import { links } from '../../modules/shared/utils/site.js';
 
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/u;
 
