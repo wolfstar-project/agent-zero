@@ -27,6 +27,9 @@ describe('BlogPostCard', () => {
     const wrapper = await mountSuspended(PostCard, { props: { post } });
     const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'));
 
-    expect(hrefs).toContain(post.path);
+    // PostCard wraps paths with localePath() to preserve the visitor's active locale; the i18n
+    // strategy (`prefix_except_default`) means the default-locale test environment renders hrefs
+    // unchanged, but this assertion stays robust if config ever switches to `prefix`.
+    expect(hrefs.some((href) => href?.endsWith(post.path))).toBe(true);
   });
 });
