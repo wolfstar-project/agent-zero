@@ -2,6 +2,8 @@
 
 Agent Zero reads credentials and deployment policy exclusively from the environment. Endpoint URLs and credentials can never be named or embedded in `.agent-zero.yml`, so untrusted repository policy cannot redirect a secret. [`.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/.env.example) is the annotated template; copy it to `.env` for local development.
 
+That `.env` lives at the repository root, so the dashboard's `dev` and `build` scripts pass `--dotenv ../../.env` to the Nuxt CLI: Nuxt otherwise only loads a `.env` sitting next to `nuxt.config.ts` (`apps/dashboard/.env`), and the repository-root file would be ignored — `server/auth.config.ts` resolves `DATABASE_URL` at module load, so an unloaded file fails the server on the first request instead of degrading. The file is optional: a deployment that sets real environment variables needs no `.env` at all, and a missing one is skipped silently.
+
 ## Model providers
 
 | Variable                       | Purpose                                                               |
