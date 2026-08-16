@@ -4,7 +4,7 @@
 
 ## Module-per-feature layout
 
-Application code lives under `modules/<feature>/` rather than Nuxt's default flat directories. Each feature is a real Nuxt module: its `index.ts` registers its own `components/`, `composables/`, and `utils/` directories, and Nuxt discovers it by scanning `modules/`, so nothing has to be listed in `nuxt.config.ts`. `apps/marketing` uses the same layout.
+Application code lives under `modules/<feature>/` rather than Nuxt's default flat directories. Each feature is a real Nuxt module: its `index.ts` registers its own `components/`, `composables/`, and `utils/` directories, and Nuxt discovers it by scanning `modules/`, so nothing has to be listed in `nuxt.config.ts`.
 
 ```text
 apps/dashboard/
