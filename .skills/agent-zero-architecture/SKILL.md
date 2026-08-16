@@ -11,11 +11,39 @@ Keep dependency direction explicit while changing the monorepo.
 
 - `shared`: stable contracts only, plus pure functions over them (evidence rendering, redaction, path predicates).
 - `config`: configuration, repository policy, and check discovery. Pure; the agent supplies what it read through the runner.
-- `models`: provider-independent model contracts and provider adapters.
+- `models`: provider-independent model contracts and provider adapters, including the
+  subscription transports (`claude-code`, `codex-cli`) that drive a locally logged-in vendor CLI.
+  Those spawn a subprocess through their vendor SDK, so they stay behind an exact operator flag,
+  import their SDK lazily, and run with the CLI's own file tools disabled. This package still
+  contains no `child_process` import of its own: liveness commands are returned as strings for a
+  composition root to run through the runner, and `modelFromEnvironment` takes an optional
+  `ClaudeCodeProcessSpawner` a composition root backs with `runner`'s `spawnManagedProcess`, so the
+  `claude-code` CLI process is spawned through the runner boundary rather than by the vendor SDK's
+  own default `child_process.spawn`. `codex-cli` cannot be routed the same way — its vendor SDK
+  exposes no equivalent hook — so that one transport's process is always spawned by the vendor SDK
+  directly; its read-only sandbox and disabled MCP/approvals are the containment there instead.
 - `source-control`: provider-neutral source-control contracts, webhook normalization, capability detection, and the GitHub, GitLab, Bitbucket, and Gitea adapters, including GitHub's issue-to-PR publication (branch and pull-request creation through the Git data API).
 - `runner`: command execution and checkout mutation boundary, plus the policy-to-boundary factory.
+  Also the only exporter of a live process handle (`spawnManagedProcess`, alongside the bounded
+  `execFileProcessRunner`) for an adapter that must hand a real child process to code it does not
+  control, such as a CLI-backed model transport's vendor SDK. `spawnManagedProcess`'s optional
+  `container` option runs that process in its own container instead of on the host — a deliberately
+  different shape from `ContainerRunner`'s repository-command container (`containerizedProcessArgv`
+  mounts no checkout and applies no `--network`, since the process it isolates is not a repository
+  command and needs the vendor API regardless of `permissions.network`). `env` becomes `-e` flags on
+  the engine invocation, not on the engine's own local process — a container's client env sets
+  nothing inside the container it starts.
 - `agent`: orchestration, the lifecycle machine, and the validation policy.
-- `cli`: argument parsing and terminal presentation.
+- `cli`: argument parsing and terminal presentation. Composition-root glue that decides *how* to
+  isolate the `claude-code` CLI process lives here (`subscription-isolation.ts`, duplicated
+  identically in `api` rather than shared — it needs both `AgentZeroConfig` and an operator
+  environment variable, which neither `models` nor `runner` should own). Refuses the transport
+  outright when `runner.isolation: container` is declared but no CLI container image is configured,
+  rather than falling back to an unisolated host spawn — reported to `modelFromEnvironment` as a
+  refusal reason, not by disabling the enable flag, so a configured
+  `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` still gets a turn. `api` applies the same refusal-reason
+  mechanism for a `RunnerPool` lease, which cannot route the CLI's duplex spawn through a
+  `SandboxProvider`'s bounded `Runner` contract.
 - `database`: Postgres schema, the Drizzle client factory, and checked-in migrations. No policy, and the only package that names a table or opens a connection.
 - `auth`: authentication policy and a Better Auth options factory (`authBetterAuthOptions`), plus a
   standalone instance factory (`createAuth`) for callers that own their own secret and origin. Reads

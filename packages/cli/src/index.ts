@@ -9,8 +9,22 @@ import {
   loadConfig,
   mayModifyRepository,
 } from '@agent-zero/config';
-import { isModelConfigured, modelFromEnvironment } from '@agent-zero/models';
-import { createRunner, LocalRunner, runnerOptionsFromPolicy } from '@agent-zero/runner';
+import {
+  isModelConfigured,
+  isSubscriptionModelProvider,
+  isSubscriptionProviderEnabled,
+  modelFromEnvironment,
+  modelProviderCredentialKind,
+  subscriptionProbeCommand,
+  subscriptionProviderDescriptor,
+  type SubscriptionModelProviderKind,
+} from '@agent-zero/models';
+import {
+  createRunner,
+  LocalRunner,
+  runnerOptionsFromPolicy,
+  type Runner,
+} from '@agent-zero/runner';
 import {
   evidenceFromResult,
   renderEvidenceMarkdown,
@@ -21,6 +35,11 @@ import {
 import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
+import {
+  claudeCodeProcessSpawner,
+  claudeCodeRefusalReason,
+  environmentForModel,
+} from './subscription-isolation.js';
 
 const cwd = process.cwd();
 
@@ -116,11 +135,21 @@ async function runDoctor(asJson: boolean): Promise<void> {
           packageJson: await inspector.read('package.json').catch(() => null),
           lockfiles,
         });
+  // Reflects the same refusal `runAgent` applies: under container isolation, claude-code is not
+  // "configured" unless a container image for its CLI is also set, even if the enable flag is on.
+  const modelEnvironment = environmentForModel(config, process.env);
+  const modelConfigured = isModelConfigured(config.model.provider, modelEnvironment);
   const status = {
     node: process.version,
     gitRepository: await exists(join(cwd, '.git')),
-    modelConfigured: isModelConfigured(config.model.provider),
+    modelConfigured,
     modelProvider: config.model.provider,
+    modelCredentialKind: modelProviderCredentialKind(config.model.provider),
+    // Only probed once the operator opted this host in; an unset flag is already the answer, and
+    // doctor must not be the thing that first spawns a vendor CLI.
+    ...(isSubscriptionModelProvider(config.model.provider) && modelConfigured
+      ? { modelCli: await probeSubscriptionCli(inspector, config.model.provider) }
+      : {}),
     mode: config.mode,
     isolation: config.runner.isolation,
     network: config.permissions.network,
@@ -136,7 +165,28 @@ async function runDoctor(asJson: boolean): Promise<void> {
   p.log.info(`Node ${status.node}`);
   logCheck('Git repository', status.gitRepository);
   logCheck('Model configured', status.modelConfigured);
-  p.log.info(`Model provider: ${status.modelProvider}`);
+  p.log.info(`Model provider: ${status.modelProvider} (${status.modelCredentialKind})`);
+  if (!status.modelConfigured && isSubscriptionModelProvider(config.model.provider)) {
+    if (
+      config.model.provider === 'claude-code' &&
+      config.runner.isolation === 'container' &&
+      !process.env.AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE
+    )
+      p.log.warn(
+        'Container isolation is required but no AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE is set, so claude-code is refused rather than run unisolated on the host.',
+      );
+    else
+      p.log.warn(
+        `Set ${subscriptionProviderDescriptor(config.model.provider).enableEnvironmentVariable}=true to enable this host's subscription session.`,
+      );
+  }
+  if (status.modelCli) {
+    logCheck(`${status.modelCli.executable} CLI installed`, status.modelCli.installed);
+    if (!status.modelCli.installed)
+      p.log.warn(
+        `Install it and run \`${status.modelCli.loginCommand}\`, or point ${status.modelCli.pathVariable} at the executable.`,
+      );
+  }
   logCheck(
     `Isolated runner (${status.isolation}, network ${status.network})`,
     status.isolation === 'container',
@@ -148,7 +198,58 @@ async function runDoctor(asJson: boolean): Promise<void> {
     checks.length > 0,
   );
   p.log.info(`Mode: ${status.mode}`);
-  p.outro(status.gitRepository && status.modelConfigured ? 'Ready to run.' : 'Setup incomplete.');
+  p.outro(
+    status.gitRepository && status.modelConfigured && status.modelCli?.installed !== false
+      ? 'Ready to run.'
+      : 'Setup incomplete.',
+  );
+}
+
+/**
+ * Prove the vendor CLI is installed and runnable before a run depends on it.
+ *
+ * The probe goes through the runner like every other command execution, and asks only for a
+ * version, so a diagnostic can never start a session or touch the checkout. It cannot tell whether
+ * the session is still authenticated — only a real call can, and that failure is translated into
+ * the matching `login` instruction by the models package.
+ */
+async function probeSubscriptionCli(
+  inspector: Runner,
+  provider: SubscriptionModelProviderKind,
+): Promise<{
+  executable: string;
+  installed: boolean;
+  pathVariable: string;
+  loginCommand: string;
+}> {
+  const descriptor = subscriptionProviderDescriptor(provider);
+  // The configured override itself, read the same way `subscriptionProbeCommand` resolves it
+  // before quoting — not derived from the quoted command string below, which may wrap the path in
+  // single or double quotes and can contain embedded spaces; splitting that string on the first
+  // space would report a truncated, quote-mangled path instead of the real one.
+  const executable = process.env[descriptor.executableEnvironmentVariable] ?? descriptor.executable;
+  let command: string;
+  try {
+    command = subscriptionProbeCommand(provider, process.env);
+  } catch {
+    // An executable override that cannot be expressed as a single probe token (it contains both
+    // quote characters) is not "installed" from doctor's point of view — report the same
+    // diagnostic shape a failed probe would, rather than letting doctor itself throw and skip its
+    // JSON document entirely.
+    return {
+      executable,
+      installed: false,
+      pathVariable: descriptor.executableEnvironmentVariable,
+      loginCommand: descriptor.loginCommand,
+    };
+  }
+  const result = await inspector.check(command, 15_000).catch(() => undefined);
+  return {
+    executable,
+    installed: result?.exitCode === 0,
+    pathVariable: descriptor.executableEnvironmentVariable,
+    loginCommand: descriptor.loginCommand,
+  };
 }
 
 async function runAgent(
@@ -174,8 +275,24 @@ async function runAgent(
     runnerOptionsFromPolicy(config, mayModifyRepository(config, mode)),
   );
 
+  // Refuses claude-code under container isolation when no CLI container image is configured,
+  // rather than silently spawning it unisolated on the host. Reported to modelFromEnvironment as a
+  // refusal reason, not by disabling the enable flag: the flag would also skip fallback selection,
+  // turning a configured AGENT_ZERO_MODEL_FALLBACK_PROVIDER into a run that fails outright instead
+  // of degrading to it.
+  const refusalReason =
+    config.model.provider === 'claude-code'
+      ? claudeCodeRefusalReason(config, process.env)
+      : undefined;
+  const spawnClaudeCodeProcess =
+    config.model.provider === 'claude-code' &&
+    refusalReason === undefined &&
+    isSubscriptionProviderEnabled('claude-code', process.env)
+      ? claudeCodeProcessSpawner(config, process.env)
+      : undefined;
+
   const agent = new AgentZero({
-    model: modelFromEnvironment(config.model),
+    model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess, refusalReason),
     runner,
     config,
     onEvent: (event) => {

@@ -199,22 +199,167 @@ database. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwrig
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 
 Agent Zero supports native OpenAI, Anthropic, and Google Generative AI adapters, Vercel AI
-Gateway, and arbitrary OpenAI-compatible endpoints. Select the transport in repository policy and
-provide its credential through the environment:
+Gateway, arbitrary OpenAI-compatible endpoints, and two subscription transports that drive a
+locally authenticated vendor CLI. Select the transport in repository policy and provide its
+credential through the environment:
 
-| `model.provider`    | Credential environment variable                          | Model example                 |
-| ------------------- | -------------------------------------------------------- | ----------------------------- |
-| `ai-gateway`        | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
-| `anthropic`         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
-| `google`            | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
-| `openai`            | `OPENAI_API_KEY`                                         | `gpt-5`                       |
-| `openai-compatible` | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+| `model.provider`    | Credential kind | Credential environment variable                          | Model example                 |
+| ------------------- | --------------- | -------------------------------------------------------- | ----------------------------- |
+| `ai-gateway`        | api-key         | `AI_GATEWAY_API_KEY` or Vercel OIDC                      | `anthropic/claude-sonnet-4.5` |
+| `anthropic`         | api-key         | `ANTHROPIC_API_KEY`                                      | `claude-sonnet-4-5`           |
+| `google`            | api-key         | `GOOGLE_GENERATIVE_AI_API_KEY`                           | `gemini-2.5-pro`              |
+| `openai`            | api-key         | `OPENAI_API_KEY`                                         | `gpt-5`                       |
+| `openai-compatible` | api-key         | `OPENAI_COMPATIBLE_API_KEY` (or legacy `OPENAI_API_KEY`) | provider-specific             |
+| `claude-code`       | subscription    | none; `claude login` on the host                         | `opus`, `sonnet`              |
+| `codex-cli`         | subscription    | none; `codex login` on the host                          | `gpt-5.2-codex`               |
 
 `AGENT_ZERO_MODEL_BASE_URL` is an optional operator environment variable for custom gateways and
 self-hosted endpoints. Endpoint URLs and credentials cannot be named or embedded in
 `.agent-zero.yml`, so untrusted repository policy cannot redirect a provider secret. The AI Gateway
 accepts `provider/model` identifiers and exposes the broader AI SDK provider catalog without adding
 provider-specific logic to the Agent Zero runtime.
+
+#### Subscription transports
+
+`claude-code` and `codex-cli` spend an existing Claude Pro/Max or ChatGPT Plus/Pro subscription
+instead of a metered API key. They drive the vendor CLI installed on the host, so there is no
+credential for Agent Zero to read, rotate, or redact — the session lives in the CLI's own state.
+Both are off unless the matching operator flag is exactly `true`:
+
+```
+AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER=true   # requires: npm i -g @anthropic-ai/claude-code && claude login
+AGENT_ZERO_ENABLE_CODEX_CLI_PROVIDER=true     # requires: the Codex CLI on PATH && codex login
+```
+
+`AGENT_ZERO_CLAUDE_CODE_PATH` and `AGENT_ZERO_CODEX_PATH` point at the executable when it is not on
+`PATH`. `zero doctor` runs the CLI's `--version` through the runner boundary and reports whether it
+is installed; an expired session can only be detected by a real call, and surfaces as
+`Run \`claude login\` on this host` rather than a spawn error.
+
+Known limits, all of which follow from the session being local:
+
+- **Single-tenant.** Every run on the host shares one personal account. Rate limits are the
+  subscription's, not the request's, and there is no per-user isolation. Do not select these
+  transports for a multi-tenant control plane; scope them to one administrative workspace, or keep
+  a metered transport for shared work.
+- **Host-bound.** The run must execute where `claude login` / `codex login` was completed, and the
+  Agent Zero process must be allowed to spawn subprocesses.
+- **`codex-cli`'s process is not runner-routed.** `claude-code`'s CLI process is spawned through
+  `packages/runner`'s `spawnManagedProcess`, the same boundary as every repository check; a
+  composition root wires this in (`modelFromEnvironment`'s `ClaudeCodeProcessSpawner` parameter).
+  `ai-sdk-provider-codex-cli` exposes no equivalent hook, so Codex's process is always spawned by
+  the vendor SDK directly. Its read-only sandbox, disabled approvals, and disabled MCP servers are
+  the containment for that one transport instead.
+- **Container isolation covers `claude-code`, not `codex-cli`.** When `runner.isolation: container`
+  in `.agent-zero.yml`, `claude-code`'s CLI process runs in its own container instead of on the host
+  (see below) — Codex still can't be routed at all, per the point above.
+- **A `RunnerPool` lease refuses `claude-code` rather than running it unisolated.** A hosted
+  sandbox provider (`vitehub`/`cloudflare`/`vercel`/`custom`) returns only the ordinary `Runner`
+  contract — bounded command execution, never a live process handle — so there is no way to route
+  the CLI's duplex spawn through the same boundary the lease already gives repository commands.
+  Rather than falling back to a host spawn that would bypass that lease's isolation, lifecycle,
+  quota, and audit controls, `packages/api` refuses the transport outright whenever a `runnerPool`
+  is configured on the `RunTaskOptions` passed to `runTask`, independent of `runner.isolation`. The
+  refusal is reported to `modelFromEnvironment` as a reason, not by turning the enable flag off, so
+  a configured `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` still gets a turn instead of the run failing
+  outright — same as the missing-container-image case below. `codex-cli` has no working code path
+  to bypass here in the first place (see above), so this gate is `claude-code`-only.
+- **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
+  `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
+  transport to degrade to it automatically when the CLI is missing, its session expired, or its
+  usage window is spent and too far from reopening to wait out. The fallback applies to those
+  failures only; an invalid model decision never silently switches transports.
+- **Rate-limited by plan.** A spent usage window is the one failure that repairs itself, so a run
+  waits it out and resumes rather than throwing away the checks and changes it already produced
+  (see below).
+- **Not metered per call.** Cost accounting reports `0` unless explicit rates are configured, since
+  the subscription is billed to the account, not the request.
+
+The CLI is configured as a text generator only: built-in tools are disabled for Claude Code and
+Codex runs read-only with approvals off, so neither can read outside the supplied context or edit a
+checkout behind the runner boundary. Claude Code additionally sets `disableClaudeAiConnectors`,
+because account-level claude.ai connectors are fetched from the server rather than read from disk —
+without it, a subscription whose account has connectors enabled hands the model MCP tools that
+reach past the runner boundary and pays for their definitions on every call.
+
+##### Isolating the `claude-code` CLI process under container isolation
+
+`runner.isolation: container` is an explicit declaration that command execution must run isolated.
+Leaving the subscription CLI unisolated while every repository check runs contained would be
+exactly the silent bypass this exists to prevent — so under container isolation, `claude-code`'s
+CLI process runs in its own ephemeral container too, and is refused outright rather than falling
+back to a host spawn when that container can't be built. The refusal is reported to
+`modelFromEnvironment` as a reason rather than by turning the enable flag off, so a configured
+`AGENT_ZERO_MODEL_FALLBACK_PROVIDER` still gets a turn instead of the run failing outright — the
+transport genuinely is configured, this host just can't isolate it:
+
+```
+AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE=      # required under container isolation; must have `claude` on PATH
+AGENT_ZERO_CLAUDE_CODE_CONTAINER_EXECUTABLE= # optional; defaults to "claude" — set if the image installs it elsewhere
+CLAUDE_CONFIG_DIR=                           # optional; defaults to ~/.claude
+```
+
+Verified end to end against a real container and a real authenticated session — build an image with
+`claude` installed and set the variable above, and the full pipeline (spawn, mount, authenticate,
+stream a decision) runs isolated. Three things fell out of getting that working, each a genuine
+constraint rather than a design choice:
+
+- **No repository checkout mounted, and no `--network` flag.** The CLI is configured as a text
+  generator only (`tools: []`, `mcpServers: {}`) and never touches the checkout, so none is
+  provided. `permissions.network` is not reused either: that policy contains an _untrusted
+  checkout's_ own commands, and has nothing to do with Agent Zero's own necessary calls to the
+  vendor API — reusing it would simply break every subscription call under `restricted` or `none`.
+- **The vendor SDK resolves the CLI to an absolute host path** (its own bundled native binary, or
+  `AGENT_ZERO_CLAUDE_CODE_PATH`), which does not exist inside the container. The containerized spawn
+  always runs the bare executable name from `AGENT_ZERO_CLAUDE_CODE_CONTAINER_EXECUTABLE` instead —
+  whatever the configured image actually has installed.
+- **The CLI's login session spans two host locations that are not nested**: `~/.claude/`
+  (credentials, settings) and a sibling file, `~/.claude.json` (project/session record). Docker
+  refuses to bind-mount a file to a path inside an already-read-only directory mount, so both are
+  mounted as siblings under one synthetic directory instead, with the container's `$HOME` pointed at
+  it so the CLI's own default resolution finds both — no `CLAUDE_CONFIG_DIR` override needed unless
+  the host already customized it, in which case a single mount plus a matching override is used. The
+  container also runs as the host's own UID:GID, not `root`: the mounted credential file typically
+  has mode `0600`, `--cap-drop ALL` removes even `root`'s permission-bypass capability inside the
+  container, and the CLI verifies file ownership before it trusts a session — reading past that
+  check without the right UID is not enough. On a host where the session is Keychain-backed rather
+  than file-backed (some macOS configurations), this mount cannot forward it; use `local` isolation
+  there instead.
+
+Same hardening baseline as `ContainerRunner`: `--init`, `--cap-drop ALL`, `--security-opt
+no-new-privileges`, `--rm`.
+
+##### Waiting out a spent usage window
+
+When the plan's usage window is exhausted, the run does not fail. It waits for the window to reopen
+and continues, resuming the interrupted CLI session so the conversation is not rebuilt and paid for
+twice. This applies only to the subscription transports; a metered transport has no window to wait
+on.
+
+```
+AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS=3600000   # default; 0 disables waiting entirely
+```
+
+The wait is deliberately bounded, because a control plane must not block on someone's personal plan
+for an unbounded time:
+
+- **Only a reported reset is waited on.** Claude Code reports the reset instant in its rate-limit
+  event, and Codex serializes `resets_at` / `reset_after_seconds` alongside the rejection. When
+  neither is present the run reports the limit instead of guessing at an interval.
+- **`AGENT_ZERO_SUBSCRIPTION_LIMIT_WAIT_MS` is a total, not a per-wait allowance.** A reset further
+  out than the remaining budget is never waited on; the error propagates with the reset instant
+  intact, so a configured fallback still gets its turn and an operator still learns when to return.
+  A weekly window is normally far past the default hour, so it fails fast by design.
+- **At most two waits per decision.** A third is far more likely to be a transport reporting a
+  reset that never arrives than a third window genuinely closing.
+
+Waiting sits _inside_ the fallback: the subscription is already paid for, so a window that reopens
+shortly is used before a metered credential is spent.
+
+Session resumption itself is Claude Code only. `codex exec resume <id>` exists in the CLI, but
+`ai-sdk-provider-codex-cli` builds a plain `exec` argument vector and exposes no resume setting, so
+an interrupted Codex call is reissued after the wait rather than resumed. The waiting behaviour is
+identical for both.
 
 To record cost, configure explicit rates; Agent Zero never guesses provider pricing:
 
