@@ -26,6 +26,10 @@ jobs:
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         with:
+          # Allow optional "(via <author>): " prefix before conventional commit type
+          # This supports PR titles like: (via RedStar071): fix(marketing): description
+          headerPattern: '^(?:\(via [^)]+\): )?(\w*)(?:\(([\w$.\-*/ ]*)\))?: (.*)$'
+          headerPatternCorrespondence: type, scope, subject
           scopes: |
             agent
             api
