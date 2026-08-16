@@ -11,16 +11,21 @@
   </select>
 </template>
 
-<script setup lang="ts">
+<script lang="ts">
 import { locales } from '@agent-zero/i18n';
 import type { LocaleCode } from '@agent-zero/i18n';
 
-const { t, locale, setLocale } = useI18n();
-
+// Module scope, not per-instance: `Header.vue` mounts this component twice (desktop nav and
+// mobile menu), and the locale list never changes at runtime, so there is nothing to gain from
+// recomputing it once per instance on every page render.
 const options = Object.entries(locales).map(([code, definition]) => ({
   code: code as LocaleCode,
   label: definition.label,
 }));
+</script>
+
+<script setup lang="ts">
+const { t, locale, setLocale } = useI18n();
 
 // Bound with `v-model` rather than `:value`: only `v-model` makes the server mark the matching
 // `<option>` as selected, and a bare `:value` hydrates into a mismatch.

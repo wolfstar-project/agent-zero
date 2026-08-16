@@ -32,129 +32,66 @@ function localeFilesFor(localeCode: string, features: readonly string[]): string
 }
 
 /**
- * Country / regional variants that inherit from a base language directory.
- * Each variant loads `locales/{base}/*.json` then `locales/{variant}/*.json`.
+ * Single source of truth for which locales this repository ships: `LocaleCode` and
+ * `currentLocales` are both derived from this, so adding a locale here is the only edit needed —
+ * unlike a hand-typed `LocaleCode` union kept beside a separate locale array, which a contributor
+ * can update in one place and forget in the other without either the compiler or a test catching
+ * the drift.
  *
- * Empty today: this repository ships one directory per selectable locale. Kept as the extension
- * point for the day `en` needs to split into `en-US` / `en-GB` without restructuring `locales/`.
+ * wolfstar.rocks's own `config/i18n.ts` (this file's source) expands regional variants (`en` into
+ * `en-US`/`en-GB`, and so on) and per-locale plural rules from a much larger locale set. This
+ * repository ships exactly `en` and `it`, with no regional split and no locale whose plural rules
+ * differ from `Intl.PluralRules`' defaults, so that expansion step is omitted rather than kept as
+ * unexercised machinery — add it back if a regional variant is ever actually needed.
  */
-export const countryLocaleVariants: Record<string, (LocaleObjectData & { country?: boolean })[]> =
-  {};
-
-function createPluralRule(locale: string, mapping: Record<string, number>): PluralizationRule {
-  return (choice: number, choicesLength: number) => {
-    const name = new Intl.PluralRules(locale).select(choice);
-    const plural = mapping[name] ?? 0;
-
-    // In case a translation doesn't have all plural forms, use the last available form.
-    if (plural > choicesLength - 1) return choicesLength - 1;
-
-    return plural;
-  };
-}
-
-/**
- * Base locales registered with Nuxt i18n.
- *
- * Codes that appear in `countryLocaleVariants` expand into regional variants and are not
- * themselves selectable.
- */
-const baseLocales: LocaleObjectData[] = [
-  {
-    code: 'en',
-    files: localeFilesFor('en', localeFeatureFiles),
-    name: 'English',
-    language: 'en-US',
-  },
-  {
-    code: 'it',
-    files: localeFilesFor('it', localeFeatureFiles),
-    name: 'Italiano',
-    language: 'it-IT',
-  },
-];
+const localeMetadata = {
+  en: { name: 'English', language: 'en-US' },
+  it: { name: 'Italiano', language: 'it-IT' },
+} as const;
 
 /** Locale codes this repository can render. */
-export type LocaleCode = 'en' | 'it';
+export type LocaleCode = keyof typeof localeMetadata;
 
 export const defaultLocale = 'en' satisfies LocaleCode;
 
 /** Cookie `@nuxtjs/i18n` persists the visitor's locale choice in. */
 export const localeCookieName = 'agent-zero-locale';
 
-/** Expand base locales into country variants: `[...baseFiles, ...variantFiles]`. */
-function buildLocales(): LocaleObjectData[] {
-  const useLocales = baseLocales.reduce<LocaleObjectData[]>((acc, data) => {
-    const localeVariants = countryLocaleVariants[data.code];
-    if (localeVariants) {
-      const baseFiles = localeFilesFor(data.code, localeFeatureFiles);
-      for (const variant of localeVariants) {
-        const entry: LocaleObjectData = {
-          ...data,
-          code: variant.code,
-          name: variant.name,
-          language: variant.code,
-          files: [...baseFiles, ...localeFilesFor(variant.code, localeFeatureFiles)],
-        };
-        delete entry.file;
-        acc.push(entry);
-      }
-    } else {
-      acc.push(data);
-    }
-    return acc;
-  }, []);
+/** Locales registered with Nuxt i18n, sorted by code. */
+export const currentLocales: LocaleObjectData[] = Object.entries(localeMetadata)
+  .map(([code, { name, language }]) => ({
+    code,
+    files: localeFilesFor(code, localeFeatureFiles),
+    name,
+    language,
+  }))
+  .toSorted((a, b) => a.code.localeCompare(b.code));
 
-  return useLocales.toSorted((a, b) => a.code.localeCompare(b.code));
-}
-
-export const currentLocales = buildLocales();
-
-export const datetimeFormats = Object.values(currentLocales).reduce<DateTimeFormats>(
-  (acc, data) => {
-    const dateTimeFormats = data.dateTimeFormats;
-    if (dateTimeFormats) {
-      acc[data.code] = { ...dateTimeFormats };
-      delete data.dateTimeFormats;
-    } else {
-      acc[data.code] = {
-        shortDate: { dateStyle: 'short' },
-        short: { dateStyle: 'short', timeStyle: 'short' },
-        long: { dateStyle: 'long', timeStyle: 'medium' },
-      };
-    }
-
-    return acc;
-  },
-  {},
-);
-
-export const numberFormats = Object.values(currentLocales).reduce<NumberFormats>((acc, data) => {
-  const localeNumberFormats = data.numberFormats;
-  if (localeNumberFormats) {
-    acc[data.code] = { ...localeNumberFormats };
-    delete data.numberFormats;
-  } else {
-    acc[data.code] = {
-      percentage: { style: 'percent', maximumFractionDigits: 1 },
-      smallCounting: { style: 'decimal', maximumFractionDigits: 0 },
-      kiloCounting: { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 },
-      millionCounting: { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 2 },
-    };
-  }
-
+export const datetimeFormats = currentLocales.reduce<DateTimeFormats>((acc, data) => {
+  acc[data.code] = {
+    shortDate: { dateStyle: 'short' },
+    short: { dateStyle: 'short', timeStyle: 'short' },
+    long: { dateStyle: 'long', timeStyle: 'medium' },
+  };
   return acc;
 }, {});
 
-export const pluralRules = Object.values(currentLocales).reduce<PluralizationRules>((acc, data) => {
-  const pluralRule = data.pluralRule;
-  if (pluralRule) {
-    acc[data.code] = pluralRule;
-    delete data.pluralRule;
-  }
-
+export const numberFormats = currentLocales.reduce<NumberFormats>((acc, data) => {
+  acc[data.code] = {
+    percentage: { style: 'percent', maximumFractionDigits: 1 },
+    smallCounting: { style: 'decimal', maximumFractionDigits: 0 },
+    kiloCounting: { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 },
+    millionCounting: { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 2 },
+  };
   return acc;
 }, {});
+
+/**
+ * Empty today: no shipped locale needs a plural rule beyond `Intl.PluralRules`' own default
+ * selection. Kept as a typed, populated-when-needed export (vue-i18n's `pluralRules` option)
+ * rather than removed, since `i18n.config.ts` already wires it through.
+ */
+export const pluralRules: PluralizationRules = {};
 
 /** Presentation metadata for a locale a consuming app ships translations for. */
 export interface LocaleDefinition {
@@ -170,13 +107,19 @@ export interface LocaleDefinition {
  */
 export const locales = currentLocales.reduce<Record<LocaleCode, LocaleDefinition>>(
   (acc, locale) => {
+    // `locale.code` is `string` per `LocaleObject`, but `currentLocales` is built above from
+    // `localeMetadata`'s own keys, so every value it actually holds is a `LocaleCode`.
+    // oxlint-disable-next-line no-unsafe-type-assertion -- narrowed by construction, see above
     acc[locale.code as LocaleCode] = {
       label: locale.name ?? locale.code,
       language: locale.language ?? locale.code,
     };
     return acc;
   },
-  {},
+  // The accumulator is filled for every `LocaleCode` in the loop above, but an empty object
+  // literal can't prove that to the compiler.
+  // oxlint-disable-next-line no-unsafe-type-assertion -- narrowed by construction, see above
+  {} as Record<LocaleCode, LocaleDefinition>,
 );
 
 /**
@@ -193,10 +136,11 @@ export function i18nLocalesFor(features: readonly LocaleFeatureFile[]): LocaleOb
   const unknown = features.filter((feature) => !localeFeatureFiles.includes(feature));
   if (unknown.length > 0) throw new Error(`unknown locale feature file(s): ${unknown.join(', ')}`);
 
+  // Two locales, called at module init, not a hot path — the allocation this rule warns about is
+  // immaterial here, and Object.assign/direct-assignment alternatives fight prefer-spread-syntax.
+  // oxlint-disable-next-line no-map-spread -- see above
   return currentLocales.map((locale) => ({
     ...locale,
     files: localeFilesFor(locale.code, features),
   }));
 }
-
-export { createPluralRule };

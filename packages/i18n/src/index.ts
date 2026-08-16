@@ -1,6 +1,4 @@
 export {
-  countryLocaleVariants,
-  createPluralRule,
   currentLocales,
   datetimeFormats,
   defaultLocale,

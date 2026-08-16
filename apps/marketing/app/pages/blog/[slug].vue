@@ -40,8 +40,13 @@ const localePath = useLocalePath();
 
 const slug = computed(() => String(route.params.slug));
 
-const { data: post } = await useAsyncData(`blog-post-${slug.value}`, () =>
-  queryCollection('blog').path(`/blog/${slug.value}`).first(),
+// `watch: [slug]` refetches when navigating from one post straight to another: the route matches
+// the same page component, so Vue reuses the instance and only `route.params.slug` changes —
+// without it `post` would keep showing the previous article's content.
+const { data: post } = await useAsyncData(
+  `blog-post-${slug.value}`,
+  () => queryCollection('blog').path(`/blog/${slug.value}`).first(),
+  { watch: [slug] },
 );
 
 if (!post.value) {

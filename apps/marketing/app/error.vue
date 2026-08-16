@@ -27,9 +27,13 @@ const isNotFound = computed(() => isNotFoundStatus(statusCode.value));
 const isServerError = computed(() => isServerErrorStatus(statusCode.value));
 
 const seoTitle = computed(() => {
+  // Mirrors ErrorPage.vue's title branching: a 5xx always gets the friendly translated label here
+  // too, rather than leaking a raw statusText/statusMessage into the page's indexed <title> tag.
   const label = isNotFound.value
     ? t('errors.not_found_title')
-    : error.statusText || error.statusMessage || t('errors.server_error_title');
+    : isServerError.value
+      ? t('errors.server_error_title')
+      : error.statusText || error.statusMessage || t('errors.server_error_title');
   return `${statusCode.value} · ${label}`;
 });
 

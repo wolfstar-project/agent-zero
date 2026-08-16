@@ -18,8 +18,8 @@ const authPolicy = authConfigFromEnvironment();
 
 // `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
 // locale directory has to be wired through each locale's `files` entries instead (the module's own
-// documented pattern for this). `@agent-zero/i18n` keeps `i18nLocales.files` package-relative
-// (`en/common.json`) so it stays portable; this is the one place that resolves them against the
+// documented pattern for this). `i18nLocalesFor` keeps its `files` entries package-relative
+// (`en/common.json`) so they stay portable; this is the one place that resolves them against the
 // installed package's real `locales/` directory.
 const i18nPackageDirectory = dirname(
   fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),

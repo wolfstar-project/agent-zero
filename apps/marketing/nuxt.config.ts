@@ -1,7 +1,12 @@
-import { currentLocales, defaultLocale, localeCookieName } from '@agent-zero/i18n';
+import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { featureCards, logoCloud } from './config/content.js';
+
+// Only the scopes this app renders: every listed file is deep-merged into the bundle whether or
+// not a key from it is read, so the dashboard's auth/organizations copy has no business being
+// here — the reverse of the reason `apps/dashboard/nuxt.config.ts` doesn't load `marketing.json`.
+const marketingLocales = i18nLocalesFor(['common.json', 'errors.json', 'marketing.json']);
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -62,7 +67,7 @@ export default defineNuxtConfig({
   },
 
   i18n: {
-    locales: currentLocales,
+    locales: marketingLocales,
     defaultLocale,
     // Locale-prefixed URLs are the point on a public site: they give each translation its own
     // indexable URL, which is also what lets the sitemap and hreflang tags describe them.
@@ -87,6 +92,10 @@ export default defineNuxtConfig({
     // Mirrors `app.config.ts`'s `site.name`: that file is runtime-only (`useAppConfig()`), while
     // `@nuxtjs/seo` needs a literal value here at build time, so the two cannot share one source.
     name: 'Agent Zero',
+    // This is a prerendered site with no incoming request to auto-detect an origin from, so
+    // unlike the dashboard's NUXT_PUBLIC_SITE_URL (optional there), this has to be set for a
+    // production build — see .env.example.
+    url: process.env.MARKETING_SITE_URL,
   },
 
   $development: {
@@ -149,9 +158,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Falls back to the dashboard's dev port; a deployment overrides this with
-      // NUXT_PUBLIC_DASHBOARD_URL rather than a rebuild.
-      dashboardUrl: 'http://localhost:3000',
+      // Falls back to the dashboard's dev port; a deployment sets MARKETING_DASHBOARD_URL
+      // (see .env.example) rather than rebuilding with a different default.
+      dashboardUrl: process.env.MARKETING_DASHBOARD_URL || 'http://localhost:3000',
     },
   },
 
