@@ -66,6 +66,6 @@ export default defineNuxtModule({
     // dependency, which this monorepo resolves to a different instance than the `vite` this file
     // imports `Plugin` from — a duplicate-instance type mismatch, not a real structural one (the
     // plugin object is duck-typed and works regardless of which `Plugin` alias checked it).
-    addVitePlugin(stripEmptyI18nMessagesPlugin() as Parameters<typeof addVitePlugin>[0]);
+    addVitePlugin(stripEmptyI18nMessagesPlugin() as unknown as Parameters<typeof addVitePlugin>[0]);
   },
 });
