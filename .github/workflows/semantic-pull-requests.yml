@@ -37,6 +37,7 @@ jobs:
             deps
             docs
             github
+            marketing
             models
             release
             runner
