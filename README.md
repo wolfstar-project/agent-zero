@@ -237,13 +237,18 @@ Known limits, all of which follow from the session being local:
   `ai-sdk-provider-codex-cli` exposes no equivalent hook, so Codex's process is always spawned by
   the vendor SDK directly. Its read-only sandbox, disabled approvals, and disabled MCP servers are
   the containment for that one transport instead.
-- **Container isolation covers `claude-code`, not `codex-cli`, and not `RunnerPool` leases.** When
-  `runner.isolation: container` in `.agent-zero.yml`, `claude-code`'s CLI process runs in its own
-  container instead of on the host (see below) — Codex still can't be routed at all, per the point
-  above. A hosted deployment leasing sandboxes through `RunnerPool` is a separate isolation
-  mechanism this does not integrate with yet: `config.runner.isolation` there may not reflect how
-  the leased sandbox is actually isolated, so `claude-code`'s CLI still runs on the control-plane
-  host in that topology today.
+- **Container isolation covers `claude-code`, not `codex-cli`.** When `runner.isolation: container`
+  in `.agent-zero.yml`, `claude-code`'s CLI process runs in its own container instead of on the host
+  (see below) — Codex still can't be routed at all, per the point above.
+- **A `RunnerPool` lease refuses `claude-code` rather than running it unisolated.** A hosted
+  sandbox provider (`vitehub`/`cloudflare`/`vercel`/`custom`) returns only the ordinary `Runner`
+  contract — bounded command execution, never a live process handle — so there is no way to route
+  the CLI's duplex spawn through the same boundary the lease already gives repository commands.
+  Rather than falling back to a host spawn that would bypass that lease's isolation, lifecycle,
+  quota, and audit controls, `packages/api` refuses the transport outright whenever a `runnerPool`
+  is configured on the `RunTaskOptions` passed to `runTask`, independent of `runner.isolation`.
+  `codex-cli` has no working code path to bypass here in the first place (see above), so this gate
+  is `claude-code`-only.
 - **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
   `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
   transport to degrade to it automatically when the CLI is missing, its session expired, or its

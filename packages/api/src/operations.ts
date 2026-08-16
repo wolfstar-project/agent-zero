@@ -187,8 +187,18 @@ export async function runTask(
       const runner =
         lease?.runner ?? createRunner(input.repository, runnerOptionsFromPolicy(config, writable));
       // Refuses claude-code under container isolation when no CLI container image is configured,
-      // rather than silently spawning it unisolated on the control-plane host.
-      const modelEnvironment = environmentForModel(config, process.env);
+      // rather than silently spawning it unisolated on the control-plane host. A RunnerPool lease
+      // refuses it outright regardless of runner.isolation: SandboxProvider (vitehub/cloudflare/
+      // vercel/custom) returns only a bounded-command Runner, never a live process handle, so there
+      // is no way to route the CLI's duplex spawn through the same hosted boundary the lease already
+      // gives the repository commands — spawning it locally instead would bypass exactly the
+      // isolation, lifecycle, quota, and audit controls an operator configured RunnerPool for.
+      const modelEnvironment = lease
+        ? {
+            ...environmentForModel(config, process.env),
+            AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'false',
+          }
+        : environmentForModel(config, process.env);
       const spawnClaudeCodeProcess =
         config.model.provider === 'claude-code' &&
         isSubscriptionProviderEnabled('claude-code', modelEnvironment)
