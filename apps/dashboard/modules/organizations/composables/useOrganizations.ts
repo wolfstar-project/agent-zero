@@ -1,5 +1,5 @@
-// Imported explicitly rather than relying on Nuxt auto-imports: the package's plain `tsc` pass
-// checks `app/**/*.ts` without the generated auto-import declarations that `vue-tsc` sees.
+// Imported explicitly rather than relying on Nuxt auto-imports, so the dependency stays visible at
+// the call site; `nuxt typecheck` resolves either form.
 import { useAuthClient } from '@onmax/nuxt-better-auth/composables';
 import { useState } from 'nuxt/app';
 

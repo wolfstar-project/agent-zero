@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardOverview } from '~/modules/dashboard/types/dashboard';
+import type { DashboardOverview } from '~~/modules/dashboard/types/dashboard';
 
 const emptyOverview = (): DashboardOverview => ({
   tasks: [],

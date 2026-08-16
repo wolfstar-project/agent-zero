@@ -4,7 +4,7 @@ import {
   isNotFoundStatus,
   isServerErrorStatus,
   resolveErrorStatus,
-} from '../../app/modules/shared/utils/error-status.js';
+} from '../../modules/shared/utils/error-status.js';
 
 describe('resolveErrorStatus', () => {
   it('prefers the Nuxt-normalized status', () => {

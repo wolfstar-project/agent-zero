@@ -25,8 +25,10 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthClient } from '@onmax/nuxt-better-auth/composables';
+
 const route = useRoute();
-const { client } = useAuth();
+const client = useAuthClient();
 
 const status = ref<'pending' | 'accepted' | 'failed'>('pending');
 
@@ -36,7 +38,9 @@ const status = ref<'pending' | 'accepted' | 'failed'>('pending');
  */
 onMounted(async () => {
   const invitationId = String(route.params.id ?? '');
-  if (!invitationId) {
+  // The client is null only before hydration, which `onMounted` has already passed; a null here
+  // means the auth plugin never initialised, so there is nothing to accept the invitation against.
+  if (!invitationId || !client) {
     status.value = 'failed';
     return;
   }

@@ -4,24 +4,27 @@
 
 ## Module-per-feature layout
 
-Application code lives under `app/modules/<feature>/` rather than Nuxt's default flat directories, registered explicitly in `nuxt.config.ts`:
+Application code lives under `modules/<feature>/` rather than Nuxt's default flat directories. Each feature is a real Nuxt module: its `index.ts` registers its own `components/`, `composables/`, and `utils/` directories, and Nuxt discovers it by scanning `modules/`, so nothing has to be listed in `nuxt.config.ts`. `apps/marketing` uses the same layout.
 
 ```text
-apps/dashboard/app/
-├── app.vue
-├── pages/
-│   ├── (auth)/login.vue
-│   ├── (dashboard)/index.vue
-│   └── (organizations)/…
-├── layouts/
-├── plugins/
-├── types/
-├── assets/css/
+apps/dashboard/
+├── app/
+│   ├── app.vue
+│   ├── pages/
+│   │   ├── (auth)/login.vue
+│   │   ├── (dashboard)/index.vue
+│   │   └── (organizations)/…
+│   ├── layouts/
+│   ├── plugins/
+│   ├── types/
+│   └── assets/css/
 └── modules/
-    ├── shared/          # cross-feature components and composables
+    ├── shared/          # cross-feature components, composables, and utils
     ├── auth/            # login and session UI
     ├── dashboard/       # task history, queue, approvals
-    └── organizations/   # organization management
+    ├── organizations/   # organization management
+    ├── i18n-strip-empty/ # drops untranslated placeholder keys from the bundle
+    └── vitehub.ts       # ViteHub KV inside Nuxt's Nitro build
 ```
 
 Route groups — `(auth)`, `(dashboard)`, `(organizations)` — organize pages without affecting URLs. Pages are gated through `routeRules` with `auth: { only: 'user' | 'guest' }` and a layout assignment.
