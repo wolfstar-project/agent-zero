@@ -1,0 +1,8 @@
+---
+title: Sandbox providers
+---
+
+<!-- The canonical evaluation lives at docs/sandbox-providers.md in the
+repository so coding agents and the site read the same source. Edit it there. -->
+
+<!--@include: ../../../docs/sandbox-providers.md-->
