@@ -25,7 +25,10 @@
         {{ post.authorInitials }}
       </span>
       <span class="min-w-0 truncate text-sm font-650">{{ post.author }}</span>
-      <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="localePath(post.path)">
+      <NuxtLink
+        class="focus-ring ms-auto shrink-0 text-xs text-link font-650"
+        :to="localePath(post.path)"
+      >
         {{ $t('marketing.pages.blog.readMore') }} →
       </NuxtLink>
     </div>
