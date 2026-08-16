@@ -33,6 +33,7 @@ export function siteNavigation(
     { id: 'features', to: anchor('features'), external: false },
     { id: 'pricing', to: localePath('/pricing'), external: false },
     { id: 'faq', to: anchor('faq'), external: false },
+    { id: 'blog', to: localePath('/blog'), external: false },
     { id: 'contact', to: localePath('/contact'), external: false },
     { id: 'docs', to: docsUrl, external: true },
   ];

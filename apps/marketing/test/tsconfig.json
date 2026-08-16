@@ -10,6 +10,10 @@
     "declarationMap": false,
     "noEmit": true,
     "rootDir": "..",
+    // `test/nuxt/**` specs run against a real DOM (happy-dom, via @nuxt/test-utils) and some
+    // stub browser globals like `window.location` directly; the base config omits "dom" so
+    // application source never accidentally reaches for a browser-only API.
+    "lib": ["ES2023", "dom"],
     // Mirror the Nuxt source aliases for the specs under test/nuxt.
     "paths": {
       "~/*": ["../app/*"],

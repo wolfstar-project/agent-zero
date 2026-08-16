@@ -5,21 +5,10 @@
 </template>
 
 <script setup lang="ts">
-import type { Collections } from '@nuxt/content';
-
-const { locale } = useI18n();
-
-// The collection name encodes the locale (`legal_en`, `legal_it` — see `content.config.ts`), so a
-// locale switch has to requery rather than filter client-side; `watch` keeps the two in sync. The
-// key must carry the locale too: prerendering runs every route through the same server process,
-// and a locale-less key would let the English and Italian builds share one cached result.
-const { data: page } = await useAsyncData(
-  `legal-privacy-${locale.value}`,
-  () => {
-    const collection = `legal_${locale.value}` as keyof Collections;
-    return queryCollection(collection).path('/legal/privacy').first();
-  },
-  { watch: [locale] },
+// This document ships in English only (see content.config.ts); the surrounding page chrome
+// (nav, footer) stays fully translated through packages/i18n regardless of the visitor's locale.
+const { data: page } = await useAsyncData('legal-privacy', () =>
+  queryCollection('legal').path('/legal/privacy').first(),
 );
 
 if (!page.value) {

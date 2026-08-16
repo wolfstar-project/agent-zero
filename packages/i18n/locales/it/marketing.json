@@ -6,6 +6,7 @@
       "features": "Funzionalità",
       "pricing": "Prezzi",
       "faq": "FAQ",
+      "blog": "Blog",
       "docs": "Documentazione",
       "contact": "Contatti",
       "signIn": "Accedi",
@@ -183,13 +184,35 @@
         "title": "Contatti",
         "description": "Parla con il team di Agent Zero di esecuzione gestita, deployment enterprise o di una questione di sicurezza.",
         "heading": "Raccontaci cosa stai cercando di automatizzare",
-        "body": "Per qualsiasi cosa tecnica la strada più rapida è una issue su GitHub, dove la risposta resta visibile a tutto il progetto. Per acquisti, revisione di sicurezza o deployment enterprise è meglio l'email.",
+        "body": "Scrivici qui sotto, oppure usa uno dei canali diretti più in basso — una issue su GitHub è la via più rapida per qualsiasi cosa tecnica, l'email è meglio per acquisti, revisione di sicurezza o deployment enterprise.",
+        "form": {
+          "nameLabel": "Nome",
+          "namePlaceholder": "Maria Rossi",
+          "emailLabel": "Email",
+          "emailPlaceholder": "tu{'@'}esempio.com",
+          "messageLabel": "Messaggio",
+          "messagePlaceholder": "Raccontaci cosa stai cercando di automatizzare.",
+          "submit": "Invia messaggio",
+          "hint": "Apre il tuo client email con questo testo precompilato — il sito stesso non conserva alcun dato del modulo.",
+          "requiredError": "Compila tutti i campi prima di inviare."
+        },
+        "channelsHeading": "Oppure contattaci direttamente",
         "issuesTitle": "Apri una issue",
         "issuesBody": "Segnalazioni di bug, richieste di funzionalità e domande sul runtime.",
         "emailTitle": "Scrivici",
         "emailBody": "Deployment enterprise, acquisti e contratti di supporto.",
         "securityTitle": "Segnala una vulnerabilità",
         "securityBody": "Segui il processo di divulgazione coordinata invece di aprire una issue pubblica."
+      },
+      "blog": {
+        "title": "Blog",
+        "description": "Note su come rilasciare in sicurezza un ingegnere autonomo: modalità osservazione, il confine del runner e cosa significa davvero un'evidenza verificata.",
+        "heading": "Blog",
+        "subtitle": "Note dal runtime",
+        "allTag": "Tutti",
+        "readMore": "Leggi di più",
+        "backToBlog": "Torna al blog",
+        "empty": "Ancora nessun articolo."
       }
     },
     "legal": {

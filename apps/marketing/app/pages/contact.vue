@@ -6,6 +6,11 @@
       </h1>
       <p class="m-0 mt-4 lede">{{ $t('marketing.pages.contact.body') }}</p>
 
+      <ContactForm />
+
+      <h2 class="m-0 mt-14 text-base font-700">
+        {{ $t('marketing.pages.contact.channelsHeading') }}
+      </h2>
       <ContactChannels />
     </div>
   </div>

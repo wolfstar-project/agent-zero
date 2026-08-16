@@ -12,26 +12,37 @@ const legalSchema = z.object({
 });
 
 /**
- * One collection per locale rather than a single collection with a `locale` field: `@nuxt/content`
- * resolves a collection's `source` at build time, so per-locale directories under `content/` give
- * each translation its own indexable set of files without a runtime filter, and a missing
- * translation fails at the query site instead of silently falling back to the wrong language.
- *
- * `packages/i18n` remains the source of UI copy (nav labels, buttons, page titles for the other
- * pages); this collection exists because legal document *bodies* are prose too long to live as
- * i18n string values, not because the two systems compete for the same content.
+ * Frontmatter every blog post declares. `date` is the publication date (ISO 8601) the listing
+ * sorts by; `tag` is a single lowercase category the listing can filter on; `authorInitials`
+ * feeds the same initials-tile avatar the testimonials use — this site ships no portrait images.
+ */
+const blogSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  date: z.string(),
+  author: z.string(),
+  authorInitials: z.string(),
+  tag: z.string(),
+});
+
+/**
+ * A single `legal` and a single `blog` collection, sourced from `en/` only: this site's long-form
+ * content ships in English regardless of the visitor's UI locale. `packages/i18n` remains the
+ * source of UI copy (nav labels, buttons, page titles for the other pages); these collections
+ * exist because document and post bodies are prose too long to live as i18n string values, not
+ * because the two systems compete for the same content.
  */
 export default defineContentConfig({
   collections: {
-    legal_en: defineCollection({
+    legal: defineCollection({
       type: 'page',
       source: { include: 'en/legal/**', prefix: '/legal' },
       schema: legalSchema,
     }),
-    legal_it: defineCollection({
+    blog: defineCollection({
       type: 'page',
-      source: { include: 'it/legal/**', prefix: '/legal' },
-      schema: legalSchema,
+      source: { include: 'en/blog/**', prefix: '/blog' },
+      schema: blogSchema,
     }),
   },
 });

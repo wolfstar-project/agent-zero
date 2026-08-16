@@ -68,6 +68,7 @@ export default defineNuxtConfig({
     './modules/shared',
     './modules/home',
     './modules/contact',
+    './modules/blog',
   ],
   css: ['~/assets/css/main.css'],
   icon: {
@@ -127,8 +128,9 @@ export default defineNuxtConfig({
     allow: '*',
   },
   sitemap: {
-    // Every route is static and discovered from the filesystem; add entries here if this site ever
-    // grows dynamic ones (a blog, a changelog fed by releases).
+    // Every route — including blog posts — is prerendered ahead of time (`nitro.prerender.crawlLinks`
+    // below follows every link it finds, starting from `/`), so the sitemap needs no dynamic source:
+    // it is built from the same static file list the build already produced.
     sources: [],
   },
   // `nuxt-og-image` renders per-page social cards, but it resolves its fonts over the network at

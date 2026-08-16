@@ -5,19 +5,9 @@
 </template>
 
 <script setup lang="ts">
-import type { Collections } from '@nuxt/content';
-
-const { locale } = useI18n();
-
-// The key carries the locale so prerendering — which runs every route through the same server
-// process — can't let the English and Italian builds share one cached result.
-const { data: page } = await useAsyncData(
-  `legal-terms-${locale.value}`,
-  () => {
-    const collection = `legal_${locale.value}` as keyof Collections;
-    return queryCollection(collection).path('/legal/terms').first();
-  },
-  { watch: [locale] },
+// This document ships in English only; see the note in legal/privacy.vue.
+const { data: page } = await useAsyncData('legal-terms', () =>
+  queryCollection('legal').path('/legal/terms').first(),
 );
 
 if (!page.value) {

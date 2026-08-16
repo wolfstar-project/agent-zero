@@ -9,12 +9,13 @@ because it exists to be crawled, prerendering every route rather than serving a 
 
 ## Boundaries
 
-| Rule                             | Why                                                                                       |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| No runtime-package imports       | Nothing here may reach `packages/agent`, `packages/runner`, or any other runtime package. |
-| No persistence, no auth handlers | Sign-in links out to the dashboard origin; this app never sees a session.                 |
-| No secrets                       | Everything in `config/` is public by construction and ships in the client bundle.         |
-| Nitro is for rendering only      | The only server routes are the ones `@nuxtjs/seo` generates (`/robots.txt`, sitemaps).    |
+| Rule                             | Why                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| No runtime-package imports       | Nothing here may reach `packages/agent`, `packages/runner`, or any other runtime package.         |
+| No persistence, no auth handlers | Sign-in links out to the dashboard origin; this app never sees a session.                         |
+| No secrets                       | Everything in `config/` is public by construction and ships in the client bundle.                 |
+| Nitro is for rendering only      | The only server routes are the ones `@nuxtjs/seo` generates (`/robots.txt`, sitemaps).            |
+| Contact form has no backend      | `ContactForm` builds a `mailto:` link client-side; nothing is submitted to or stored by this app. |
 
 `@nuxt/content` keeps a local SQLite index of `content/` at build/dev time to serve queries — that
 is a build-time content cache, not application persistence: it holds no user data and no
@@ -32,19 +33,21 @@ app/
   app.config.ts                non-secret site identity and links (useAppConfig())
   error.vue                   fatal-error shell
   layouts/default.vue         skip link, header, main landmark, footer
-  pages/                      /, /pricing, /contact, /legal/privacy, /legal/terms
+  pages/                      /, /pricing, /contact, /blog, /blog/[slug],
+                               /legal/privacy, /legal/terms
 modules/
   home/                       landing-page sections (Hero, Faq, PricingTable, ...) and composables
     index.ts                  its own local Nuxt module, registering components/ and composables/
-  contact/                    the contact page's channel list
+  contact/                    the contact form (mailto-based — see Boundaries) and channel list
+    index.ts                  local Nuxt module, registering components/
+  blog/                       the post card rendered by the listing page
     index.ts                  local Nuxt module, registering components/
   shared/                     header, footer, locale switcher, color-mode toggle, error page
     index.ts                  local Nuxt module, registering components/
-  blog/, changelog/,
-  analytics/                  reserved, not built yet — see each module's README.md
+  changelog/, analytics/      reserved, not built yet — see each module's README.md
 content/
-  en/legal/, it/legal/        Markdown legal documents, queried through the `legal_<locale>`
-                               collections in content.config.ts
+  en/legal/                   Markdown legal documents, queried through the `legal` collection
+  en/blog/                    Markdown blog posts, queried through the `blog` collection
 i18n/
   i18n.config.ts               vue-i18n composer options (locales themselves stay in nuxt.config.ts)
 config/
@@ -57,10 +60,12 @@ under `locales/<locale>/marketing.json`, so translators work from one place and 
 staleness. `config/content.ts` holds only what is not language — ordering, icons, prices, and link
 targets — and `test/unit/content.test.ts` asserts that the two agree for every shipped locale.
 
-Copy for the _documents_ (privacy policy, terms of service — prose too long to live as a JSON string
-value) lives in `content/<locale>/legal/*.md` instead, with `title`, `description`, and
-`lastUpdated` as frontmatter. `test/unit/legal-content.test.ts` asserts every locale ships the same
-set of documents with valid frontmatter.
+Copy for _long-form content_ (privacy policy, terms of service, blog posts — prose too long to live
+as a JSON string value) lives in `content/en/**` instead, with frontmatter (`title`, `description`,
+and document-specific fields) declared in `content.config.ts`. It ships in English only: the
+`legal` and `blog` collections both source from `en/` regardless of the visitor's UI locale, which
+stays fully translated through `packages/i18n`. `test/unit/legal-content.test.ts` asserts the legal
+documents carry valid frontmatter.
 
 There is no `config/app.ts`: site identity (`app.config.ts`, `useAppConfig()`) and the two
 environment-derived URLs (read directly in `nuxt.config.ts`, each used exactly once) don't share
@@ -125,12 +130,20 @@ from `config/content.ts`, add its list to `icon.clientBundle.icons` in `nuxt.con
 
 ## Adding or editing a legal document
 
-1. Edit (or add) `content/en/legal/<name>.md` and `content/it/legal/<name>.md`, each with `title`,
-   `description`, and `lastUpdated` (ISO 8601 date) frontmatter matching the `legalSchema` in
-   `content.config.ts`.
+1. Edit (or add) `content/en/legal/<name>.md`, with `title`, `description`, and `lastUpdated` (ISO
+   8601 date) frontmatter matching the `legalSchema` in `content.config.ts`.
 2. Bump `lastUpdated` whenever the body changes — it is the only thing that tells a returning
    visitor the document is different, and `SiteLegalPage.vue` renders it verbatim.
-3. Link a new document from a page: query `legal_<locale>` (see `app/pages/legal/privacy.vue` for
-   the pattern) and wrap the result in `<SiteLegalPage>` + `<ContentRenderer>`.
-4. `aube --filter @agent-zero/marketing run test` checks both locales ship the same document set
-   with valid frontmatter and the not-legal-advice notice.
+3. Link a new document from a page: query the `legal` collection (see `app/pages/legal/privacy.vue`
+   for the pattern) and wrap the result in `<SiteLegalPage>` + `<ContentRenderer>`.
+4. `aube --filter @agent-zero/marketing run test` checks the frontmatter is valid and every
+   document carries the not-legal-advice notice.
+
+## Adding a blog post
+
+1. Add `content/en/blog/<slug>.md`, with `title`, `description`, `date` (ISO 8601), `author`,
+   `authorInitials`, and `tag` frontmatter matching the `blogSchema` in `content.config.ts`. The
+   slug becomes the URL (`/blog/<slug>`).
+2. That's it — `app/pages/blog/index.vue` lists every post ordered by `date`, and
+   `app/pages/blog/[slug].vue` renders it. No page or route registration needed per post.
+3. A new `tag` value appears automatically in the listing page's filter chips.

@@ -6,6 +6,7 @@
       "features": "Features",
       "pricing": "Pricing",
       "faq": "FAQ",
+      "blog": "Blog",
       "docs": "Docs",
       "contact": "Contact",
       "signIn": "Sign in",
@@ -183,13 +184,35 @@
         "title": "Contact",
         "description": "Talk to the Agent Zero team about hosted execution, enterprise deployment, or a security question.",
         "heading": "Tell us what you are trying to automate",
-        "body": "The fastest route for anything technical is a GitHub issue, where the whole project can see the answer. For procurement, security review, or enterprise deployment, email is better.",
+        "body": "Send a message below, or use one of the direct routes underneath it — a GitHub issue is fastest for anything technical, and email is better for procurement, security review, or enterprise deployment.",
+        "form": {
+          "nameLabel": "Name",
+          "namePlaceholder": "Jane Doe",
+          "emailLabel": "Email",
+          "emailPlaceholder": "you{'@'}example.com",
+          "messageLabel": "Message",
+          "messagePlaceholder": "Tell us what you're trying to automate.",
+          "submit": "Send message",
+          "hint": "Opens your email client with this pre-filled — the site itself holds no contact-form data.",
+          "requiredError": "Fill in every field before sending."
+        },
+        "channelsHeading": "Or reach us directly",
         "issuesTitle": "Open an issue",
         "issuesBody": "Bug reports, feature requests, and questions about the runtime.",
         "emailTitle": "Email us",
         "emailBody": "Enterprise deployment, procurement, and support agreements.",
         "securityTitle": "Report a vulnerability",
         "securityBody": "Please follow the coordinated disclosure process instead of opening a public issue."
+      },
+      "blog": {
+        "title": "Blog",
+        "description": "Notes on shipping an autonomous engineer safely: observe mode, the runner boundary, and what verified evidence actually means.",
+        "heading": "Blog",
+        "subtitle": "Notes from the runtime",
+        "allTag": "All",
+        "readMore": "Read more",
+        "backToBlog": "Back to blog",
+        "empty": "No posts yet."
       }
     },
     "legal": {

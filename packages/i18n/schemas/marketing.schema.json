@@ -22,6 +22,9 @@
             "faq": {
               "type": "string"
             },
+            "blog": {
+              "type": "string"
+            },
             "docs": {
               "type": "string"
             },
@@ -556,6 +559,42 @@
                 "body": {
                   "type": "string"
                 },
+                "form": {
+                  "type": "object",
+                  "properties": {
+                    "nameLabel": {
+                      "type": "string"
+                    },
+                    "namePlaceholder": {
+                      "type": "string"
+                    },
+                    "emailLabel": {
+                      "type": "string"
+                    },
+                    "emailPlaceholder": {
+                      "type": "string"
+                    },
+                    "messageLabel": {
+                      "type": "string"
+                    },
+                    "messagePlaceholder": {
+                      "type": "string"
+                    },
+                    "submit": {
+                      "type": "string"
+                    },
+                    "hint": {
+                      "type": "string"
+                    },
+                    "requiredError": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "channelsHeading": {
+                  "type": "string"
+                },
                 "issuesTitle": {
                   "type": "string"
                 },
@@ -572,6 +611,36 @@
                   "type": "string"
                 },
                 "securityBody": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "blog": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "heading": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "type": "string"
+                },
+                "allTag": {
+                  "type": "string"
+                },
+                "readMore": {
+                  "type": "string"
+                },
+                "backToBlog": {
+                  "type": "string"
+                },
+                "empty": {
                   "type": "string"
                 }
               },

@@ -14,6 +14,7 @@ describe('siteNavigation', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain('pricing');
+    expect(ids).toContain('blog');
   });
 
   it('builds home anchors without a doubled separator on the default locale', () => {
@@ -34,6 +35,7 @@ describe('siteNavigation', () => {
 
     expect(navigation.find((link) => link.id === 'pricing')?.to).toBe('/it/pricing');
     expect(navigation.find((link) => link.id === 'contact')?.to).toBe('/it/contact');
+    expect(navigation.find((link) => link.id === 'blog')?.to).toBe('/it/blog');
   });
 
   it('leaves external destinations untouched by the locale', () => {
