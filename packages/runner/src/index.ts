@@ -22,8 +22,13 @@ export { LocalRunner } from './local.js';
 export {
   assertSimpleCommand,
   CommandRejectedError,
+  containerizedProcessArgv,
   execFileProcessRunner,
+  spawnManagedProcess,
   splitCommand,
+  type ManagedProcessContainerOptions,
+  type ManagedProcessMount,
+  type ManagedSpawnOptions,
   type ProcessOptions,
   type ProcessOutcome,
   type ProcessRunner,

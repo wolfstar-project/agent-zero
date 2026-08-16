@@ -72,6 +72,11 @@ model:
   # ai-gateway, anthropic, google, openai, or openai-compatible.
   # Credentials are read only from the provider's documented environment variable; they are
   # never accepted from repository configuration or persisted with task evidence.
+  #
+  # claude-code and codex-cli spend a Claude Pro/Max or ChatGPT Plus/Pro subscription through the
+  # vendor CLI installed on the host. They take no credential and stay off until the operator sets
+  # AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER or AGENT_ZERO_ENABLE_CODEX_CLI_PROVIDER to true, because
+  # the session is bound to one host and one personal account.
   provider: openai-compatible
   name: gpt-5
   # Optional explicit pricing enables deterministic cost accounting.
