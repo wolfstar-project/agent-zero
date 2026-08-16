@@ -30,6 +30,7 @@ export {
   type IssueRef,
   type ModelFinding,
   type ModelCallUsage,
+  type ModelProviderCredentialKind,
   type ModelProviderKind,
   type NetworkPolicy,
   type ProposedChange,

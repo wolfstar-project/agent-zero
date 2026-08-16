@@ -1,0 +1,8 @@
+---
+title: Execution boundary
+---
+
+<!-- Included verbatim from the canonical docs/architecture.md at the
+repository root. Edit it there. -->
+
+<!--@include: ../../../../docs/architecture.md#execution-boundary-->

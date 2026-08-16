@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { AgentZero } from '@agent-zero/agent';
 import { loadConfig, mayModifyRepository } from '@agent-zero/config';
-import { modelFromEnvironment } from '@agent-zero/models';
+import { isSubscriptionProviderEnabled, modelFromEnvironment } from '@agent-zero/models';
 import {
   createRunner,
   LocalRunner,
@@ -50,6 +50,7 @@ import {
   type StoredTask,
   type TaskStore,
 } from './control-plane.js';
+import { claudeCodeProcessSpawner, claudeCodeRefusalReason } from './subscription-isolation.js';
 
 const TRAILING_SLASH = /\/$/u;
 
@@ -185,8 +186,37 @@ export async function runTask(
         : undefined;
       const runner =
         lease?.runner ?? createRunner(input.repository, runnerOptionsFromPolicy(config, writable));
+      // Refuses claude-code under container isolation when no CLI container image is configured,
+      // and outright under a RunnerPool lease regardless of runner.isolation: SandboxProvider
+      // (vitehub/cloudflare/vercel/custom) returns only a bounded-command Runner, never a live
+      // process handle, so there is no way to route the CLI's duplex spawn through the same hosted
+      // boundary the lease already gives repository commands — spawning it on the control-plane
+      // host instead would bypass exactly the isolation, lifecycle, quota, and audit controls an
+      // operator configured RunnerPool for. Reported to modelFromEnvironment as a refusal reason,
+      // not by disabling the enable flag: the flag would also skip fallback selection, turning a
+      // configured AGENT_ZERO_MODEL_FALLBACK_PROVIDER into a run that fails outright instead of
+      // degrading to it.
+      const refusalReason =
+        config.model.provider !== 'claude-code'
+          ? undefined
+          : lease
+            ? 'A RunnerPool lease is active for this task; the claude-code CLI process cannot be ' +
+              "routed through an arbitrary SandboxProvider's boundary, so it cannot honor the " +
+              'isolation the lease provides for repository commands.'
+            : claudeCodeRefusalReason(config, process.env);
+      const spawnClaudeCodeProcess =
+        config.model.provider === 'claude-code' &&
+        refusalReason === undefined &&
+        isSubscriptionProviderEnabled('claude-code', process.env)
+          ? claudeCodeProcessSpawner(config, process.env)
+          : undefined;
       const agent = new AgentZero({
-        model: modelFromEnvironment(config.model),
+        model: modelFromEnvironment(
+          config.model,
+          process.env,
+          spawnClaudeCodeProcess,
+          refusalReason,
+        ),
         runner,
         config,
         taskIdentifier: identifier,

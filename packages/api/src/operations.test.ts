@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
+import { RunnerPool, type Runner, type SandboxProvider } from '@agent-zero/runner';
 import type { EvidenceBundle } from '@agent-zero/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -73,6 +74,26 @@ const git = promisify(execFile);
 async function bindCheckout(url = 'https://github.com/acme/app.git'): Promise<void> {
   await git('git', ['init', '--quiet'], { cwd: checkout });
   await git('git', ['remote', 'add', 'origin', url], { cwd: checkout });
+}
+
+/** A minimal hosted sandbox provider: leases a Runner that never actually gets used in this test. */
+function sandboxProvider(): SandboxProvider {
+  const runner: Runner = {
+    describe: () => ({ kind: 'container', isolated: true, writable: false, network: 'none' }),
+    context: async () => '',
+    reviewFiles: async () => [],
+    read: async () => '',
+    readBytes: async () => new Uint8Array(),
+    exists: async () => false,
+    write: async () => undefined,
+    check: async (command) => ({ command, exitCode: 0, stdout: '', stderr: '', durationMs: 0 }),
+    changedFiles: async () => [],
+  };
+  return {
+    kind: 'vitehub',
+    provision: async (request) => ({ externalId: `remote-${request.taskId}`, runner }),
+    stop: async () => undefined,
+  };
 }
 
 beforeEach(async () => {
@@ -168,6 +189,45 @@ describe('runTask', () => {
     });
     expect(result.verified).toBe(false);
     expect(result.verdict).toBe('rejected');
+  });
+
+  it('refuses claude-code under a RunnerPool lease instead of spawning it unisolated on the host', async () => {
+    // SandboxProvider (vitehub/cloudflare/vercel/custom) returns only a bounded-command Runner,
+    // never a live process handle — there is no way to route the CLI's duplex spawn through the
+    // same hosted boundary the lease gives repository commands, so a lease refuses the transport
+    // outright rather than silently falling back to a host spawn that bypasses it.
+    await writeFile(
+      join(checkout, '.agent-zero.yml'),
+      'version: 1\nmode: observe\nmodel:\n  provider: claude-code\n  name: sonnet\n',
+      'utf8',
+    );
+    const original = process.env.AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER;
+    process.env.AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER = 'true';
+    try {
+      const pool = new RunnerPool(sandboxProvider(), {
+        maxActive: 1,
+        maxActivePerRepository: 1,
+        // At least defaultConfig.agent.timeoutMs (1_800_000): runTask requests that as leaseMs.
+        maxLeaseMs: 2_000_000,
+      });
+      const result = await runTask(
+        { repository: checkout, feedback: 'load() is wrong', mode: 'observe' },
+        { runnerPool: pool },
+      );
+      // No AGENT_ZERO_MODEL_FALLBACK_PROVIDER is configured in this test, so the refusal has
+      // nothing to degrade to and the run fails outright rather than spawning the CLI unisolated
+      // on the host. `modelFromEnvironment` proves the companion guarantee — that a configured
+      // fallback IS honored here instead of being skipped — at the unit level in
+      // packages/models/src/index.test.ts ("preserves a configured fallback when a composition
+      // root refuses the transport"), since exercising a real fallback provider end to end here
+      // would require a live model call.
+      expect(result.state).toBe('failed');
+      expect(result.finding).toBeNull();
+      expect(result.verified).toBe(false);
+    } finally {
+      if (original === undefined) delete process.env.AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER;
+      else process.env.AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER = original;
+    }
   });
 });
 

@@ -127,6 +127,13 @@ describe('validateConfig', () => {
       ).toBe(provider);
   });
 
+  it('accepts subscription model providers, which carry no credential to leak into policy', () => {
+    for (const provider of ['claude-code', 'codex-cli'] as const)
+      expect(
+        validateConfig(config({ model: { ...defaultConfig.model, provider } })).model.provider,
+      ).toBe(provider);
+  });
+
   it('rejects an unknown model provider', () => {
     expect(() =>
       validateConfig(
