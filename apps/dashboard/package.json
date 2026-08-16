@@ -34,6 +34,7 @@
     "h3": "^1.15.11",
     "nuxt": "^4.5.2",
     "vite-hub": "^0.0.3",
+    "vue": "^3.5.40",
     "vue-i18n": "^11.4.8"
   },
   "devDependencies": {
@@ -51,6 +52,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^5.9.2",
     "unocss": "^66.7.5",
+    "vite": "^7.3.6",
     "vitest": "^4.1.10",
     "vue-tsc": "^3.1.2"
   }

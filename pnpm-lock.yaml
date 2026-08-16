@@ -119,6 +119,9 @@ importers:
       vite-hub:
         specifier: ^0.0.3
         version: 0.0.3(c9e646becd63df87a0549324729167e8)
+      vue:
+        specifier: ^3.5.40
+        version: 3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2)
       vue-i18n:
         specifier: ^11.4.8
         version: 11.4.8(vue@3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2))
@@ -165,6 +168,9 @@ importers:
       unocss:
         specifier: ^66.7.5
         version: 66.7.5(@unocss/webpack@66.7.5(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.26)))(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
+      vite:
+        specifier: ^7.3.6
+        version: 7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0)
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
@@ -186,7 +192,7 @@ importers:
     devDependencies:
       '@maizzle/framework':
         specifier: ^6.0.13
-        version: 6.0.13(@nuxt/kit@4.5.2(magic-string@1.1.0)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1)(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0))))(@oxc-project/types@0.143.0)(@types/node@24.13.3)(@vitejs/devtools-kit@0.4.12(cac@7.0.0)(srvx@0.12.5)(vite@8.2.1))(@vitejs/devtools@0.4.12)(@vue/compiler-sfc@3.5.41)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(rollup@4.62.4)(shiki@4.4.3)(tailwind-merge@3.6.0)(terser@5.49.2)(tsx@4.23.11)(vue@3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2))(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0))(yaml@2.9.0)
+        version: 6.0.13(@nuxt/kit@4.5.2(magic-string@1.1.0)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1)(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.26))))(@oxc-project/types@0.143.0)(@types/node@24.13.3)(@vitejs/devtools-kit@0.4.12(cac@7.0.0)(srvx@0.12.5)(vite@8.2.1))(@vitejs/devtools@0.4.12)(@vue/compiler-sfc@3.5.41)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(rollup@4.62.4)(shiki@4.4.3)(tailwind-merge@3.6.0)(terser@5.49.2)(tsx@4.23.11)(vue@3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2))(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.26))(yaml@2.9.0)
       '@maizzle/tailwindcss':
         specifier: ^1.5.6
         version: 1.5.6
@@ -433,7 +439,7 @@ importers:
     dependencies:
       '@maizzle/framework':
         specifier: ^6.0.13
-        version: 6.0.13(@nuxt/kit@4.5.2(magic-string@1.1.0)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1)(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.26))))(@oxc-project/types@0.143.0)(@types/node@24.13.3)(@vitejs/devtools-kit@0.4.12(cac@7.0.0)(srvx@0.12.5)(vite@8.2.1))(@vitejs/devtools@0.4.12)(@vue/compiler-sfc@3.5.41)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(rollup@4.62.4)(shiki@4.4.3)(tailwind-merge@3.6.0)(terser@5.49.2)(tsx@4.23.11)(vue@3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2))(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.26))(yaml@2.9.0)
+        version: 6.0.13(@nuxt/kit@4.5.2(magic-string@1.1.0)(magicast@0.5.4)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1)(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0))))(@oxc-project/types@0.143.0)(@types/node@24.13.3)(@vitejs/devtools-kit@0.4.12(cac@7.0.0)(srvx@0.12.5)(vite@8.2.1))(@vitejs/devtools@0.4.12)(@vue/compiler-sfc@3.5.41)(esbuild@0.28.2)(lightningcss@1.33.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(rollup@4.62.4)(shiki@4.4.3)(tailwind-merge@3.6.0)(terser@5.49.2)(tsx@4.23.11)(vue@3.5.41(typescript-native-bridge@6.0.3-bridge.12.tsgo.7.0.2))(webpack@5.109.2(esbuild@0.28.2)(lightningcss@1.33.0))(yaml@2.9.0)
       '@maizzle/tailwindcss':
         specifier: ^1.5.6
         version: 1.5.6
