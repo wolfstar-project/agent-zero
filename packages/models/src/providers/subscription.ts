@@ -387,6 +387,14 @@ function adaptSpawnedProcess(spawnProcess: ClaudeCodeProcessSpawner) {
  * plain `exec` argument vector and exposes no resume setting, so an interrupted Codex call can
  * only be reissued after the window reopens. Claude Code resumes its session properly; the wait
  * itself works for both.
+ *
+ * Unlike `claudeCodeLanguageModel`, this never receives a spawner: `ai-sdk-provider-codex-cli`
+ * exposes no `spawnClaudeCodeProcess`-equivalent hook, so its `child_process.spawn` call cannot be
+ * routed through `packages/runner` regardless of the deployment's runner isolation. A containerized
+ * runner still runs this CLI's process directly on the control-plane host — the read-only sandbox,
+ * disabled approvals, and disabled MCP servers below are the containment for that gap, not a
+ * substitute for the process isolation this cannot provide. Documented for operators in README
+ * ("Known limits" under the subscription-transports section) as well as here.
  */
 async function codexCliLanguageModel(
   model: string,
