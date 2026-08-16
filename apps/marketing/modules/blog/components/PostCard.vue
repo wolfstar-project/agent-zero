@@ -10,7 +10,7 @@
     </p>
 
     <h2 class="m-0 mt-3 text-base font-700">
-      <NuxtLink class="focus-ring transition hover:text-accent" :to="post.path">
+      <NuxtLink class="focus-ring transition hover:text-accent" :to="localePath(post.path)">
         {{ post.title }}
       </NuxtLink>
     </h2>
@@ -25,7 +25,7 @@
         {{ post.authorInitials }}
       </span>
       <span class="min-w-0 truncate text-sm font-650">{{ post.author }}</span>
-      <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="post.path">
+      <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="localePath(post.path)">
         {{ $t('marketing.pages.blog.readMore') }} →
       </NuxtLink>
     </div>
@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
 const { locale } = useI18n();
+const localePath = useLocalePath();
 
 const { post } = defineProps<{
   post: {
