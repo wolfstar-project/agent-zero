@@ -35,7 +35,11 @@ import {
 import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
-import { claudeCodeProcessSpawner, environmentForModel } from './subscription-isolation.js';
+import {
+  claudeCodeProcessSpawner,
+  claudeCodeRefusalReason,
+  environmentForModel,
+} from './subscription-isolation.js';
 
 const cwd = process.cwd();
 
@@ -272,16 +276,23 @@ async function runAgent(
   );
 
   // Refuses claude-code under container isolation when no CLI container image is configured,
-  // rather than silently spawning it unisolated on the host.
-  const modelEnvironment = environmentForModel(config, process.env);
+  // rather than silently spawning it unisolated on the host. Reported to modelFromEnvironment as a
+  // refusal reason, not by disabling the enable flag: the flag would also skip fallback selection,
+  // turning a configured AGENT_ZERO_MODEL_FALLBACK_PROVIDER into a run that fails outright instead
+  // of degrading to it.
+  const refusalReason =
+    config.model.provider === 'claude-code'
+      ? claudeCodeRefusalReason(config, process.env)
+      : undefined;
   const spawnClaudeCodeProcess =
     config.model.provider === 'claude-code' &&
-    isSubscriptionProviderEnabled('claude-code', modelEnvironment)
-      ? claudeCodeProcessSpawner(config, modelEnvironment)
+    refusalReason === undefined &&
+    isSubscriptionProviderEnabled('claude-code', process.env)
+      ? claudeCodeProcessSpawner(config, process.env)
       : undefined;
 
   const agent = new AgentZero({
-    model: modelFromEnvironment(config.model, modelEnvironment, spawnClaudeCodeProcess),
+    model: modelFromEnvironment(config.model, process.env, spawnClaudeCodeProcess, refusalReason),
     runner,
     config,
     onEvent: (event) => {

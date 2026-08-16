@@ -351,6 +351,39 @@ describe('subscription transports', () => {
     ).toBeInstanceOf(ResumingSubscriptionProvider);
   });
 
+  it('preserves a configured fallback when a composition root refuses the transport', () => {
+    // Reproduces the finding this closes: a composition root that has decided this run cannot use
+    // claude-code (a RunnerPool lease its CLI process cannot be routed through, for one) must not
+    // report the transport as never configured — that would skip fallback selection entirely and
+    // turn a configured AGENT_ZERO_MODEL_FALLBACK_PROVIDER into a run that fails outright instead
+    // of degrading to it. The enable flag stays on; only the refusal reason changes.
+    const configured = modelFromEnvironment(
+      claudeCode,
+      {
+        AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true',
+        AGENT_ZERO_MODEL_FALLBACK_PROVIDER: 'anthropic',
+        AGENT_ZERO_MODEL_FALLBACK_MODEL: 'claude-sonnet-4-5',
+        ANTHROPIC_API_KEY: 'test-key-value',
+      },
+      undefined,
+      'A RunnerPool lease is active for this task.',
+    );
+    expect(configured).toBeInstanceOf(FallbackModelProvider);
+  });
+
+  it('refuses the transport with the supplied reason when no fallback is configured', async () => {
+    const configured = modelFromEnvironment(
+      claudeCode,
+      { AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'true' },
+      undefined,
+      'A RunnerPool lease is active for this task.',
+    );
+    expect(configured).toBeInstanceOf(ResumingSubscriptionProvider);
+    await expect(configured.decide(context())).rejects.toThrow(
+      'A RunnerPool lease is active for this task.',
+    );
+  });
+
   it('rejects a wait budget that is not a duration', () => {
     for (const value of ['soon', '-1'])
       expect(() =>

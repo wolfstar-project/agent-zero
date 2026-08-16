@@ -18,22 +18,41 @@ const hostUidGid: string | undefined =
   process.getuid && process.getgid ? `${process.getuid()}:${process.getgid()}` : undefined;
 
 /**
- * Refuse the `claude-code` transport instead of silently running it unisolated.
+ * Whether `claude-code`'s CLI process can be isolated the way `runner.isolation: container`
+ * requires, and the reason it cannot when it can't.
  *
  * `config.runner.isolation === 'container'` is an explicit operator declaration that command
  * execution must run isolated. The subscription CLI process is not a repository command, but
  * leaving it unisolated while every repository check runs contained would be exactly the silent
- * isolation bypass this exists to prevent — so without a configured container image for it, the
- * transport is disabled the same way an unset enable flag disables it, rather than falling back to
- * a host spawn the operator did not ask for.
+ * isolation bypass this exists to prevent.
+ */
+export function claudeCodeRefusalReason(
+  config: AgentZeroConfig,
+  environment: NodeJS.ProcessEnv,
+): string | undefined {
+  if (config.runner.isolation !== 'container') return undefined;
+  if (environment.AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE) return undefined;
+  return (
+    'runner.isolation is "container" but AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE is not set, so ' +
+    "the CLI process cannot be isolated the way this deployment's other command execution is."
+  );
+}
+
+/**
+ * Report `claude-code` as unconfigured for diagnostics (`zero doctor`) when it cannot be isolated.
+ *
+ * `zero doctor` wants a plain "not ready" signal, not the fallback-preserving nuance a real run
+ * needs — see `subscriptionRefusalReason` in `runAgent`, which reports the identical unavailability
+ * to `modelFromEnvironment` without touching the enable flag, so a configured API-key fallback
+ * still gets a turn instead of the run failing outright.
  */
 export function environmentForModel(
   config: AgentZeroConfig,
   environment: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
-  if (config.runner.isolation !== 'container') return environment;
-  if (environment.AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE) return environment;
-  return { ...environment, AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'false' };
+  return claudeCodeRefusalReason(config, environment) === undefined
+    ? environment
+    : { ...environment, AGENT_ZERO_ENABLE_CLAUDE_CODE_PROVIDER: 'false' };
 }
 
 /**
@@ -63,7 +82,7 @@ export function claudeCodeProcessSpawner(
   const image = environment.AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE;
   if (!image)
     throw new Error(
-      'claudeCodeProcessSpawner requires AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE under container isolation; call environmentForModel first to refuse the transport instead of reaching this.',
+      'claudeCodeProcessSpawner requires AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE under container isolation; check claudeCodeRefusalReason first to refuse the transport instead of reaching this.',
     );
   const containerExecutable = environment.AGENT_ZERO_CLAUDE_CODE_CONTAINER_EXECUTABLE ?? 'claude';
   const { mounts, configEnv } = claudeConfigMounts(environment.CLAUDE_CONFIG_DIR);

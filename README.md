@@ -246,9 +246,11 @@ Known limits, all of which follow from the session being local:
   the CLI's duplex spawn through the same boundary the lease already gives repository commands.
   Rather than falling back to a host spawn that would bypass that lease's isolation, lifecycle,
   quota, and audit controls, `packages/api` refuses the transport outright whenever a `runnerPool`
-  is configured on the `RunTaskOptions` passed to `runTask`, independent of `runner.isolation`.
-  `codex-cli` has no working code path to bypass here in the first place (see above), so this gate
-  is `claude-code`-only.
+  is configured on the `RunTaskOptions` passed to `runTask`, independent of `runner.isolation`. The
+  refusal is reported to `modelFromEnvironment` as a reason, not by turning the enable flag off, so
+  a configured `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` still gets a turn instead of the run failing
+  outright — same as the missing-container-image case below. `codex-cli` has no working code path
+  to bypass here in the first place (see above), so this gate is `claude-code`-only.
 - **Expiring.** OAuth sessions end; the run fails until an operator logs in again. Set
   `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` and `AGENT_ZERO_MODEL_FALLBACK_MODEL` to an API-key
   transport to degrade to it automatically when the CLI is missing, its session expired, or its
@@ -273,7 +275,10 @@ reach past the runner boundary and pays for their definitions on every call.
 Leaving the subscription CLI unisolated while every repository check runs contained would be
 exactly the silent bypass this exists to prevent — so under container isolation, `claude-code`'s
 CLI process runs in its own ephemeral container too, and is refused outright rather than falling
-back to a host spawn when that container can't be built:
+back to a host spawn when that container can't be built. The refusal is reported to
+`modelFromEnvironment` as a reason rather than by turning the enable flag off, so a configured
+`AGENT_ZERO_MODEL_FALLBACK_PROVIDER` still gets a turn instead of the run failing outright — the
+transport genuinely is configured, this host just can't isolate it:
 
 ```
 AGENT_ZERO_CLAUDE_CODE_CONTAINER_IMAGE=      # required under container isolation; must have `claude` on PATH

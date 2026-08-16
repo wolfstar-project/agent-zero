@@ -373,6 +373,16 @@ export function modelFromEnvironment(
    * `@agent-zero/runner`'s `spawnManagedProcess` wrapped to this shape.
    */
   spawnClaudeCodeProcess?: ClaudeCodeProcessSpawner,
+  /**
+   * Refuses the `claude-code`/`codex-cli` transport with this reason on every call, rather than
+   * building it at all — for a composition root that has already decided this run cannot use the
+   * subscription transport (a `RunnerPool` lease its CLI process cannot be routed through, for one)
+   * but still wants a configured `AGENT_ZERO_MODEL_FALLBACK_PROVIDER` to get its turn. Distinct from
+   * an unset enable flag: that reports the transport as never configured at all and skips fallback
+   * selection entirely, which is wrong here — the transport *is* configured, this run just cannot
+   * use it. Ignored for every non-subscription provider.
+   */
+  subscriptionRefusalReason?: string,
 ): ModelProvider {
   const { provider } = selection;
   if (isSubscriptionModelProvider(provider))
@@ -381,6 +391,7 @@ export function modelFromEnvironment(
       provider,
       environment,
       spawnClaudeCodeProcess,
+      subscriptionRefusalReason,
     );
 
   const apiKey = providerApiKey(provider, environment);
@@ -459,6 +470,7 @@ function subscriptionModelFromEnvironment(
   provider: SubscriptionModelProviderKind,
   environment: NodeJS.ProcessEnv,
   spawnClaudeCodeProcess: ClaudeCodeProcessSpawner | undefined,
+  subscriptionRefusalReason: string | undefined,
 ): ModelProvider {
   if (!isSubscriptionProviderEnabled(provider, environment)) return new UnconfiguredModelProvider();
 
@@ -476,6 +488,7 @@ function subscriptionModelFromEnvironment(
       environment,
       session,
       spawnClaudeCodeProcess,
+      subscriptionRefusalReason,
     ),
     translateError: translateSubscriptionError(provider, session),
     ...(selection.timeoutMs === undefined ? {} : { timeoutMs: selection.timeoutMs }),

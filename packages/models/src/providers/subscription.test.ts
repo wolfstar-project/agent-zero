@@ -202,6 +202,23 @@ describe('subscriptionLanguageModel', () => {
     });
     await expect(build()).rejects.toBeInstanceOf(SubscriptionProviderUnavailableError);
   });
+
+  it('refuses immediately with the supplied reason, never touching the vendor SDK or the host PATH', async () => {
+    // A composition root that has already decided this run cannot use the transport (a RunnerPool
+    // lease its CLI process cannot be routed through, for one) reports that here — before the
+    // executable probe, so a host with no CLI installed at all still refuses with this reason
+    // rather than the unrelated "not installed or not on PATH" message.
+    const build = subscriptionLanguageModel(
+      'claude-code',
+      'opus',
+      { PATH: '/nonexistent/bin' },
+      undefined,
+      undefined,
+      'A RunnerPool lease is active for this task.',
+    );
+    await expect(build()).rejects.toBeInstanceOf(SubscriptionProviderUnavailableError);
+    await expect(build()).rejects.toThrow('A RunnerPool lease is active for this task.');
+  });
 });
 
 describe('translateSubscriptionError', () => {

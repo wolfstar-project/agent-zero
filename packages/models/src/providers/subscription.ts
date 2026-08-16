@@ -218,9 +218,22 @@ export function subscriptionLanguageModel(
   environment: NodeJS.ProcessEnv,
   session: SubscriptionSession = createSubscriptionSession(),
   spawnProcess?: ClaudeCodeProcessSpawner,
+  /**
+   * When set, every call refuses immediately with this reason instead of building a model at all —
+   * for a composition root that has determined this transport cannot serve the run (a `RunnerPool`
+   * lease it cannot route the CLI process through, for one), but still wants a configured API-key
+   * fallback to get its turn rather than the run failing outright. Thrown here, synchronously,
+   * before the vendor SDK is ever touched: a vendor SDK that catches and rewraps a thrown error (as
+   * `ai-sdk-provider-claude-code` does for a throwing `spawnClaudeCodeProcess`) does not preserve
+   * the `SubscriptionProviderUnavailableError` identity `FallbackModelProvider` degrades on, only
+   * the message text — this way nothing but this module's own code ever has to produce that error.
+   */
+  refusalReason?: string,
 ): () => Promise<LanguageModel> {
   const executable = environment[descriptors[provider].executableEnvironmentVariable];
   return async () => {
+    if (refusalReason !== undefined)
+      throw new SubscriptionProviderUnavailableError(provider, refusalReason);
     // The host `PATH` check only applies when the vendor SDK will do its own default host spawn.
     // A supplied `spawnProcess` (a composition root's containerized or runner-backed spawner) takes
     // over both spawning and the SpawnedProcess.on('error', ...) handling the vendor SDK relies on —
