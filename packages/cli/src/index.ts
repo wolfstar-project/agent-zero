@@ -219,6 +219,11 @@ async function probeSubscriptionCli(
   loginCommand: string;
 }> {
   const descriptor = subscriptionProviderDescriptor(provider);
+  // The configured override itself, read the same way `subscriptionProbeCommand` resolves it
+  // before quoting — not derived from the quoted command string below, which may wrap the path in
+  // single or double quotes and can contain embedded spaces; splitting that string on the first
+  // space would report a truncated, quote-mangled path instead of the real one.
+  const executable = process.env[descriptor.executableEnvironmentVariable] ?? descriptor.executable;
   let command: string;
   try {
     command = subscriptionProbeCommand(provider, process.env);
@@ -228,7 +233,7 @@ async function probeSubscriptionCli(
     // diagnostic shape a failed probe would, rather than letting doctor itself throw and skip its
     // JSON document entirely.
     return {
-      executable: descriptor.executable,
+      executable,
       installed: false,
       pathVariable: descriptor.executableEnvironmentVariable,
       loginCommand: descriptor.loginCommand,
@@ -236,7 +241,7 @@ async function probeSubscriptionCli(
   }
   const result = await inspector.check(command, 15_000).catch(() => undefined);
   return {
-    executable: command.split(' ')[0] ?? descriptor.executable,
+    executable,
     installed: result?.exitCode === 0,
     pathVariable: descriptor.executableEnvironmentVariable,
     loginCommand: descriptor.loginCommand,
