@@ -71,6 +71,17 @@ Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
 
+### Local ports
+
+Each app's `aube --filter <name> run dev` binds a fixed port, so they can all run side by side:
+
+| App                                        | Port   | `aube --filter` name       |
+| ------------------------------------------ | ------ | -------------------------- |
+| [`apps/dashboard`](./apps/dashboard)       | `3000` | `@agent-zero/dashboard`    |
+| [`apps/marketing`](./apps/marketing)       | `3001` | `@agent-zero/marketing`    |
+| [`apps/docs`](./apps/docs)                 | `3002` | `@agent-zero/docs`         |
+| [`apps/mail-preview`](./apps/mail-preview) | `3005` | `@agent-zero/mail-preview` |
+
 ---
 
 ## Quick start

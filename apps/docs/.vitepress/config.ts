@@ -11,6 +11,12 @@ export default defineConfig({
   // GitHub Pages serves project sites from a sub-path; local builds stay at /.
   base: process.env.DOCS_BASE ?? '/',
   lastUpdated: true,
+  vite: {
+    server: {
+      // 3000 is the dashboard, 3001 marketing, 3005 mail-preview.
+      port: 3002,
+    },
+  },
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/introduction' },

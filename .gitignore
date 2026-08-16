@@ -5,7 +5,7 @@ dist/
 .output/
 .nuxt/
 .maizzle/
-.vitepress/cache/
+**/.vitepress/cache/
 .vitehub/
 *.tsbuildinfo
 coverage/
