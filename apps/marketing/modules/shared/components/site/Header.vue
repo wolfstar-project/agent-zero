@@ -6,12 +6,7 @@
         :to="localePath('/')"
         :aria-label="site.name"
       >
-        <span
-          class="h-8 w-8 grid shrink-0 place-items-center border border-accent/45 bg-accent/8"
-          aria-hidden="true"
-        >
-          <span class="font-mono text-xs text-accent font-750">AZ</span>
-        </span>
+        <AppLogo class="h-8 w-8 shrink-0" />
         <span class="text-sm font-750 tracking-tight">{{ site.name }}</span>
       </NuxtLink>
 

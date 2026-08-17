@@ -26,6 +26,7 @@ export default defineNuxtConfig({
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
+    '@nuxt/image',
     '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
@@ -42,6 +43,15 @@ export default defineNuxtConfig({
     // Deliberately distinct from the dashboard's key: the two apps are separate origins in
     // production, and sharing a key would only couple them if they were ever proxied under one.
     storageKey: 'agent-zero-color-mode',
+  },
+
+  image: {
+    // Only the default (auto-detected `ipx`) provider registers itself; `provider="none"` on a
+    // `<NuxtImg>` instance — used for the hand-authored logo SVG ipx's svgo pass corrupts, see
+    // Header.vue/Footer.vue — needs its own opt-in or it 500s with "Unknown provider: none".
+    providers: {
+      none: {},
+    },
   },
 
   icon: {
