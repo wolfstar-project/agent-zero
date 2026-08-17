@@ -10,6 +10,15 @@ import { featureCards, logoCloud } from './config/content.js';
 // here — the reverse of the reason `apps/dashboard/nuxt.config.ts` doesn't load `marketing.json`.
 const marketingLocales = i18nLocalesFor(['common.json', 'errors.json', 'marketing.json']);
 
+// `crawlLinks` only discovers a route by following a crawlable `<a href>` it finds while
+// prerendering an already-seeded page. LocaleSwitcher.vue navigates locales with `setLocale()`
+// (a JS call, not a real link), so nothing ever points the crawler at `/it` — every non-default
+// locale root has to be seeded explicitly, or its whole route tree is silently missing from the
+// static build.
+const nonDefaultLocaleRoots = marketingLocales
+  .filter((locale) => locale.code !== defaultLocale)
+  .map((locale) => `/${locale.code}`);
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
   devtools: { enabled: false },
@@ -200,7 +209,7 @@ export default defineNuxtConfig({
       crawlLinks: true,
       // `/robots.txt` is a Nitro route rather than a page, so the crawler never reaches it; listing
       // it explicitly means a purely static deployment still serves one.
-      routes: ['/', '/robots.txt'],
+      routes: ['/', '/robots.txt', ...nonDefaultLocaleRoots],
     },
   },
 
