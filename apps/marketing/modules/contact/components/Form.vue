@@ -1,5 +1,5 @@
 <template>
-  <form class="mt-8" novalidate @submit.prevent="onSubmit">
+  <form class="mt-8" @submit.prevent="onSubmit">
     <div class="grid gap-4 sm:grid-cols-2">
       <label class="flex flex-col gap-1.5 text-xs text-muted font-650">
         {{ $t('marketing.pages.contact.form.nameLabel') }}

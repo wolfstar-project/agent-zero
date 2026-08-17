@@ -17,13 +17,19 @@
       >
         <button
           v-for="option in intervals"
+          ref="optionRefs"
           :key="option"
           class="focus-ring h-9 px-4 text-xs font-650 transition"
           :class="interval === option ? 'bg-accent/12 text-ink' : 'text-muted hover:text-ink'"
           type="button"
           role="radio"
           :aria-checked="interval === option"
+          :tabindex="interval === option ? 0 : -1"
           @click="interval = option"
+          @keydown.left.prevent="selectRelative(-1)"
+          @keydown.up.prevent="selectRelative(-1)"
+          @keydown.right.prevent="selectRelative(1)"
+          @keydown.down.prevent="selectRelative(1)"
         >
           {{ $t(`marketing.pricing.${option}`) }}
         </button>
