@@ -38,7 +38,14 @@ defineProps<{
     </style>
     <g class="az">
       <defs>
-        <mask id="cutm" maskUnits="userSpaceOnUse" x="-34.611" y="-184.32" width="581.222" height="880.64">
+        <mask
+          id="cutm"
+          maskUnits="userSpaceOnUse"
+          x="-34.611"
+          y="-184.32"
+          width="581.222"
+          height="880.64"
+        >
           <rect x="-34.611" y="-184.32" width="581.222" height="880.64" fill="#fff" />
           <g fill="#000">
             <rect
