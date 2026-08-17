@@ -41,6 +41,17 @@ overrides:
 - **Keep the pin exact.** The fork only publishes prerelease versions, which caret ranges never match.
 - **Reinstall after changing it.** `tsc` prints `TNB ACTIVE` to stderr on the first type-check in a process; no banner means stock TypeScript is loaded and the install is stale.
 
+## The @nuxt/schema override
+
+`pnpm-workspace.yaml` also pins `@nuxt/schema`:
+
+```yaml
+overrides:
+  '@nuxt/schema': npm:@nuxt/schema@4.5.2
+```
+
+`@redstardev/unplugin-version-injector` pulls in an older `@nuxt/schema` than the `nuxt@4.5.2` the workspace actually runs. Two instances of the package mean two nominally different `DefineNuxtConfig` types, so wherever the older one wins resolution, `defineNuxtConfig(...)` type-checks as "not callable". The override forces every consumer onto the one Nuxt version already in use.
+
 ## Build scripts
 
 `onlyBuiltDependencies` in `pnpm-workspace.yaml` allow-lists the dependencies whose lifecycle scripts may run (currently only `esbuild`). Everything else installs without executing scripts, which keeps `aube ci` deterministic and safe.

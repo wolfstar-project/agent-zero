@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { stripEmptyMessages } from '../../config/i18n-empty-placeholders.js';
+import { stripEmptyMessages } from '../../modules/i18n-strip-empty/index.js';
 
 describe('stripEmptyMessages', () => {
   it('drops empty-string leaves so vue-i18n falls back instead of rendering ""', () => {

@@ -236,6 +236,9 @@ importers:
         specifier: '>=4.3.5'
         version: 4.4.3
     devDependencies:
+      '@golar/vue':
+        specifier: ^0.1.10
+        version: 0.1.10
       '@iconify-json/lucide':
         specifier: ^1.2.123
         version: 1.2.123
@@ -263,6 +266,9 @@ importers:
       '@vue/test-utils':
         specifier: ^2.4.6
         version: 2.4.11(@vue/compiler-dom@3.5.41)(@vue/server-renderer@3.5.41)(vue@3.5.41)
+      golar:
+        specifier: ^0.1.10
+        version: 0.1.10
       happy-dom:
         specifier: ^20.0.11
         version: 20.11.2
@@ -281,9 +287,6 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(happy-dom@20.11.2)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))
-      vue-tsc:
-        specifier: ^3.1.2
-        version: 3.3.9(typescript@6.0.3-bridge.12.tsgo.7.0.2)
 
   apps/docs:
     dependencies:

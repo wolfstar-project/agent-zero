@@ -190,11 +190,11 @@ scopes it renders. `aube run i18n:status` builds a
 [Lunaria](https://lunaria.dev) report showing which translations went stale relative to the English
 source; it reads git history, so it needs the dictionaries committed.
 
-`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the
+`aube run test:browser` builds the dashboard, starts the production preview on port 5678, and runs the
 Playwright suite against `server/auth.config.ts` running with an in-memory Better Auth adapter and
 signup enabled (`AUTH_E2E_MEMORY=true`, set only for that preview server), so the suite creates and
 signs in its own throwaway account through the real `/api/auth/**` endpoints instead of a live
-database. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
+database. Use `aube --filter @agent-zero/dashboard run test:browser:ui` for Playwright UI mode.
 
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 

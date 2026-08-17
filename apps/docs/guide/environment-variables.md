@@ -1,6 +1,33 @@
 # Environment variables
 
-Agent Zero reads credentials and deployment policy exclusively from the environment. Endpoint URLs and credentials can never be named or embedded in `.agent-zero.yml`, so untrusted repository policy cannot redirect a secret. [`.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/.env.example) is the annotated template; copy it to `.env` for local development.
+Agent Zero reads credentials and deployment policy exclusively from the environment. Endpoint URLs and credentials can never be named or embedded in `.agent-zero.yml`, so untrusted repository policy cannot redirect a secret.
+
+## One env file per process
+
+Each process reads exactly one `.env`, and that file sits next to the process that reads it. Nothing is shared implicitly: a file is loaded only by the process it belongs to, by that process's own tooling.
+
+| File                     | Read by                                                | Loaded by                                             | Holds                                                                          |
+| ------------------------ | ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `.env`                   | the `zero` CLI (`aube run zero …`)                     | Node's `--env-file-if-exists=.env` in the root script | Model providers, subscription transports, `GITHUB_TOKEN`                       |
+| `apps/dashboard/.env`    | the dashboard: UI, control plane, webhooks, auth, mail | Nuxt, from beside `nuxt.config.ts`                    | Control plane, webhook ingress, `DATABASE_URL`, authentication, mail, site URL |
+| `packages/database/.env` | `drizzle-kit` (`db:generate`, `db:migrate`)            | drizzle-kit, from its own working directory           | `DATABASE_URL`                                                                 |
+
+Each has a checked-in `.env.example` next to it; copy the ones you need:
+
+```bash
+cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
+cp packages/database/.env.example packages/database/.env
+```
+
+Every file is optional. A deployment that sets real environment variables ships no `.env` at all, and real variables always win over the file.
+
+A variable two processes both read is written in both files on purpose, rather than one process inheriting the other's configuration:
+
+- `DATABASE_URL` is read by the dashboard (the only process that opens the database) and by drizzle-kit when migrating. Point both at the same database — `drizzle.config.ts` and the server resolve it through the same function precisely so migrations cannot target one store while the dashboard opens another.
+- The model-provider keys are read by the CLI and, when the hosted control plane executes runs, by the dashboard.
+
+`server/auth.config.ts` resolves `DATABASE_URL` at module load, so a dashboard started without it fails on the first request (`missing required environment variable: DATABASE_URL`) rather than degrading quietly.
 
 ## Model providers
 
@@ -74,7 +101,6 @@ See [Mails](/guide/mails).
 
 ## Dashboard
 
-| Variable          | Purpose                                                   |
-| ----------------- | --------------------------------------------------------- |
-| `PORT`            | Dashboard port (default 3000)                             |
-| `AGENT_ZERO_PORT` | Port used by the local development tooling (default 4040) |
+| Variable | Purpose                       |
+| -------- | ----------------------------- |
+| `PORT`   | Dashboard port (default 3000) |

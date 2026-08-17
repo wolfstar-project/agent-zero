@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardTask } from '~/modules/dashboard/types/dashboard';
+import type { DashboardTask } from '~~/modules/dashboard/types/dashboard';
 
 defineProps<{ task?: DashboardTask }>();
 </script>

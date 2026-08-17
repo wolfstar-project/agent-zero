@@ -6,7 +6,6 @@ import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
 import { authConfigFromEnvironment, loginPath } from './config/auth.js';
-import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 
 // Resolved once at config evaluation so the dashboard's login page publishes the same sign-in
 // policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
@@ -50,8 +49,10 @@ export default defineNuxtConfig({
   future: {
     compatibilityVersion: 5,
   },
+  // `modules/` is scanned by Nuxt itself, so the local modules (shared, auth, dashboard,
+  // organizations, i18n-strip-empty, vitehub) register themselves — and register their own
+  // component and composable directories — without being listed here.
   modules: [
-    './modules/vitehub',
     '@unocss/nuxt',
     '@nuxt/icon',
     '@nuxtjs/i18n',
@@ -67,28 +68,7 @@ export default defineNuxtConfig({
     ],
   ],
   css: ['~/assets/css/main.css'],
-  // Components live under per-module roots instead of the default `app/components`, matching
-  // supastarter's modules/<feature> layout (with `shared` as its own module), so each root is
-  // registered explicitly. Nesting under each root still derives the auto-import prefix from the
-  // relative sub-path exactly like the default scanner did, so tag names (e.g. <TaskTable>,
-  // <AppSidebar>) are unchanged.
-  components: [
-    { path: '~/modules/shared/components' },
-    { path: '~/modules/auth/components' },
-    { path: '~/modules/dashboard/components' },
-    // Prefixed so the module's generic names (Switcher, MemberList, InviteForm) cannot collide
-    // with another module's component of the same name.
-    { path: '~/modules/organizations/components', prefix: 'Organizations' },
-  ],
-  imports: {
-    // Composables also moved out of `app/composables`; Nuxt auto-imports by exported symbol name,
-    // so call sites (useAuthErrorMessage(), useSidebarCollapsed()) are unaffected.
-    dirs: [
-      'modules/auth/composables',
-      'modules/shared/composables',
-      'modules/organizations/composables',
-    ],
-  },
+
   icon: {
     // Icons stay fully client-bundled rather than served or fetched at runtime, regardless of the
     // app's own server routes. Every icon is scanned from the templates at build time and compiled
@@ -98,11 +78,7 @@ export default defineNuxtConfig({
     fallbackToApi: false,
     clientBundle: { scan: true },
   },
-  vite: {
-    // Untranslated keys are stored as empty strings; drop them from the bundle so vue-i18n falls
-    // back to the default locale instead of rendering "".
-    plugins: [stripEmptyI18nMessagesPlugin()],
-  },
+
   i18n: {
     locales: resolvedI18nLocales,
     defaultLocale,
@@ -116,6 +92,7 @@ export default defineNuxtConfig({
       fallbackLocale: defaultLocale,
     },
   },
+
   auth: {
     // Full mode: the module reads `server/auth.config.ts`, mounts Better Auth at `/api/auth/**`
     // itself, and resolves sessions server-side from the request cookie for SSR.
@@ -126,6 +103,7 @@ export default defineNuxtConfig({
       logout: loginPath,
     },
   },
+
   runtimeConfig: {
     public: {
       // The module auto-detects the base URL from the incoming request in most deployments.
@@ -134,6 +112,7 @@ export default defineNuxtConfig({
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? '',
     },
   },
+
   // Published through appConfig rather than runtimeConfig.public: Nuxt maps NUXT_PUBLIC_* env vars
   // onto public runtime keys, which would let a deployment advertise a sign-in capability that
   // diverges from the policy `server/auth.config.ts` enforces from the same environment. appConfig
@@ -146,12 +125,14 @@ export default defineNuxtConfig({
       enableOrganizations: authPolicy.enableOrganizations,
     },
   },
+
   app: {
     head: {
       meta: [{ name: 'color-scheme', content: 'dark light' }],
       title: app.title,
     },
   },
+
   routeRules: {
     '/': { appLayout: 'default', auth: { only: 'user' } },
     [loginPath]: { auth: { only: 'guest' } },
@@ -160,8 +141,28 @@ export default defineNuxtConfig({
     // requiring a session sends them through /login and back, rather than rejecting the link.
     '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },
   },
+
   typescript: {
     strict: true,
     typeCheck: false,
+    // Extends the generated `.nuxt/tsconfig.*.json` projects rather than a hand-maintained
+    // `tsconfig.e2e.json` + `.vue` shim: `nuxt typecheck` (Golar, see golar.config.ts) already
+    // resolves `.vue` imports, so specs that import components only need to be in its scope.
+    tsConfig: {
+      compilerOptions: {
+        noUnusedLocals: true,
+        allowImportingTsExtensions: true,
+      },
+      // `test/nuxt/**` runs in a Nuxt/DOM context and imports `.vue` components directly.
+      include: ['../test/nuxt/**/*.ts'],
+    },
+    nodeTsConfig: {
+      compilerOptions: {
+        allowImportingTsExtensions: true,
+      },
+      // `test/unit/**` is plain Node: no DOM, no `.vue` imports, explicit imports only.
+      // `test/e2e/**` and `playwright.config.ts` run in Playwright's own Node process.
+      include: ['../test/unit/**/*.ts', '../test/e2e/**/*.ts', '../playwright.config.ts'],
+    },
   },
 });
