@@ -1,0 +1,91 @@
+<script setup lang="ts">
+defineProps<{
+  class?: string;
+}>();
+</script>
+
+<template>
+  <svg
+    aria-hidden="true"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 512 512"
+    width="512"
+    height="512"
+    :class="class"
+  >
+    <title>{{ site.name }}</title>
+    <g class="az">
+      <defs>
+        <mask
+          id="cutm"
+          maskUnits="userSpaceOnUse"
+          x="-34.611"
+          y="-184.32"
+          width="581.222"
+          height="880.64"
+        >
+          <rect x="-34.611" y="-184.32" width="581.222" height="880.64" fill="#fff" />
+          <g fill="#000">
+            <rect
+              x="-74.24"
+              y="219.735"
+              width="660.48"
+              height="72.53"
+              transform="rotate(-62 256 256)"
+            />
+          </g>
+        </mask>
+        <clipPath id="clipm">
+          <path
+            d="M105.587,181.146A150.413,150.413 0 0 1 406.413,181.146L406.413,330.854A150.413,150.413 0 0 1 105.587,330.854Z"
+          />
+        </clipPath>
+      </defs>
+      <g mask="url(#cutm)" fill="none" stroke-width="51.077">
+        <path
+          class="ink-s"
+          d="M256,61.379A119.767,119.767 0 0 1 375.767,181.146L375.767,330.854A119.767,119.767 0 0 1 136.233,330.854L136.233,181.146A119.767,119.767 0 0 1 256,61.379Z"
+          stroke-opacity=".45"
+          stroke-dasharray="0 9.204 113.083 149.901 113.083 281.393 113.083 149.901 113.083 9.204"
+        />
+        <path
+          class="ink-s"
+          d="M256,61.379A119.767,119.767 0 0 1 375.767,181.146L375.767,330.854A119.767,119.767 0 0 1 136.233,330.854L136.233,181.146A119.767,119.767 0 0 1 256,61.379Z"
+          stroke-dasharray="0 140.696 113.083 149.901 113.083 18.409 113.083 149.901 113.083 140.696"
+        />
+      </g>
+      <g class="acc" clip-path="url(#clipm)">
+        <rect
+          x="-74.24"
+          y="235.058"
+          width="660.48"
+          height="41.883"
+          transform="rotate(-62 256 256)"
+        />
+      </g>
+    </g>
+  </svg>
+</template>
+
+<style>
+.az .ink {
+  fill: var(--az-ink, #eff3ee);
+}
+.az .ink-s {
+  stroke: var(--az-ink, #eff3ee);
+}
+.az .acc {
+  fill: var(--az-accent, #84e04f);
+}
+@media (prefers-color-scheme: light) {
+  .az .ink {
+    fill: var(--az-ink, #0b140e);
+  }
+  .az .ink-s {
+    stroke: var(--az-ink, #0b140e);
+  }
+  .az .acc {
+    fill: var(--az-accent, #026c00);
+  }
+}
+</style>

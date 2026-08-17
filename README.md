@@ -67,8 +67,20 @@ Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─
 | [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth options factory                                  |
 | [`packages/api`](./packages/api)                       | oRPC router and control-plane operations                                                   |
 | [`apps/dashboard`](./apps/dashboard)                   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**`                |
+| [`apps/marketing`](./apps/marketing)                   | Nuxt public marketing site; frontend only, no persistence                                  |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
+
+### Local ports
+
+Each app's `aube --filter <name> run dev` binds a fixed port, so they can all run side by side:
+
+| App                                        | Port   | `aube --filter` name       |
+| ------------------------------------------ | ------ | -------------------------- |
+| [`apps/dashboard`](./apps/dashboard)       | `3000` | `@agent-zero/dashboard`    |
+| [`apps/marketing`](./apps/marketing)       | `3001` | `@agent-zero/marketing`    |
+| [`apps/docs`](./apps/docs)                 | `3002` | `@agent-zero/docs`         |
+| [`apps/mail-preview`](./apps/mail-preview) | `3005` | `@agent-zero/mail-preview` |
 
 ---
 
@@ -173,7 +185,8 @@ the login page will keep advertising the old capabilities (the server still enfo
 either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
-`apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
+`packages/i18n/locales/<locale>/` and shared with the marketing site; each app loads only the
+scopes it renders. `aube run i18n:status` builds a
 [Lunaria](https://lunaria.dev) report showing which translations went stale relative to the English
 source; it reads git history, so it needs the dictionaries committed.
 

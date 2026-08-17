@@ -12,14 +12,15 @@
     "db:generate": "turbo run db:generate",
     "db:migrate": "turbo run db:migrate",
     "dev": "turbo run dev",
-    "format": "oxfmt .",
-    "format:check": "oxfmt --check .",
+    "format": "oxfmt -c tooling/oxc/.oxfmtrc.json --ignore-path .oxfmtignore .",
+    "format:check": "oxfmt -c tooling/oxc/.oxfmtrc.json --ignore-path .oxfmtignore --check .",
     "i18n:report": "turbo run i18n:report",
     "i18n:schema": "turbo run i18n:schema",
     "i18n:status": "turbo run i18n:status",
     "knip": "turbo run build --filter=@agent-zero/i18n --filter=@agent-zero/auth && knip",
     "lint": "turbo run lint",
     "lint:ci": "aube run format:check && aube run lint && aube run knip",
+    "lint:fix": "turbo run lint:fix",
     "mail:preview": "turbo run dev --filter=@agent-zero/mail-preview",
     "prepare": "node .husky/install.mjs && skilld prepare --agent codex",
     "skills:install": "skilld install --agent codex",
@@ -52,7 +53,7 @@
     "vitest": "^3.2.4"
   },
   "nano-staged": {
-    "*.{js,mjs,cjs,ts,tsx,json,jsonc,yaml,yml,md}": "oxfmt --write --no-error-on-unmatched-pattern"
+    "*.{js,mjs,cjs,ts,tsx,json,jsonc,yaml,yml,md}": "oxfmt -c tooling/oxc/.oxfmtrc.json --ignore-path .oxfmtignore --write --no-error-on-unmatched-pattern"
   },
   "engines": {
     "node": ">=24.2"

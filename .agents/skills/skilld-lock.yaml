@@ -160,3 +160,31 @@ skills:
     generator: external
     path: skills/web-quality-audit
     ref: main
+  nuxt-modules:
+    repo: onmax/nuxt-skills
+    source: github
+    syncedAt: 2026-08-15
+    generator: external
+    path: skills/nuxt-modules
+    ref: main
+  nuxt-content:
+    repo: onmax/nuxt-skills
+    source: github
+    syncedAt: 2026-08-16
+    generator: external
+    path: skills/nuxt-content
+    ref: main
+  nuxt-i18n:
+    repo: onmax/nuxt-skills
+    source: github
+    syncedAt: 2026-08-16
+    generator: external
+    path: skills/nuxt-i18n
+    ref: main
+  nuxt-seo:
+    repo: onmax/nuxt-skills
+    source: github
+    syncedAt: 2026-08-16
+    generator: external
+    path: skills/nuxt-seo
+    ref: main

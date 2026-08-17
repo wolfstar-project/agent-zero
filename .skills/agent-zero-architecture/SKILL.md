@@ -57,6 +57,7 @@ Keep dependency direction explicit while changing the monorepo.
   `/api/auth/**` via `server/auth.config.ts` (`@onmax/nuxt-better-auth`, full mode, SSR-aware). The
   only process that opens the database, and it does so through `packages/database`. See the
   `orpc-server` skill.
+- `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, credentials, session, or runtime-package dependencies, and nothing imports it. Copy lives in `packages/i18n`, not in the app.
 
 ## Workflow
 

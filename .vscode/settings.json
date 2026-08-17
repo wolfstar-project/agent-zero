@@ -1,0 +1,38 @@
+{
+  "i18n-ally.keystyle": "nested",
+  "i18n-ally.localesPaths": ["./packages/i18n/locales"],
+  "i18n-ally.sourceLanguage": "en",
+  "i18n-ally.displayLanguage": "en",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "oxc.fmt.configPath": "./vite.config.ts",
+  "oxc.fixKind": "safe_fix_or_suggestion",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+  // Auto fix
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "explicit"
+  },
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "files.autoSave": "onFocusChange", // optional but recommended,
+  "tailwindCSS.experimental.classRegex": [
+    ["tw`(.*?)`", "tw\\('(.*?)'\\)", "tw\\(\\s*('(.*?)'|\"(.*?)\")\\s*\\)"]
+  ],
+  "js/ts.tsdk.path": "node_modules\\typescript\\lib",
+  // Exclude large folders from search
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true,
+    "**/*.agent": true,
+    "**/*.github/agents": true,
+    "**/*.github/instructions": true,
+    "**/*/skills": true,
+    "**/plans": true
+  }
+}

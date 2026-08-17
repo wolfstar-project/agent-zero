@@ -12,6 +12,8 @@ sections of that file have their own pages in this sidebar group. -->
 
 <!--@include: ../../../../docs/architecture.md#api-package-->
 
+<!--@include: ../../../../docs/architecture.md#marketing-boundary-->
+
 <!--@include: ../../../../docs/architecture.md#dashboard-boundary-->
 
 <!--@include: ../../../../docs/architecture.md#authentication-boundary-->

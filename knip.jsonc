@@ -12,6 +12,12 @@
     "@commitlint/cli",
     "nano-staged",
   ],
+  // The Oxlint plugin's default config glob (`.oxlintrc.json` at each workspace root) no longer
+  // matches: every workspace's `lint`/`lint:fix` script points at tooling/oxc/{packages,apps}.oxlintrc.json
+  // instead, which themselves extend tooling/oxc/base.oxlintrc.json.
+  "oxlint": {
+    "config": ["tooling/oxc/*.oxlintrc.json"],
+  },
   "workspaces": {
     "packages/i18n": {
       // Every i18n:* script is invoked directly (`node scripts/x.ts`) from package.json rather
@@ -76,6 +82,36 @@
       // imports @iconify-json/lucide directly.
       "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
       // Nuxt resolves ~ to the app/ source directory and ~~ to the project root.
+      "paths": {
+        "~/*": ["app/*"],
+        "~~/*": ["*"],
+      },
+    },
+    "apps/marketing": {
+      // Same shape as apps/dashboard: Nuxt 4 keeps application code in app/, which knip's Nuxt
+      // plugin does not scan, and Nuxt auto-imports components and composables. `modules/` sits at
+      // the project root (matching wolfstar.rocks) rather than under app/, as do
+      // `i18n/i18n.config.ts` and `content.config.ts` (Nuxt Content and wolfstar.rocks' own
+      // convention). All of them are discovered by Nuxt/Nuxt Content from those locations, not
+      // imported by anything.
+      "entry": [
+        "app/app.vue",
+        "app/error.vue",
+        "app/pages/**/*.vue",
+        "app/layouts/**/*.vue",
+        "app/composables/**/*.ts",
+        "modules/**/*.vue",
+        "modules/**/*.ts",
+        "config/**/*.ts",
+        "i18n/i18n.config.ts",
+        "content.config.ts",
+        "golar.config.ts",
+        "pwa-assets.config.ts",
+      ],
+      // The `nuxt` Vitest environment resolves to vitest-environment-nuxt, which
+      // `@nuxt/test-utils` ships as its own dependency. @nuxt/icon loads the lucide collection by
+      // name at build time, so no source file imports @iconify-json/lucide directly.
+      "ignoreDependencies": ["vitest-environment-nuxt", "@iconify-json/lucide"],
       "paths": {
         "~/*": ["app/*"],
         "~~/*": ["*"],

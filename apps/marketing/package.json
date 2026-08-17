@@ -1,0 +1,49 @@
+{
+  "name": "@agent-zero/marketing",
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "clean": "nuxt cleanup && tsc -b --clean",
+    "dev": "nuxt dev",
+    "generate-pwa-icons": "pwa-assets-generator",
+    "lint": "oxlint --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" app config test",
+    "lint:fix": "oxlint --fix --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" app config test",
+    "preview": "nuxt preview",
+    "pretest": "nuxt prepare",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "test:nuxt": "nuxt prepare && vitest run --project nuxt",
+    "test:unit": "nuxt prepare && vitest run --project unit",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@agent-zero/i18n": "workspace:*",
+    "nuxt": "^4.5.2",
+    "vue-i18n": "^11.4.8"
+  },
+  "devDependencies": {
+    "@golar/vue": "^0.1.10",
+    "@iconify-json/lucide": "^1.2.123",
+    "@nuxt/content": "^3.15.2",
+    "@nuxt/icon": "^2.5.0",
+    "@nuxt/test-utils": "4.1.0",
+    "@nuxtjs/color-mode": "4.0.1",
+    "@nuxtjs/i18n": "^10.6.0",
+    "@nuxtjs/seo": "^5.3.12",
+    "@playwright/test": "^1.62.0",
+    "@unocss/nuxt": "^66.7.5",
+    "@unocss/preset-wind4": "^66.7.5",
+    "@vite-pwa/assets-generator": "^1.0.2",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "@vue/test-utils": "^2.4.6",
+    "golar": "^0.1.10",
+    "happy-dom": "^20.0.11",
+    "oxlint": "^1.44.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^5.9.2",
+    "unocss": "^66.7.5",
+    "vitest": "^4.1.10"
+  }
+}

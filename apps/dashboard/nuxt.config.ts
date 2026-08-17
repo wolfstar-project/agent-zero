@@ -1,4 +1,7 @@
-import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
@@ -11,6 +14,34 @@ import { authConfigFromEnvironment, loginPath } from './config/auth.js';
 // config enforces its own policy regardless, so a stale build can only mislabel the login page,
 // never open a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
+// locale directory has to be wired through each locale's `files` entries instead (the module's own
+// documented pattern for this). `i18nLocalesFor` keeps its `files` entries package-relative
+// (`en/common.json`) so they stay portable; this is the one place that resolves them against the
+// installed package's real `locales/` directory.
+const i18nPackageDirectory = dirname(
+  fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
+);
+const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
+// Only the scopes this app renders: every listed file is deep-merged into the bundle whether or
+// not a key from it is read, so the marketing site's copy has no business being here.
+const dashboardLocales = i18nLocalesFor([
+  'common.json',
+  'errors.json',
+  'auth.json',
+  'dashboard.json',
+  'organizations.json',
+]);
+const resolvedI18nLocales = dashboardLocales.map((locale) => ({
+  ...locale,
+  // `i18nLocalesFor` only ever produces plain filename strings (see localeFilesFor in
+  // packages/i18n), but `LocaleObject.files` is typed for `@nuxtjs/i18n`'s own richer
+  // `{ path, cache? }` form too, since a consumer could set that shape directly.
+  files: (locale.files ?? []).map((file) =>
+    join(i18nLocalesDirectory, typeof file === 'string' ? file : file.path),
+  ),
+}));
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -54,16 +85,11 @@ export default defineNuxtConfig({
   },
 
   i18n: {
-    locales: i18nLocales,
+    locales: resolvedI18nLocales,
     defaultLocale,
     // The dashboard is a single internal surface, so localised URL prefixes would only churn
     // route paths without buying any of the SEO they exist for.
     strategy: 'no_prefix',
-    // Paths are resolved relative to `restructureDir` (default "i18n/"), so this points at
-    // i18n/locales/ — a symlink to `packages/i18n/locales`, keeping one copy of the dictionaries
-    // for every app. `i18nLocales.files` stays package-relative (`en/common.json`) for the same
-    // reason.
-    langDir: 'locales',
     detectBrowserLanguage: {
       useCookie: true,
       cookieKey: localeCookieName,
