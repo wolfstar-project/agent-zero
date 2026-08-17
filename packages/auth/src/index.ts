@@ -6,7 +6,6 @@ export {
   type AuthDatabaseOptions,
   type AuthInstance,
   type AuthInstanceOptions,
-  type SendInvitationEmail,
   type SendPrivateInvitationEmail,
   type SendPublicInvitationEmail,
   type Session,

@@ -18,7 +18,6 @@ const completeEnvironment = {
 };
 
 const MISSING_URL_MESSAGE = /missing required environment variable: BETTER_AUTH_URL/;
-const MISSING_SEND_INVITATION_EMAIL_PATTERN = /sendInvitationEmail/;
 const MISSING_SEND_PRIVATE_INVITATION_PATTERN = /sendPrivateInvitationEmail/;
 const MISSING_DASHBOARD_URL_PATTERN = /dashboardUrl/;
 const PUBLIC_INVITE_URL_PATTERN = /^http:\/\/localhost:3000\/invite\?token=[A-Za-z0-9_-]+$/;
@@ -121,14 +120,13 @@ describe('createAuth with organizations', () => {
     dashboardUrl: completeEnvironment.AUTH_DASHBOARD_ORIGIN,
   };
 
-  it('refuses to construct when organizations are enabled without a delivery transport', () => {
-    // Otherwise an invitation is recorded and nobody is ever told about it.
-    expect(() =>
-      createAuth({
-        ...instanceOptions,
-        config: { ...defaultAuthConfig, enableOrganizations: true },
-      }),
-    ).toThrow(MISSING_SEND_INVITATION_EMAIL_PATTERN);
+  it('registers organizations without delivery or a dashboard origin', () => {
+    const options = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableOrganizations: true },
+    });
+
+    expect(options.plugins.map((plugin) => plugin.id)).toContain('organization');
   });
 
   it('constructs without a transport while organizations are off', () => {

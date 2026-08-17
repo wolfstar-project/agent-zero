@@ -9,9 +9,9 @@ import { memoryAdapter } from 'better-auth/adapters/memory';
 //
 // The transport is only injected when the configured provider actually delivers: the console
 // default logs an envelope instead of sending, so wiring it in would satisfy
-// `authBetterAuthOptions`'s startup guard while every invitation silently reached nobody.
-// Withholding the callback lets that guard fail startup when organizations are enabled without a
-// real transport.
+// `authBetterAuthOptions`'s startup guard while every private enrollment invitation silently
+// reached nobody. Withholding the callback lets that guard fail startup when Better Enrollment is
+// enabled without a real transport.
 const sendMail = createMailer();
 const deliversMail = mailProviderNameFromEnvironment() !== 'console';
 
@@ -34,12 +34,6 @@ const options = authBetterAuthOptions({
   ...(dashboardUrl ? { dashboardUrl } : {}),
   ...(deliversMail
     ? {
-        sendInvitationEmail: ({ to, organizationName, inviterName, acceptUrl }) =>
-          sendMail({
-            to,
-            templateId: 'organizationInvitation',
-            context: { organizationName, inviterName, acceptUrl },
-          }),
         // The enrollment plugin deliberately never returns a private invitation's link to whoever
         // created it, so this callback is the only path the token travels. The template renders
         // the optional halves away rather than printing "null": an invitation with no invitee name

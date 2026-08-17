@@ -7,14 +7,6 @@
 
 /** Data each template interpolates. Keyed by template id so `sendEmail` can check the context. */
 export interface MailTemplateContext {
-  readonly organizationInvitation: {
-    /** Display name of the organization the recipient is being invited to. */
-    readonly organizationName: string;
-    /** Who sent the invitation, shown so the recipient can judge whether it is expected. */
-    readonly inviterName: string;
-    /** Absolute URL that accepts the invitation. Carries a single-use token. */
-    readonly acceptUrl: string;
-  };
   readonly privateInvitation: {
     /** The invitee's name when the inviter supplied one, otherwise empty. */
     readonly name: string;
@@ -59,10 +51,6 @@ interface MailTemplateDefinition {
 }
 
 export const mailTemplates: Readonly<Record<MailTemplateId, MailTemplateDefinition>> = {
-  organizationInvitation: {
-    file: 'OrganizationInvitation.vue',
-    subject: 'You have been invited to an organization',
-  },
   privateInvitation: {
     file: 'PrivateInvitation.vue',
     subject: 'You have been invited to Agent Zero',

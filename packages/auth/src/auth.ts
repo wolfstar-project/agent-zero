@@ -9,26 +9,14 @@ import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './c
 import type { AuthConfig, GithubOauthCredentials } from './config.js';
 
 /**
- * Delivers an organization invitation.
+ * Delivers a private (email-bound) enrollment invitation.
  *
  * Declared structurally rather than imported from `@agent-zero/mail`: this package owns
  * authentication policy, and taking a dependency on the mail package would make one capability
- * package depend on another. The composition root supplies the implementation.
- */
-export type SendInvitationEmail = (invitation: {
-  readonly to: string;
-  readonly organizationName: string;
-  readonly inviterName: string;
-  readonly acceptUrl: string;
-}) => Promise<void>;
-
-/**
- * Delivers a private (email-bound) enrollment invitation.
- *
- * Declared structurally for the same reason {@link SendInvitationEmail} is. The link is never
- * returned to whoever created the invitation, so this callback is the only path it travels: it
- * exists solely in the recipient's mailbox, which is what makes presenting the token proof of
- * mailbox access and lets redemption mark the address verified.
+ * package depend on another. The link is never returned to whoever created the invitation, so
+ * this callback is the only path it travels: it exists solely in the recipient's mailbox, which
+ * is what makes presenting the token proof of mailbox access and lets redemption mark the address
+ * verified.
  */
 export type SendPrivateInvitationEmail = (invitation: {
   readonly to: string;
@@ -74,19 +62,13 @@ export interface AuthDatabaseOptions {
   readonly github?: GithubOauthCredentials;
   /**
    * Dashboard origin invitation links point at, so a recipient lands on the UI, not the API.
-   * Required when organizations or invitations are enabled.
+   * Required when Better Enrollment invitations are enabled.
    */
   readonly dashboardUrl?: string;
   /**
-   * How invitations are delivered. Required when organizations are enabled: without it an
-   * invitation would be created that nobody is ever told about.
-   */
-  readonly sendInvitationEmail?: SendInvitationEmail;
-  /**
-   * How private enrollment invitations are delivered. Required when invitations are enabled, for
-   * the same reason {@link sendInvitationEmail} is: the link is deliberately never shown to its
-   * creator, so a deployment without a transport could create invitations that are unreachable by
-   * anyone, including the person who made them.
+   * How private enrollment invitations are delivered. Required when invitations are enabled: the
+   * link is deliberately never shown to its creator, so a deployment without a transport could
+   * create invitations that are unreachable by anyone, including the person who made them.
    */
   readonly sendPrivateInvitationEmail?: SendPrivateInvitationEmail;
   /**
@@ -126,12 +108,8 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
 } {
   const { config } = options;
 
-  // Fail at construction rather than at the first invitation: a deployment that enables
-  // organizations without a transport would accept invitations and silently never deliver them.
-  if (config.enableOrganizations && !options.sendInvitationEmail)
-    throw new Error('organizations are enabled but no sendInvitationEmail was provided');
-  if (config.enableOrganizations && !options.dashboardUrl)
-    throw new Error('organizations are enabled but no dashboardUrl was provided');
+  // Fail at construction rather than at the first private enrollment invitation: its link is not
+  // returned to the creator, so without delivery it would be unreachable.
   if (config.enableInvitations && !options.sendPrivateInvitationEmail)
     throw new Error('invitations are enabled but no sendPrivateInvitationEmail was provided');
   if (config.enableInvitations && !options.dashboardUrl)
@@ -181,33 +159,15 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
  * target type is in view at the point it is added.
  */
 function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
-  const {
-    config,
-    dashboardUrl,
-    sendInvitationEmail,
-    sendPrivateInvitationEmail,
-    sendPublicInvitationEmail,
-  } = options;
+  const { config, dashboardUrl, sendPrivateInvitationEmail, sendPublicInvitationEmail } = options;
   const plugins: BetterAuthPlugin[] = [];
 
-  if (config.enableOrganizations && dashboardUrl) {
+  if (config.enableOrganizations) {
     plugins.push(
       organization({
         allowUserToCreateOrganization: config.allowUserToCreateOrganization,
         membershipLimit: config.organizationMembershipLimit,
         invitationExpiresIn: config.invitationExpiresInSeconds,
-        sendInvitationEmail: async (data) => {
-          // Checked in the guard above; narrowing here keeps the callback total.
-          const send = sendInvitationEmail;
-          if (!send) return;
-          await send({
-            to: data.email,
-            organizationName: data.organization.name,
-            // Better Auth exposes the inviter as a member record wrapping the user.
-            inviterName: data.inviter.user.name,
-            acceptUrl: invitationAcceptUrl(dashboardUrl, data.id),
-          });
-        },
       }),
     );
   }
@@ -299,20 +259,6 @@ export function createAuth(options: AuthInstanceOptions) {
     baseURL: options.baseUrl,
     trustedOrigins: [...options.trustedOrigins],
   });
-}
-
-/**
- * Build the link an invitation email points at.
- *
- * Resolved against the dashboard origin rather than the auth server's: the recipient needs the UI
- * that can accept the invitation, and `URL` keeps a misconfigured origin from silently producing
- * a relative link.
- */
-function invitationAcceptUrl(dashboardUrl: string, invitationId: string): string {
-  return new URL(
-    `/organizations/accept-invitation/${encodeURIComponent(invitationId)}`,
-    dashboardUrl,
-  ).toString();
 }
 
 /**
