@@ -331,9 +331,6 @@ importers:
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
-      '@playwright/test':
-        specifier: ^1.43.1
-        version: 1.62.1
       '@types/node':
         specifier: '>=18.12.0'
         version: 24.13.3
@@ -398,6 +395,9 @@ importers:
       '@nuxtjs/seo':
         specifier: ^5.3.12
         version: 5.3.12(nuxt@4.5.2(@types/node@24.13.3)(rolldown@1.2.3))
+      '@playwright/test':
+        specifier: ^1.62.0
+        version: 1.62.1
       '@unocss/nuxt':
         specifier: ^66.7.5
         version: 66.7.5(magic-string@1.1.0)(oxc-parser@0.143.0)(rolldown@1.2.3)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.3)(rollup@4.62.4)(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2))(vite@8.2.1(@types/node@24.13.3)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.11)(yaml@2.9.0))(webpack@5.109.2)

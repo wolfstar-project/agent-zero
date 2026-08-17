@@ -1,3 +1,5 @@
+import process from 'node:process';
+
 import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
@@ -30,10 +32,17 @@ export default defineNuxtConfig({
     '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
+    '@nuxt/test-utils',
     '@nuxtjs/color-mode',
     '@vite-pwa/nuxt',
   ],
   css: ['~/assets/css/main.css'],
+
+  $test: {
+    debug: {
+      hydration: true,
+    },
+  },
 
   colorMode: {
     preference: 'system',
@@ -102,6 +111,8 @@ export default defineNuxtConfig({
     // Mirrors `app.config.ts`'s `site.name`: that file is runtime-only (`useAppConfig()`), while
     // `@nuxtjs/seo` needs a literal value here at build time, so the two cannot share one source.
     name: 'Agent Zero',
+    description:
+      'The open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.',
     // This is a prerendered site with no incoming request to auto-detect an origin from, so
     // unlike the dashboard's NUXT_PUBLIC_SITE_URL (optional there), this has to be set for a
     // production build — see .env.example.
@@ -112,6 +123,19 @@ export default defineNuxtConfig({
     site: {
       url: 'http://localhost:3001',
     },
+  },
+
+  router: {
+    options: {
+      scrollBehaviorType: 'smooth',
+    },
+  },
+
+  experimental: {
+    entryImportMap: false,
+    typescriptPlugin: true,
+    viteEnvironmentApi: true,
+    typedPages: true,
   },
 
   robots: {
@@ -190,6 +214,12 @@ export default defineNuxtConfig({
     },
   },
 
+  vite: {
+    css: {
+      transformer: 'lightningcss',
+    },
+  },
+
   typescript: {
     strict: true,
     typeCheck: false,
@@ -212,8 +242,8 @@ export default defineNuxtConfig({
       compilerOptions: {
         allowImportingTsExtensions: true,
       },
-      // `test/unit/**` is plain Node: no DOM, no `.vue` imports, explicit imports only.
-      include: ['../test/unit/**/*.ts'],
+      // Root config, unit, and Playwright files run in Node rather than the app's Vue context.
+      include: ['../*.ts', '../test/unit/**/*.ts', '../test/e2e/**/*.ts'],
     },
   },
 });
