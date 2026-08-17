@@ -25,7 +25,8 @@
   "scripts": {
     "build": "tsdown",
     "clean": "tsc -b --clean",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src",
+    "lint": "oxlint --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src",
+    "lint:fix": "oxlint --fix --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src",
     "test": "vitest run src --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },

@@ -8,6 +8,7 @@ Oxfmt owns formatting and Oxlint owns linting. ESLint and Prettier are deliberat
 aube run format          # format the repository with Oxfmt
 aube run format:check    # verify formatting without writing
 aube run lint            # type-aware Oxlint across the workspace
+aube run lint:fix        # type-aware Oxlint across the workspace, applying fixes
 aube run knip            # find unused files, exports, and dependencies
 aube run lint:ci         # format:check + lint + knip, the CI gate
 aube run typecheck       # TypeScript checks across the project graph
@@ -26,8 +27,8 @@ aube run build
 
 ## Tools
 
-- **[Oxfmt](https://oxc.rs)** formats every source and markdown file, configured by `.oxfmtrc.json`. Avoid unrelated formatting churn in pull requests.
-- **[Oxlint](https://oxc.rs)** runs with type-aware checks, configured by `.oxlintrc.json` and extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.
+- **[Oxfmt](https://oxc.rs)** formats every source and markdown file, configured by `tooling/oxc/.oxfmtrc.json`. Avoid unrelated formatting churn in pull requests.
+- **[Oxlint](https://oxc.rs)** runs with type-aware checks, configured by `tooling/oxc/base.oxlintrc.json` (shared rules) and extended per workspace scope by `tooling/oxc/packages.oxlintrc.json` (adds the `node` plugin) and `tooling/oxc/apps.oxlintrc.json` (adds the `vue` plugin); both extend the base and are referenced from each package's own `lint`/`lint:fix` scripts. The base config is extended with [`@e18e/eslint-plugin`](https://github.com/e18e/eslint-plugin) for modernization, module-replacement, and performance rules.
 - **[Knip](https://knip.dev)** detects unused files, exports, and dependencies; per-workspace entry points are declared in `knip.jsonc`.
 
 ## Git hooks

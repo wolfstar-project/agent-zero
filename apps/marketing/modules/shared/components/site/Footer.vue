@@ -3,15 +3,7 @@
     <div class="shell grid gap-10 py-12 md:grid-cols-[2fr_1fr_1fr_1fr]">
       <div class="max-w-sm">
         <div class="flex items-center gap-2.5">
-          <!-- provider="none": ipx's svgo pass strips this SVG's light-mode `@media` override,
-          leaving the accent colour wrong in light mode — serve the file as-is. -->
-          <NuxtImg
-            src="/logo.svg"
-            provider="none"
-            alt=""
-            class="h-8 w-8 shrink-0"
-            aria-hidden="true"
-          />
+          <SiteAppLogo class="h-8 w-8 shrink-0" />
           <span class="text-sm font-750 tracking-tight">{{ site.name }}</span>
         </div>
         <p class="m-0 mt-4 text-sm text-muted leading-relaxed">

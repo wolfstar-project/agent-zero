@@ -32,7 +32,8 @@
     "i18n:report:fix": "node scripts/remove-unused-translations.ts",
     "i18n:schema": "node scripts/generate-i18n-schema.ts",
     "i18n:status": "node scripts/i18n-status.ts",
-    "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check src scripts",
+    "lint": "oxlint --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src scripts",
+    "lint:fix": "oxlint --fix --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src scripts",
     "test": "vitest run src --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },

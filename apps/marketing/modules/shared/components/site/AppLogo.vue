@@ -14,28 +14,6 @@ defineProps<{
     :class="class"
   >
     <title>{{ site.name }}</title>
-    <style>
-      .az .ink {
-        fill: var(--az-ink, #eff3ee);
-      }
-      .az .ink-s {
-        stroke: var(--az-ink, #eff3ee);
-      }
-      .az .acc {
-        fill: var(--az-accent, #84e04f);
-      }
-      @media (prefers-color-scheme: light) {
-        .az .ink {
-          fill: var(--az-ink, #0b140e);
-        }
-        .az .ink-s {
-          stroke: var(--az-ink, #0b140e);
-        }
-        .az .acc {
-          fill: var(--az-accent, #026c00);
-        }
-      }
-    </style>
     <g class="az">
       <defs>
         <mask
@@ -88,3 +66,26 @@ defineProps<{
     </g>
   </svg>
 </template>
+
+<style>
+.az .ink {
+  fill: var(--az-ink, #eff3ee);
+}
+.az .ink-s {
+  stroke: var(--az-ink, #eff3ee);
+}
+.az .acc {
+  fill: var(--az-accent, #84e04f);
+}
+@media (prefers-color-scheme: light) {
+  .az .ink {
+    fill: var(--az-ink, #0b140e);
+  }
+  .az .ink-s {
+    stroke: var(--az-ink, #0b140e);
+  }
+  .az .acc {
+    fill: var(--az-accent, #026c00);
+  }
+}
+</style>

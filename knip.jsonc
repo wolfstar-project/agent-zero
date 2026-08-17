@@ -12,6 +12,12 @@
     "@commitlint/cli",
     "nano-staged",
   ],
+  // The Oxlint plugin's default config glob (`.oxlintrc.json` at each workspace root) no longer
+  // matches: every workspace's `lint`/`lint:fix` script points at tooling/oxc/{packages,apps}.oxlintrc.json
+  // instead, which themselves extend tooling/oxc/base.oxlintrc.json.
+  "oxlint": {
+    "config": ["tooling/oxc/*.oxlintrc.json"],
+  },
   "workspaces": {
     "packages/i18n": {
       // Every i18n:* script is invoked directly (`node scripts/x.ts`) from package.json rather
