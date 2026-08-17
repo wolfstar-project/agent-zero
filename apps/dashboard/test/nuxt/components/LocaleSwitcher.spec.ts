@@ -1,7 +1,6 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it, vi } from 'vitest';
-
-import LocaleSwitcher from '~/modules/shared/components/LocaleSwitcher.vue';
+import LocaleSwitcher from '~~/modules/shared/components/LocaleSwitcher.vue';
 
 describe('LocaleSwitcher', () => {
   it('lists every configured locale under its native label', async () => {

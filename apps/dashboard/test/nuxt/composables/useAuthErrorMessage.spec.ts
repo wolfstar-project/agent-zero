@@ -2,7 +2,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, h } from 'vue';
 
-import { useAuthErrorMessage } from '../../../app/modules/auth/composables/useAuthErrorMessage.js';
+import { useAuthErrorMessage } from '../../../modules/auth/composables/useAuthErrorMessage.js';
 
 /**
  * `useAuthErrorMessage` needs a component context for `useI18n`, so the specs mount a bare

@@ -4,24 +4,27 @@
 
 ## Module-per-feature layout
 
-Application code lives under `app/modules/<feature>/` rather than Nuxt's default flat directories, registered explicitly in `nuxt.config.ts`:
+Application code lives under `modules/<feature>/` rather than Nuxt's default flat directories. Each feature is a real Nuxt module: its `index.ts` registers its own `components/`, `composables/`, and `utils/` directories, and Nuxt discovers it by scanning `modules/`, so nothing has to be listed in `nuxt.config.ts`. `apps/marketing` uses the same layout.
 
 ```text
-apps/dashboard/app/
-├── app.vue
-├── pages/
-│   ├── (auth)/login.vue
-│   ├── (dashboard)/index.vue
-│   └── (organizations)/…
-├── layouts/
-├── plugins/
-├── types/
-├── assets/css/
+apps/dashboard/
+├── app/
+│   ├── app.vue
+│   ├── pages/
+│   │   ├── (auth)/login.vue
+│   │   ├── (dashboard)/index.vue
+│   │   └── (organizations)/…
+│   ├── layouts/
+│   ├── plugins/
+│   ├── types/
+│   └── assets/css/
 └── modules/
-    ├── shared/          # cross-feature components and composables
+    ├── shared/          # cross-feature components, composables, and utils
     ├── auth/            # login and session UI
     ├── dashboard/       # task history, queue, approvals
-    └── organizations/   # organization management
+    ├── organizations/   # organization management
+    ├── i18n-strip-empty/ # drops untranslated placeholder keys from the bundle
+    └── vitehub.ts       # ViteHub KV inside Nuxt's Nitro build
 ```
 
 Route groups — `(auth)`, `(dashboard)`, `(organizations)` — organize pages without affecting URLs. Pages are gated through `routeRules` with `auth: { only: 'user' | 'guest' }` and a layout assignment.
@@ -49,5 +52,5 @@ The login page's capabilities (signup enabled, GitHub button) are published via 
 ## Testing
 
 - Unit and component tests live in `test/unit/` and `test/nuxt/`.
-- `aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the [Playwright](https://playwright.dev) suite against the real `/api/auth/**` endpoints with an in-memory Better Auth adapter (`AUTH_E2E_MEMORY=true`, set only for that preview server) — the suite creates and signs in its own throwaway account instead of using a live database.
-- Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
+- `aube run test:browser` builds the dashboard, starts the production preview on port 5678, and runs the [Playwright](https://playwright.dev) suite against the real `/api/auth/**` endpoints with an in-memory Better Auth adapter (`AUTH_E2E_MEMORY=true`, set only for that preview server) — the suite creates and signs in its own throwaway account instead of using a live database.
+- Use `aube --filter @agent-zero/dashboard run test:browser:ui` for Playwright UI mode.

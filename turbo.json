@@ -25,7 +25,7 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "test:e2e": {
+    "test:browser": {
       "dependsOn": ["build"],
       "cache": false,
       "outputs": []

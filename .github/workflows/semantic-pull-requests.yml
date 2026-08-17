@@ -33,6 +33,7 @@ jobs:
             ci
             cli
             config
+            dashboard
             database
             deps
             docs

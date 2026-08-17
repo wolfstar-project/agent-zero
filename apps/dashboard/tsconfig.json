@@ -1,17 +1,18 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "dist"
-  },
-  "include": [
-    "app/**/*.ts",
-    "config/**/*.ts",
-    "modules/**/*.ts",
-    "server/**/*.ts",
-    "uno-preset-a11y.ts",
-    "uno-preset-rtl.ts",
-    "uno.config.ts",
-    "uno.theme.ts"
+  // https://nuxt.com/docs/guide/concepts/typescript
+  "files": [],
+  "references": [
+    {
+      "path": "./.nuxt/tsconfig.app.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.server.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.shared.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.node.json"
+    }
   ]
 }
