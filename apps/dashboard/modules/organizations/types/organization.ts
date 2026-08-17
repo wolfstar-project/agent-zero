@@ -9,6 +9,13 @@
 /** Roles the invitation and member views can assign. */
 export const ORGANIZATION_ROLES = ['member', 'admin', 'owner'] as const;
 
+/**
+ * The error code the auth server refuses an organization invitation with when the deployment has
+ * no way to deliver it. Mirrors `ORGANIZATION_INVITATION_DELIVERY_UNAVAILABLE` in
+ * `@agent-zero/auth`, for the same reason the shapes above are mirrored rather than imported.
+ */
+export const INVITATION_DELIVERY_UNAVAILABLE = 'INVITATION_DELIVERY_UNAVAILABLE';
+
 export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number];
 
 export interface Organization {
