@@ -72,6 +72,36 @@ describe('sendEmail', () => {
     expect(mail.text).toContain('https://dashboard.example.com/accept?token=abc');
   });
 
+  it('renders a public invitation link for the inviter to share', async () => {
+    const { sent, provider } = recordingProvider();
+
+    await sendEmail(
+      {
+        to: 'dana@example.com',
+        templateId: 'publicInvitation',
+        context: {
+          inviterName: 'Dana',
+          organizationName: 'Acme Ops',
+          shareUrl: 'https://dashboard.example.com/invite?token=abc',
+          maxUses: '12',
+          expiresAt: '2026-08-24T20:00:00.000Z',
+        },
+      },
+      { provider, from: 'noreply@example.com' },
+    );
+
+    const [mail] = sent;
+    assertSent(mail);
+    expect(mail.to).toBe('dana@example.com');
+    expect(mail.subject).toBe('Your public Agent Zero invitation is ready');
+    expect(mail.html).toContain('Dana');
+    expect(mail.html).toContain('Acme Ops');
+    expect(mail.html).toContain('https://dashboard.example.com/invite?token=abc');
+    expect(mail.text).toContain('https://dashboard.example.com/invite?token=abc');
+    expect(mail.text).toContain('12');
+    expect(mail.text).toContain('2026-08-24T20:00:00.000Z');
+  });
+
   it('inlines styles so the message survives clients that drop stylesheets', async () => {
     const { sent, provider } = recordingProvider();
 

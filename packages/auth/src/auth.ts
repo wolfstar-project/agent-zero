@@ -41,6 +41,26 @@ export type SendPrivateInvitationEmail = (invitation: {
   readonly acceptUrl: string;
 }) => Promise<void>;
 
+/**
+ * Delivers a public (shareable) enrollment invitation to the person who created it.
+ *
+ * Public links are also returned once by Better Enrollment, but delivery gives the inviter a
+ * durable copy they can share later. Unlike a private invitation this proves no mailbox access for
+ * the eventual invitee, so the recipient here is always the inviter.
+ */
+export type SendPublicInvitationEmail = (invitation: {
+  readonly to: string;
+  readonly inviterName: string;
+  readonly role: string;
+  readonly organizationName: string | null;
+  /** Absolute, shareable URL that redeems the invitation. */
+  readonly shareUrl: string;
+  /** Maximum redemptions, or null when the invitation is unlimited. */
+  readonly maxUses: number | null;
+  /** Invitation expiry, or null when it never expires. */
+  readonly expiresAt: Date | null;
+}) => Promise<void>;
+
 /** Everything Better Auth's policy shape needs that isn't signing or origin configuration. */
 export interface AuthDatabaseOptions {
   /**
@@ -69,6 +89,11 @@ export interface AuthDatabaseOptions {
    * anyone, including the person who made them.
    */
   readonly sendPrivateInvitationEmail?: SendPrivateInvitationEmail;
+  /**
+   * How public enrollment invitations are delivered to their creator. Optional because Better
+   * Enrollment also returns a public link directly from create and resend operations.
+   */
+  readonly sendPublicInvitationEmail?: SendPublicInvitationEmail;
 }
 
 /** Everything the Better Auth instance needs that is not policy. */
@@ -156,7 +181,13 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
  * target type is in view at the point it is added.
  */
 function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
-  const { config, dashboardUrl, sendInvitationEmail, sendPrivateInvitationEmail } = options;
+  const {
+    config,
+    dashboardUrl,
+    sendInvitationEmail,
+    sendPrivateInvitationEmail,
+    sendPublicInvitationEmail,
+  } = options;
   const plugins: BetterAuthPlugin[] = [];
 
   if (config.enableOrganizations && dashboardUrl) {
@@ -206,6 +237,21 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
           inviterName: data.inviterName,
           organizationName: data.organizationName,
           acceptUrl: data.url,
+        });
+      },
+      sendPublicInvitation: async (data) => {
+        const send = sendPublicInvitationEmail;
+        // A headless system invitation may deliberately have no attributable email address. Its
+        // caller still receives the public link, but there is no valid mailbox to notify.
+        if (!send || !data.inviterEmail) return;
+        await send({
+          to: data.inviterEmail,
+          inviterName: data.inviterName,
+          role: data.role,
+          organizationName: data.organizationName,
+          shareUrl: data.url,
+          maxUses: data.maxUses,
+          expiresAt: data.expiresAt,
         });
       },
       ...(config.enableOrganizations

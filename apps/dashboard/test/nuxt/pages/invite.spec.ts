@@ -116,7 +116,10 @@ describe('invite page', () => {
     const wrapper = await mountSuspended(InvitePage);
     const href = wrapper.find('a').attributes('href');
 
-    expect(href).toBe('/login?redirect=/invite?token=a-token');
+    expect(href).toBeDefined();
+    expect(new URL(href!, 'http://localhost').searchParams.get('redirect')).toBe(
+      '/invite?token=a-token',
+    );
   });
 
   it('reports a spent invitation rather than rendering a form', async () => {

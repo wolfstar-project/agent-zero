@@ -8,6 +8,7 @@ export {
   type AuthInstanceOptions,
   type SendInvitationEmail,
   type SendPrivateInvitationEmail,
+  type SendPublicInvitationEmail,
   type Session,
   type User,
 } from './auth.js';

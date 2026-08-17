@@ -55,6 +55,25 @@ const options = authBetterAuthOptions({
               acceptUrl,
             },
           }),
+        sendPublicInvitationEmail: ({
+          to,
+          inviterName,
+          organizationName,
+          shareUrl,
+          maxUses,
+          expiresAt,
+        }) =>
+          sendMail({
+            to,
+            templateId: 'publicInvitation',
+            context: {
+              inviterName,
+              organizationName: organizationName ?? '',
+              shareUrl,
+              maxUses: maxUses === null ? 'Unlimited' : String(maxUses),
+              expiresAt: expiresAt?.toISOString() ?? 'Never',
+            },
+          }),
       }
     : {}),
 });

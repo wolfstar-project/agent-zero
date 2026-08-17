@@ -28,6 +28,18 @@ export interface MailTemplateContext {
      */
     readonly acceptUrl: string;
   };
+  readonly publicInvitation: {
+    /** The person who created the link and receives this durable copy. */
+    readonly inviterName: string;
+    /** The organization the link grants access to, or empty for an app-wide invitation. */
+    readonly organizationName: string;
+    /** Absolute public URL the inviter can share with recipients. */
+    readonly shareUrl: string;
+    /** Human-readable use cap, or "Unlimited" when no cap was configured. */
+    readonly maxUses: string;
+    /** ISO timestamp, or "Never" when the invitation has no expiry. */
+    readonly expiresAt: string;
+  };
   readonly emailVerification: {
     readonly name: string;
     readonly verifyUrl: string;
@@ -54,6 +66,10 @@ export const mailTemplates: Readonly<Record<MailTemplateId, MailTemplateDefiniti
   privateInvitation: {
     file: 'PrivateInvitation.vue',
     subject: 'You have been invited to Agent Zero',
+  },
+  publicInvitation: {
+    file: 'PublicInvitation.vue',
+    subject: 'Your public Agent Zero invitation is ready',
   },
   emailVerification: {
     file: 'EmailVerification.vue',

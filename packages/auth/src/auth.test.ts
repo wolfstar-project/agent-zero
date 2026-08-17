@@ -1,3 +1,5 @@
+import { betterAuth } from 'better-auth';
+import { memoryAdapter } from 'better-auth/adapters/memory';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -19,9 +21,26 @@ const MISSING_URL_MESSAGE = /missing required environment variable: BETTER_AUTH_
 const MISSING_SEND_INVITATION_EMAIL_PATTERN = /sendInvitationEmail/;
 const MISSING_SEND_PRIVATE_INVITATION_PATTERN = /sendPrivateInvitationEmail/;
 const MISSING_DASHBOARD_URL_PATTERN = /dashboardUrl/;
+const PUBLIC_INVITE_URL_PATTERN = /^http:\/\/localhost:3000\/invite\?token=[A-Za-z0-9_-]+$/;
 
 /** A transport that satisfies the startup guards without asserting anything about delivery. */
 const sendPrivateInvitationEmail = async () => {};
+
+interface PublicInviteApi {
+  createSystemInvite(options: {
+    body: {
+      type: 'public';
+      role: string;
+      maxUses: number;
+      inviter: { name: string; email: string };
+    };
+  }): Promise<unknown>;
+}
+
+/** Narrow the widened Better Auth API at the runtime boundary without asserting it into shape. */
+function hasPublicInviteApi(api: object): api is object & PublicInviteApi {
+  return 'createSystemInvite' in api && typeof api.createSystemInvite === 'function';
+}
 
 /** Return the failure message so assertions stay outside the catch block. */
 function messageFrom(run: () => unknown): string {
@@ -200,6 +219,64 @@ describe('createAuth with invitations', () => {
     expect(Object.keys(enrollment?.schema ?? {})).toEqual(
       expect.arrayContaining(['invite', 'inviteUse']),
     );
+  });
+
+  it('delivers a public invitation to the inviter with its shareable URL', async () => {
+    const delivered: Array<{
+      to: string;
+      inviterName: string;
+      role: string;
+      organizationName: string | null;
+      shareUrl: string;
+      maxUses: number | null;
+      expiresAt: Date | null;
+    }> = [];
+    const sendPublicInvitationEmail = async (invitation: (typeof delivered)[number]) => {
+      delivered.push(invitation);
+    };
+    const auth = betterAuth({
+      ...authBetterAuthOptions({
+        databaseUrl: completeEnvironment.DATABASE_URL,
+        config: invitationsEnabled,
+        dashboardUrl: instanceOptions.dashboardUrl,
+        sendPrivateInvitationEmail,
+        sendPublicInvitationEmail,
+      }),
+      database: memoryAdapter({
+        user: [],
+        session: [],
+        account: [],
+        verification: [],
+        invite: [],
+        inviteUse: [],
+      }),
+      secret: completeEnvironment.BETTER_AUTH_SECRET,
+      baseURL: completeEnvironment.BETTER_AUTH_URL,
+    });
+
+    // `authBetterAuthOptions` intentionally widens plugins to Better Auth's host-compatible array
+    // type, so plugin-specific API inference ends at that composition boundary. The endpoint is
+    // still the real Better Enrollment implementation at runtime.
+    if (!hasPublicInviteApi(auth.api)) throw new Error('missing Better Enrollment API');
+    await auth.api.createSystemInvite({
+      body: {
+        type: 'public',
+        role: 'admin',
+        maxUses: 12,
+        inviter: { name: 'Dana', email: 'dana@example.com' },
+      },
+    });
+
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]).toMatchObject({
+      to: 'dana@example.com',
+      inviterName: 'Dana',
+      role: 'admin',
+      organizationName: null,
+      shareUrl: expect.stringMatching(PUBLIC_INVITE_URL_PATTERN),
+      maxUses: 12,
+      expiresAt: expect.any(Date),
+    });
   });
 
   it('exposes the app-wide role column whether or not invitations are enabled', () => {
