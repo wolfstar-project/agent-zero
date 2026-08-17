@@ -10,7 +10,7 @@
     </p>
 
     <h2 class="m-0 mt-3 text-base font-700">
-      <NuxtLink class="focus-ring transition hover:text-accent" :to="post.path">
+      <NuxtLink class="focus-ring transition hover:text-accent" :to="postPath">
         {{ post.title }}
       </NuxtLink>
     </h2>
@@ -25,7 +25,7 @@
         {{ post.authorInitials }}
       </span>
       <span class="min-w-0 truncate text-sm font-650">{{ post.author }}</span>
-      <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="post.path">
+      <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="postPath">
         {{ $t('marketing.pages.blog.readMore') }} →
       </NuxtLink>
     </div>
@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
 const { locale } = useI18n();
+const localePath = useLocalePath();
 
 const { post } = defineProps<{
   post: {
@@ -46,6 +47,11 @@ const { post } = defineProps<{
     tag: string;
   };
 }>();
+
+// `post.path` comes straight from `@nuxt/content` (e.g. `/blog/foo`) with no locale prefix; under
+// `prefix_except_default` an `it` visitor following it unresolved would land back on the English
+// route and lose their locale.
+const postPath = computed(() => localePath(post.path));
 
 // The post itself ships in English only (see content.config.ts); the date still renders in the
 // visitor's own locale format, since that much doesn't require a translated document.
