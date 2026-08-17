@@ -3,17 +3,19 @@ import { createMailer, mailProviderNameFromEnvironment } from '@agent-zero/mail'
 import { defineServerAuth } from '@onmax/nuxt-better-auth/config';
 import { memoryAdapter } from 'better-auth/adapters/memory';
 
+import { dashboardUrlFromEnvironment } from './utils/auth-environment.js';
+
 // This module is the composition root for authentication, so it is where the mail transport is
 // bound and injected. `packages/auth` declares the delivery contract structurally and never
 // imports `@agent-zero/mail`, which keeps one capability package from depending on another.
 //
-// The transport is only injected when the configured provider actually delivers: the console
-// default logs an envelope instead of sending, so wiring it in would satisfy
-// `authBetterAuthOptions`'s startup guard while every invitation silently reached nobody.
-// Withholding the callback lets that guard fail startup when organizations are enabled without a
-// real transport.
+// The transport is injected when it actually delivers, or in development where the console
+// provider is useful for exercising invitation flows locally. Production still withholds the
+// callback for `console`, so `authBetterAuthOptions` fails startup instead of accepting invitations
+// that will never reach their recipients.
 const sendMail = createMailer();
-const deliversMail = mailProviderNameFromEnvironment() !== 'console';
+const deliversMail =
+  mailProviderNameFromEnvironment() !== 'console' || process.env.NODE_ENV === 'development';
 
 /**
  * Better Auth's database, policy, and provider configuration.
@@ -23,22 +25,51 @@ const deliversMail = mailProviderNameFromEnvironment() !== 'console';
  * this file cannot become a second, divergent source for either. `dashboardUrl` resolves from
  * `NUXT_PUBLIC_SITE_URL` for the same reason `secret`/`baseURL` are omitted above: this app is
  * same-origin with itself, so the dashboard origin an invitation link should point at is this
- * deployment's own public origin. It has to be set explicitly (rather than derived from an
- * incoming request) because Better Auth's plugin list, and therefore the invitation callback
- * closure, is built once at module load.
+ * deployment's own public origin. It has to be resolved at module load (rather than derived from
+ * an incoming request) because Better Auth's plugin list, and therefore the invitation callback
+ * closure, is built once. Development falls back to Nuxt's default `http://localhost:3000`;
+ * deployments must still set their actual public origin explicitly.
  */
-const dashboardUrl = process.env.NUXT_PUBLIC_SITE_URL?.trim();
+const dashboardUrl = dashboardUrlFromEnvironment(process.env);
 
 const options = authBetterAuthOptions({
   ...authDatabaseOptionsFromEnvironment(),
   ...(dashboardUrl ? { dashboardUrl } : {}),
   ...(deliversMail
     ? {
-        sendInvitationEmail: ({ to, organizationName, inviterName, acceptUrl }) =>
+        // The enrollment plugin deliberately never returns a private invitation's link to whoever
+        // created it, so this callback is the only path the token travels. The template renders
+        // the optional halves away rather than printing "null": an invitation with no invitee name
+        // or no organization is the ordinary app-wide case, not a missing value.
+        sendPrivateInvitationEmail: ({ to, name, inviterName, organizationName, acceptUrl }) =>
           sendMail({
             to,
-            templateId: 'organizationInvitation',
-            context: { organizationName, inviterName, acceptUrl },
+            templateId: 'privateInvitation',
+            context: {
+              name: name ?? '',
+              inviterName,
+              organizationName: organizationName ?? '',
+              acceptUrl,
+            },
+          }),
+        sendPublicInvitationEmail: ({
+          to,
+          inviterName,
+          organizationName,
+          shareUrl,
+          maxUses,
+          expiresAt,
+        }) =>
+          sendMail({
+            to,
+            templateId: 'publicInvitation',
+            context: {
+              inviterName,
+              organizationName: organizationName ?? '',
+              shareUrl,
+              maxUses: maxUses === null ? 'Unlimited' : String(maxUses),
+              expiresAt: expiresAt?.toISOString() ?? 'Never',
+            },
           }),
       }
     : {}),
@@ -65,7 +96,14 @@ export default defineServerAuth(
         // Better Auth's memory adapter needs each model's collection to exist up front, even
         // empty — an absent key throws "Model <name> not found" on the first query rather than
         // being treated as an empty table.
-        database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+        database: memoryAdapter({
+          user: [],
+          session: [],
+          account: [],
+          verification: [],
+          invite: [],
+          inviteUse: [],
+        }),
         // The default rate limiter can't determine a per-client IP in this sandboxed preview
         // server, so it falls back to one shared bucket across every request. A parallel
         // Playwright run's repeated sign-up/sign-in calls exhaust that bucket in a few tests;

@@ -24,11 +24,11 @@ Authentication follows the adapter rule at the package level:
 
 Registration and GitHub OAuth are off until you turn them on, so a fresh deployment cannot be signed up for by a stranger:
 
-- `AUTH_ENABLE_SIGNUP=true` enables self-registration (default `false`);
+- `AUTH_ENABLE_SIGNUP=true` enables self-registration at `/signup` (default `false`); with it off, that page shows a closed state and `/login` hides the link to it;
 - GitHub OAuth requires both `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` — see [GitHub OAuth](/guide/authentication/oauth).
 
 ::: warning Rebuild after policy changes
-The sign-in methods the login page offers are derived **at build time** from the same policy variables the server reads at runtime, and no runtime override can change them. Whenever you change those variables, rebuild the app — the server still enforces its own policy either way, but the login page will keep advertising the old capabilities until rebuilt.
+The methods the auth pages offer are derived **at build time** from the same policy variables the server reads at runtime, and no runtime override can change them. Whenever you change those variables, rebuild the app — the server still enforces its own policy either way, but `/login` and `/signup` will keep advertising the old capabilities until rebuilt.
 :::
 
 ## SSR and sessions

@@ -8,7 +8,7 @@
     "dev": "nuxt dev",
     "lint": "oxlint --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" --ignore-pattern \"test/nuxt/pages/**\" app config modules server test",
     "lint:fix": "oxlint --fix --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" --ignore-pattern \"test/nuxt/pages/**\" app config modules server test",
-    "start": "node .output/server/index.mjs",
+    "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
     "pretest": "nuxt prepare",
     "test": "vitest run",
@@ -25,6 +25,7 @@
     "@agent-zero/i18n": "workspace:*",
     "@agent-zero/mail": "workspace:*",
     "@agent-zero/shared": "workspace:*",
+    "@octopi-ai/better-enrollment": "^0.3.0",
     "@onmax/nuxt-better-auth": "^0.0.7",
     "@orpc/evlog": "2.0.0-beta.26",
     "@orpc/openapi": "2.0.0-beta.26",
@@ -35,6 +36,7 @@
     "h3": "^1.15.11",
     "nuxt": "^4.5.2",
     "vite-hub": "^0.0.3",
+    "vue": "^3.5.40",
     "vue-i18n": "^11.4.8"
   },
   "devDependencies": {
@@ -54,6 +56,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "typescript": "^5.9.2",
     "unocss": "^66.7.5",
+    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }

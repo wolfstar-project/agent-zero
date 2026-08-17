@@ -10,6 +10,8 @@ export {
 export {
   account,
   invitation,
+  invite,
+  inviteUse,
   member,
   organization,
   schema,

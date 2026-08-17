@@ -18,6 +18,15 @@ export const user = pgTable(
     email: text('email').notNull(),
     emailVerified: boolean('email_verified').notNull().default(false),
     image: text('image'),
+    /**
+     * Application roles held by the account, as Better Auth stores them: one comma-separated
+     * string, not a set. Nullable because an account can predate any role grant, and because a
+     * private invitation pre-creates an inert row before redemption decides what it grants.
+     *
+     * Distinct from `member.role`, which scopes a role to a single organization. This column is
+     * app-wide.
+     */
+    role: text('role'),
     ...timestampColumns,
   },
   (table) => [uniqueIndex('user_email_unique').on(table.email)],

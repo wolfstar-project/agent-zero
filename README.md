@@ -92,12 +92,16 @@ Requirements: Node.js 24.2+ and [aube](https://aube.jdx.dev), the package manage
 mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
 aube ci
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
 aube test
 aube run zero doctor
 aube run zero review --feedback "Possible null dereference in src/user.ts"
 aube run zero review --proactive
 aube run dev
 ```
+
+The root `.env` configures the CLI. Each app loads its own file: the dashboard uses
+`apps/dashboard/.env`, while the docs app optionally uses `apps/docs/.env` for `DOCS_BASE`.
 
 `aube run <script>` and `aube test` check install freshness first, so a separate install step is rarely needed. aube reads and writes the existing `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place — the lockfile stays in pnpm's v9 format for anyone who still runs pnpm.
 
@@ -177,12 +181,12 @@ off until you turn them on, so a fresh deployment cannot be signed up for by a s
 `AUTH_DATABASE_URL` is still read when `DATABASE_URL` is unset, so a deployment configured before
 the store moved into `packages/database` keeps starting; prefer `DATABASE_URL` for new ones.
 
-The sign-in methods the login page offers are derived at build time from the same policy variables
-`server/auth.config.ts` reads at runtime (`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` /
-`GITHUB_CLIENT_SECRET`), and no runtime override can change them. The flip side of that build-time
-capture is a deployment contract: whenever you change those policy variables, rebuild the app, or
-the login page will keep advertising the old capabilities (the server still enforces its own policy
-either way).
+Sign-in lives at `/login` and self-registration at `/signup`; the methods each page offers are
+derived at build time from the same policy variables `server/auth.config.ts` reads at runtime
+(`AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`), and no runtime override can
+change them. The flip side of that build-time capture is a deployment contract: whenever you change
+those policy variables, rebuild the app, or the auth pages will keep advertising the old
+capabilities (the server still enforces its own policy either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
 `packages/i18n/locales/<locale>/` and shared with the marketing site; each app loads only the

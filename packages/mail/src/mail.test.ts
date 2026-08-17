@@ -42,34 +42,34 @@ function assertSent(mail: OutgoingMail | undefined): asserts mail is OutgoingMai
 }
 
 describe('sendEmail', () => {
-  it('renders the invitation template with its context in both HTML and plaintext', async () => {
+  it('renders a public invitation link for the inviter to share', async () => {
     const { sent, provider } = recordingProvider();
 
     await sendEmail(
       {
-        to: 'invitee@example.com',
-        templateId: 'organizationInvitation',
+        to: 'dana@example.com',
+        templateId: 'publicInvitation',
         context: {
-          organizationName: 'Acme Ops',
           inviterName: 'Dana',
-          acceptUrl: 'https://dashboard.example.com/accept?token=abc',
+          organizationName: 'Acme Ops',
+          shareUrl: 'https://dashboard.example.com/invite?token=abc',
+          maxUses: '12',
+          expiresAt: '2026-08-24T20:00:00.000Z',
         },
       },
       { provider, from: 'noreply@example.com' },
     );
 
-    expect(sent).toHaveLength(1);
     const [mail] = sent;
     assertSent(mail);
-    expect(mail.to).toBe('invitee@example.com');
-    expect(mail.from).toBe('noreply@example.com');
-    expect(mail.subject).toBe('You have been invited to an organization');
-    expect(mail.html).toContain('Acme Ops');
+    expect(mail.to).toBe('dana@example.com');
+    expect(mail.subject).toBe('Your public Agent Zero invitation is ready');
     expect(mail.html).toContain('Dana');
-    expect(mail.html).toContain('https://dashboard.example.com/accept?token=abc');
-    // Clients that refuse HTML still have to be able to act on the invitation.
-    expect(mail.text).toContain('Acme Ops');
-    expect(mail.text).toContain('https://dashboard.example.com/accept?token=abc');
+    expect(mail.html).toContain('Acme Ops');
+    expect(mail.html).toContain('https://dashboard.example.com/invite?token=abc');
+    expect(mail.text).toContain('https://dashboard.example.com/invite?token=abc');
+    expect(mail.text).toContain('12');
+    expect(mail.text).toContain('2026-08-24T20:00:00.000Z');
   });
 
   it('inlines styles so the message survives clients that drop stylesheets', async () => {

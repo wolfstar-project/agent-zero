@@ -16,10 +16,14 @@ cd agent-zero
 mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
 aube ci
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
 aube test
 ```
 
 `aube run <script>` and `aube test` check install freshness first, so a separate install step is rarely needed. aube reads and writes the existing `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place — the lockfile stays in pnpm's v9 format.
+
+The root `.env` belongs to the CLI. Runnable apps keep their configuration beside the app:
+`apps/dashboard/.env` for the dashboard and optional `apps/docs/.env` for the documentation site.
 
 ## First run
 

@@ -28,4 +28,7 @@ export default defineConfig({
   organizationName: 'Acme Inc.',
   inviterName: 'Grace Hopper',
   acceptUrl: 'https://example.com/invite?token=sample',
+  shareUrl: 'https://example.com/invite?token=public-sample',
+  maxUses: '25',
+  expiresAt: '2026-09-01T00:00:00.000Z',
 });

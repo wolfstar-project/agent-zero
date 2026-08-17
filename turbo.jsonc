@@ -16,6 +16,24 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"],
     },
+    "@agent-zero/dashboard#build": {
+      "dependsOn": ["^build"],
+      "env": [
+        "AUTH_ENABLE_SIGNUP",
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET",
+        "AUTH_ENABLE_ORGANIZATIONS",
+        "NUXT_PUBLIC_SITE_URL",
+      ],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".output/**"],
+    },
+    "@agent-zero/docs#build": {
+      "dependsOn": ["^build"],
+      "env": ["DOCS_BASE"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".vitepress/dist/**"],
+    },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": ["*.tsbuildinfo"],

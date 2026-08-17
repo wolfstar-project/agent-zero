@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 import { user } from './auth.js';
 import { timestampColumns } from './columns.js';
@@ -20,6 +20,13 @@ export const organization = pgTable(
     logo: text('logo'),
     // Better Auth stores this as a JSON-encoded string, not as a jsonb column.
     metadata: text('metadata'),
+    /**
+     * Per-organization seat cap the enrollment plugin enforces, counting members plus the seats
+     * pending invitations have reserved. Null means the deployment default applies, or no cap.
+     */
+    seatLimit: integer('seat_limit'),
+    /** Set while an app administrator has the organization suspended; null while it is active. */
+    disabledAt: timestamp('disabled_at', { withTimezone: true }),
     ...timestampColumns,
   },
   // The slug addresses an organization in URLs, so collisions have to be rejected by the database

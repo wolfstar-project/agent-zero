@@ -1,15 +1,20 @@
-import { defineConfig } from 'vitepress';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { loadEnv, type DefaultTheme, type UserConfig, type UserConfigFn } from 'vitepress';
 
 // The documentation site for Agent Zero. Content lives beside this config as
 // plain markdown; the canonical architecture and provider references stay in
 // the repository-root docs/ directory and are pulled in with @include so
 // agents and the site read the same source.
-export default defineConfig({
+const docsDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
+
+const config = {
   title: 'Agent Zero',
   description:
     'An open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.',
   // GitHub Pages serves project sites from a sub-path; local builds stay at /.
-  base: process.env.DOCS_BASE ?? '/',
+  base: '/',
   lastUpdated: true,
   vite: {
     server: {
@@ -126,4 +131,11 @@ export default defineConfig({
       ],
     },
   },
+} satisfies UserConfig<DefaultTheme.Config>;
+
+const configFromEnvironment: UserConfigFn<DefaultTheme.Config> = ({ mode }) => ({
+  ...config,
+  base: loadEnv(mode, docsDirectory, 'DOCS_').DOCS_BASE ?? '/',
 });
+
+export default configFromEnvironment;

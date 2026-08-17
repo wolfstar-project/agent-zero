@@ -37,17 +37,16 @@ describe('login page', () => {
     expect(wrapper.text()).not.toContain('Continue with GitHub');
   });
 
-  it('offers registration when the published policy enables signup', async () => {
+  it('links to the signup route when the published policy enables signup', async () => {
     authCapabilities.enableSignup = true;
 
     const wrapper = await mountSuspended(LoginPage);
-    const toggle = getButtonByText(wrapper, 'Need an account?');
+    const link = wrapper.find('a[href="/signup"]');
 
-    await toggle.trigger('click');
-
-    expect(wrapper.text()).toContain('Name');
-    expect(wrapper.text()).toContain('Create account');
-    expect(wrapper.text()).toContain('Already have an account?');
+    expect(link.exists()).toBe(true);
+    expect(link.text()).toBe('Need an account?');
+    // Sign-in only: the registration fields live on /signup, never on this page.
+    expect(wrapper.text()).not.toContain('Name');
   });
 
   it('offers the GitHub button when the published policy enables OAuth', async () => {

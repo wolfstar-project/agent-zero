@@ -10,6 +10,7 @@ Each process reads exactly one `.env`, and that file sits next to the process th
 | ------------------------ | ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `.env`                   | the `zero` CLI (`aube run zero …`)                     | Node's `--env-file-if-exists=.env` in the root script | Model providers, subscription transports, `GITHUB_TOKEN`                       |
 | `apps/dashboard/.env`    | the dashboard: UI, control plane, webhooks, auth, mail | Nuxt, from beside `nuxt.config.ts`                    | Control plane, webhook ingress, `DATABASE_URL`, authentication, mail, site URL |
+| `apps/docs/.env`         | the documentation site                                 | VitePress, from beside `.vitepress/config.ts`         | `DOCS_BASE`                                                                    |
 | `packages/database/.env` | `drizzle-kit` (`db:generate`, `db:migrate`)            | drizzle-kit, from its own working directory           | `DATABASE_URL`                                                                 |
 
 Each has a checked-in `.env.example` next to it; copy the ones you need:
@@ -17,6 +18,7 @@ Each has a checked-in `.env.example` next to it; copy the ones you need:
 ```bash
 cp .env.example .env
 cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/docs/.env.example apps/docs/.env
 cp packages/database/.env.example packages/database/.env
 ```
 
@@ -104,3 +106,9 @@ See [Mails](/guide/mails).
 | Variable | Purpose                       |
 | -------- | ----------------------------- |
 | `PORT`   | Dashboard port (default 3000) |
+
+## Documentation
+
+| Variable    | Purpose                                                          |
+| ----------- | ---------------------------------------------------------------- |
+| `DOCS_BASE` | VitePress base path (default `/`; use `/<repository>/` on Pages) |
