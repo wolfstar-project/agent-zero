@@ -8,7 +8,7 @@ import { authConfigFromEnvironment } from '@agent-zero/auth/config';
 import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
-import { app, ui } from './config/app.js';
+import { app, loginPath, ui } from './config/app.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 
 // Resolved once at config evaluation so the dashboard's auth pages publish the same sign-in
