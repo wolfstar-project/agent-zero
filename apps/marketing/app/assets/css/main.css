@@ -1,0 +1,194 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root:not([data-theme='light']),
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --az-canvas: oklch(0.15 0.012 160);
+  --az-panel: oklch(0.18 0.012 160);
+  --az-raised: oklch(0.22 0.014 160);
+  --az-line: oklch(0.3 0.014 160);
+  --az-ink: oklch(0.96 0.008 145);
+  --az-muted: oklch(0.7 0.018 160);
+  --az-accent: oklch(0.82 0.2 136);
+  --az-warning: oklch(0.82 0.15 80);
+  --az-danger: oklch(0.68 0.2 25);
+  --az-link: oklch(0.73 0.15 250);
+  --az-grid: color-mix(in oklch, var(--az-accent) 3%, transparent);
+  --az-accent-glow: color-mix(in oklch, var(--az-accent) 72%, transparent);
+  --az-halo: color-mix(in oklch, var(--az-accent) 12%, transparent);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --az-canvas: oklch(0.985 0.004 145);
+  --az-panel: oklch(0.965 0.006 145);
+  --az-raised: oklch(0.93 0.01 145);
+  --az-line: oklch(0.82 0.014 145);
+  --az-ink: oklch(0.18 0.018 155);
+  --az-muted: oklch(0.44 0.025 155);
+  --az-accent: oklch(0.46 0.17 140);
+  --az-warning: oklch(0.55 0.14 75);
+  --az-danger: oklch(0.55 0.2 25);
+  --az-link: oklch(0.48 0.17 250);
+  --az-grid: color-mix(in oklch, var(--az-accent) 5%, transparent);
+  --az-accent-glow: color-mix(in oklch, var(--az-accent) 36%, transparent);
+  --az-halo: color-mix(in oklch, var(--az-accent) 10%, transparent);
+}
+
+:root {
+  --az-font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--az-font-sans);
+  background: var(--az-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  /* The dashboard's grid, plus a single accent halo behind the hero so the fold has a focal
+     point without needing an image. */
+  background:
+    radial-gradient(60rem 32rem at 50% -8rem, var(--az-halo), transparent 70%),
+    linear-gradient(var(--az-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--az-grid) 1px, transparent 1px), var(--az-canvas);
+  background-size:
+    100% 100%,
+    32px 32px,
+    32px 32px,
+    100% 100%;
+  background-repeat: no-repeat, repeat, repeat, no-repeat;
+  color: var(--az-ink);
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+textarea,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible,
+:-moz-focusring {
+  outline: 2px solid var(--az-accent) !important;
+  outline-offset: 2px !important;
+}
+
+::selection {
+  color: var(--az-canvas);
+  background: var(--az-accent);
+}
+
+* {
+  scrollbar-color: var(--az-line) var(--az-canvas);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--az-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--az-line);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--az-muted);
+}
+
+@media (prefers-contrast: more) {
+  :root[data-theme='dark'] {
+    --az-line: oklch(0.74 0.01 160);
+    --az-muted: oklch(0.88 0.01 160);
+  }
+
+  :root[data-theme='light'] {
+    --az-line: oklch(0.38 0.014 145);
+    --az-muted: oklch(0.28 0.02 155);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Minimal Markdown styling for `@nuxt/content`-rendered legal documents and blog posts. Global
+   rather than scoped: UnoCSS has no typography preset in this project, and pulling one in for two
+   content types would be a heavier dependency than a few rules, but scoped `:deep()` styling would
+   have to be duplicated in every page that renders a <ContentRenderer>. */
+.prose h2 {
+  margin-block: 1.5em 0.5em;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--az-ink);
+}
+
+.prose p {
+  margin-block: 0.75em;
+}
+
+.prose blockquote {
+  margin-block: 1em;
+  border-inline-start: 2px solid var(--az-warning);
+  background: color-mix(in oklch, var(--az-warning) 8%, transparent);
+  padding: 0.75rem 1rem;
+  color: var(--az-ink);
+}
+
+.prose a {
+  color: var(--az-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose ul {
+  margin-block: 0.75em;
+  padding-inline-start: 1.25em;
+}

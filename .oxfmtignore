@@ -1,0 +1,9 @@
+**/dist/**
+**/.output/**
+**/coverage/**
+**/node_modules/**
+**/.turbo/**
+pnpm-lock.yaml
+.agents/skills/**
+.claude/skills/**
+.skills/**

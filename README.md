@@ -67,8 +67,20 @@ Nuxt dashboard ─── UI, oRPC + OpenAPI routes, and Better Auth, one app ─
 | [`packages/auth`](./packages/auth)                     | Authentication policy and the Better Auth options factory                                  |
 | [`packages/api`](./packages/api)                       | oRPC router and control-plane operations                                                   |
 | [`apps/dashboard`](./apps/dashboard)                   | The single deployable app: UI, `/rpc/**` + `/api/v1/**`, and `/api/auth/**`                |
+| [`apps/marketing`](./apps/marketing)                   | Nuxt public marketing site; frontend only, no persistence                                  |
 
 Adapters depend on the runtime; the runtime never depends on adapters. See [docs/architecture.md](./docs/architecture.md) for the full dependency rules.
+
+### Local ports
+
+Each app's `aube --filter <name> run dev` binds a fixed port, so they can all run side by side:
+
+| App                                        | Port   | `aube --filter` name       |
+| ------------------------------------------ | ------ | -------------------------- |
+| [`apps/dashboard`](./apps/dashboard)       | `3000` | `@agent-zero/dashboard`    |
+| [`apps/marketing`](./apps/marketing)       | `3001` | `@agent-zero/marketing`    |
+| [`apps/docs`](./apps/docs)                 | `3002` | `@agent-zero/docs`         |
+| [`apps/mail-preview`](./apps/mail-preview) | `3005` | `@agent-zero/mail-preview` |
 
 ---
 
@@ -177,15 +189,16 @@ those policy variables, rebuild the app, or the auth pages will keep advertising
 capabilities (the server still enforces its own policy either way).
 
 The interface ships English and Italian through `@nuxtjs/i18n`, with dictionaries split by scope in
-`apps/dashboard/i18n/locales/<locale>/`. `aube run i18n:status` builds a
+`packages/i18n/locales/<locale>/` and shared with the marketing site; each app loads only the
+scopes it renders. `aube run i18n:status` builds a
 [Lunaria](https://lunaria.dev) report showing which translations went stale relative to the English
 source; it reads git history, so it needs the dictionaries committed.
 
-`aube run test:e2e` builds the dashboard, starts the production preview on port 5678, and runs the
+`aube run test:browser` builds the dashboard, starts the production preview on port 5678, and runs the
 Playwright suite against `server/auth.config.ts` running with an in-memory Better Auth adapter and
 signup enabled (`AUTH_E2E_MEMORY=true`, set only for that preview server), so the suite creates and
 signs in its own throwaway account through the real `/api/auth/**` endpoints instead of a live
-database. Use `aube --filter @agent-zero/dashboard run test:e2e:ui` for Playwright UI mode.
+database. Use `aube --filter @agent-zero/dashboard run test:browser:ui` for Playwright UI mode.
 
 Hosted execution is available through the provider-neutral `RunnerPool`: every lease has a maximum lifetime, quota checks run before provisioning, expired sandboxes are stopped, and the agent receives only the ordinary `Runner` contract. See [the sandbox provider evaluation](./docs/sandbox-providers.md).
 

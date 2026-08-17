@@ -1,0 +1,229 @@
+{
+  "$schema": "../../schemas/marketing.schema.json",
+  "marketing": {
+    "nav": {
+      "aria": "Main navigation",
+      "features": "Features",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "blog": "Blog",
+      "docs": "Docs",
+      "contact": "Contact",
+      "signIn": "Sign in",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu"
+    },
+    "hero": {
+      "eyebrow": "Open source · Apache-2.0",
+      "title": "The autonomous engineer that never merges a guess",
+      "subtitle": "Agent Zero reads your pull requests, reproduces the problem, writes the fix, and proves it with a passing run. Observe mode is the default, so nothing touches your repository until you say so.",
+      "primaryCta": "Start with observe mode",
+      "secondaryCta": "Read the docs",
+      "note": "No credit card. Runs on your own infrastructure.",
+      "terminalTitle": "agent-zero review",
+      "terminalCaption": "A review run in observe mode: findings only, no writes."
+    },
+    "logos": {
+      "title": "Built on the tooling your pipeline already speaks"
+    },
+    "features": {
+      "title": "Everything between a review comment and a verified fix",
+      "subtitle": "Agent Zero is a runtime, not a chat window. Each stage is an explicit state transition you can inspect, replay, and gate.",
+      "items": {
+        "observe": {
+          "title": "Observe by default",
+          "description": "Every run starts read-only. Agent Zero reports what it found and what it would change; promoting to fix mode is a deliberate, auditable step."
+        },
+        "runner": {
+          "title": "One execution boundary",
+          "description": "Commands and file writes go through a single runner boundary with path validation and escape rejection, so there is exactly one place to audit."
+        },
+        "verify": {
+          "title": "Fixes that come with proof",
+          "description": "A change is only proposed once the repository's own checks pass against it. Failed verification ends the run instead of opening a hopeful pull request."
+        },
+        "models": {
+          "title": "Any model provider",
+          "description": "Native OpenAI, Anthropic, and Google adapters, AI Gateway, or any OpenAI-compatible endpoint. The runtime never depends on a specific provider."
+        },
+        "sandbox": {
+          "title": "Leased sandboxes",
+          "description": "Hosted execution through a provider-neutral runner pool: every lease has a maximum lifetime, quotas are checked before provisioning, and expired sandboxes are stopped."
+        },
+        "policy": {
+          "title": "Policy you keep in git",
+          "description": "Modes, model selection, and permitted commands live in repository configuration, reviewed like any other change to your codebase."
+        }
+      }
+    },
+    "testimonials": {
+      "title": "What teams do with it",
+      "subtitle": "Agent Zero is used where a wrong automated change is expensive.",
+      "items": {
+        "one": {
+          "quote": "We pointed it at a backlog of stale review comments and let it run in observe mode for a week. It surfaced two real null-dereference paths our linters never flagged.",
+          "author": "Maya Chen",
+          "role": "Staff Engineer, Northline"
+        },
+        "two": {
+          "quote": "The part that sold us was the runner boundary. There is one file to read if you want to know everything the agent is allowed to execute.",
+          "author": "Jonas Weber",
+          "role": "Platform Lead, Latticeworks"
+        },
+        "three": {
+          "quote": "It never opens a pull request it cannot back with a green run, which means our reviewers stopped treating agent output as noise.",
+          "author": "Amelia Ortiz",
+          "role": "Head of Engineering, Harbor Studio"
+        }
+      }
+    },
+    "pricing": {
+      "title": "Run it yourself, or let us run it",
+      "subtitle": "The runtime is Apache-2.0 and always will be. Paid tiers cover hosted execution, retention, and support.",
+      "intervalLabel": "Billing interval",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "yearlyHint": "2 months free",
+      "perMonth": "/ month",
+      "perYear": "/ year",
+      "recommended": "Recommended",
+      "custom": "Custom",
+      "plans": {
+        "community": {
+          "name": "Community",
+          "description": "The full runtime, self-hosted, with your own model credentials.",
+          "cta": "Clone the repository",
+          "features": {
+            "one": "Observe, fix, and verify modes",
+            "two": "Self-hosted runners",
+            "three": "Bring your own model provider",
+            "four": "Community support on GitHub"
+          }
+        },
+        "team": {
+          "name": "Team",
+          "description": "Hosted sandboxes and shared policy for a whole engineering org.",
+          "cta": "Start a trial",
+          "features": {
+            "one": "Everything in Community",
+            "two": "Hosted sandbox pool with leases and quotas",
+            "three": "Organization-wide policy and audit log",
+            "four": "90-day run retention",
+            "five": "Email support"
+          }
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "description": "Private deployment, procurement paperwork, and a support agreement.",
+          "cta": "Talk to us",
+          "features": {
+            "one": "Everything in Team",
+            "two": "Single-tenant or on-premise deployment",
+            "three": "SSO and SCIM provisioning",
+            "four": "Custom retention and data residency",
+            "five": "Named support contact"
+          }
+        }
+      }
+    },
+    "faq": {
+      "title": "Questions people ask before the first run",
+      "subtitle": "Anything else, and the answer is usually in the docs.",
+      "items": {
+        "write": {
+          "question": "Can Agent Zero change my repository without asking?",
+          "answer": "No. Observe mode is the default and never writes to a target repository. Fix mode has to be selected explicitly in repository policy, and every write still goes through the runner boundary."
+        },
+        "models": {
+          "question": "Which model providers are supported?",
+          "answer": "OpenAI, Anthropic, and Google Generative AI natively, plus AI Gateway and any OpenAI-compatible endpoint. The provider is selected in repository policy and its credential comes from the environment."
+        },
+        "selfhost": {
+          "question": "Do I have to use the hosted tiers?",
+          "answer": "No. The runtime is Apache-2.0 licensed and fully functional self-hosted. Paid tiers exist for teams that would rather not operate the sandbox pool themselves."
+        },
+        "secrets": {
+          "question": "What happens to my source code and secrets?",
+          "answer": "Secrets are never written to logs, prompts, fixtures, or error messages. On self-hosted runs, code never leaves your infrastructure except for the model calls you configure."
+        },
+        "cancel": {
+          "question": "Can I cancel or change plan later?",
+          "answer": "Yes, at any time and from your own dashboard. Downgrading keeps every run you have already recorded; only retention beyond the new tier's window is dropped."
+        }
+      }
+    },
+    "cta": {
+      "title": "Point it at one pull request",
+      "subtitle": "Observe mode costs you nothing but a model call, and you will know within one run whether it earns a place in your pipeline.",
+      "primary": "Get started",
+      "secondary": "Talk to us"
+    },
+    "footer": {
+      "aria": "Footer",
+      "tagline": "The open-source autonomous engineer that finds, fixes, and verifies problems in pull requests.",
+      "product": "Product",
+      "resources": "Resources",
+      "legal": "Legal",
+      "changelog": "Changelog",
+      "github": "GitHub",
+      "architecture": "Architecture",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "copyright": "Agent Zero contributors. Apache-2.0 licensed."
+    },
+    "pages": {
+      "home": {
+        "title": "Ship fixes, not guesses",
+        "description": "Agent Zero is the open-source autonomous engineer that finds, fixes, and verifies problems in pull requests. Observe mode is the default, so nothing changes until you allow it."
+      },
+      "pricing": {
+        "title": "Pricing",
+        "description": "The Agent Zero runtime is Apache-2.0 and free to self-host. Hosted sandbox execution, retention, and support are available on the Team and Enterprise tiers."
+      },
+      "contact": {
+        "title": "Contact",
+        "description": "Talk to the Agent Zero team about hosted execution, enterprise deployment, or a security question.",
+        "heading": "Tell us what you are trying to automate",
+        "body": "Send a message below, or use one of the direct routes underneath it — a GitHub issue is fastest for anything technical, and email is better for procurement, security review, or enterprise deployment.",
+        "form": {
+          "nameLabel": "Name",
+          "namePlaceholder": "Jane Doe",
+          "emailLabel": "Email",
+          "emailPlaceholder": "you{'@'}example.com",
+          "messageLabel": "Message",
+          "messagePlaceholder": "Tell us what you're trying to automate.",
+          "submit": "Send message",
+          "hint": "Opens your email client with this pre-filled — the site itself holds no contact-form data.",
+          "requiredError": "Fill in every field before sending."
+        },
+        "channelsHeading": "Or reach us directly",
+        "issuesTitle": "Open an issue",
+        "issuesBody": "Bug reports, feature requests, and questions about the runtime.",
+        "emailTitle": "Email us",
+        "emailBody": "Enterprise deployment, procurement, and support agreements.",
+        "securityTitle": "Report a vulnerability",
+        "securityBody": "Please follow the coordinated disclosure process instead of opening a public issue."
+      },
+      "blog": {
+        "title": "Blog",
+        "description": "Notes on shipping an autonomous engineer safely: observe mode, the runner boundary, and what verified evidence actually means.",
+        "heading": "Blog",
+        "subtitle": "Notes from the runtime",
+        "allTag": "All",
+        "readMore": "Read more",
+        "backToBlog": "Back to blog",
+        "empty": "No posts yet."
+      },
+      "changelog": {
+        "title": "Changelog",
+        "description": "What shipped in Agent Zero, release by release.",
+        "heading": "Changelog",
+        "subtitle": "Every release, straight from GitHub",
+        "empty": "No releases yet."
+      }
+    },
+    "legal": {
+      "lastUpdated": "Last updated"
+    }
+  }
+}

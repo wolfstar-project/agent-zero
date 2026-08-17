@@ -13,6 +13,9 @@
         "retry": {
           "type": "string"
         },
+        "skipToContent": {
+          "type": "string"
+        },
         "brand": {
           "type": "object",
           "properties": {

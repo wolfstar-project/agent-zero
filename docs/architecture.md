@@ -18,6 +18,7 @@ packages/api ────────────┘        │
                          └──> shared contracts
 
 apps/dashboard: UI + packages/api's router (oRPC + OpenAPI) + Better Auth ──> database package ──> Postgres
+Nuxt marketing ───> public site (no inbound dependencies)
 ```
 
 <!-- #endregion intro -->
@@ -34,6 +35,7 @@ apps/dashboard: UI + packages/api's router (oRPC + OpenAPI) + Better Auth ──
 - `auth` holds authentication policy and a Better Auth options factory, and reads the store through `database`. It does not depend on the runtime.
 - `packages/api` composes the runtime, source-control, models, and config adapters into one router. It may depend on all of them; none of them may depend on it. It does not depend on `auth`.
 - `apps/dashboard` is the entry-point adapter and composition root: a Nuxt app whose `server/` directory serves `packages/api`'s router and, through its own `server/auth.config.ts` composing `packages/auth`'s options, is the only process that opens the database, through `packages/database`.
+- `apps/marketing` is a frontend-only Nuxt site with no dependents and no dependencies beyond `packages/i18n`. Nothing may import it.
 
 If a change creates a reverse dependency, move the shared contract inward instead of importing an adapter into the runtime.
 
@@ -80,6 +82,16 @@ A subscription transport also owns the one failure that repairs itself. A spent 
 Procedures validate at the boundary with Zod and then delegate; they never invoke a shell or touch a checkout, because `runTask` is the only place that resolves policy and constructs a runner. A hosted `RunnerPool` lease is optional and still yields nothing but a `Runner`. `EvlogHandlerPlugin`, shared by every transport through one `AsyncLocalStorage`-backed logger (`packages/api/src/orpc/logging.ts`), attaches structured request logs; procedures read it defensively (`requestLoggerStorage?.getStore()?.set(...)`) so router tests that call procedures directly through `createRouterClient`, without a transport's plugin attached, still pass.
 
 <!-- #endregion api-package -->
+
+<!-- #region marketing-boundary -->
+
+## Marketing boundary
+
+`apps/marketing` is the public site and holds the weakest position in the graph: no persistence, no credentials, no session, and no runtime-package imports. It links to the dashboard by origin rather than importing anything from it, so the two deploy and fail independently.
+
+It differs from the dashboard in exactly one respect. The dashboard renders with SSR because its session cookie is scoped to its own origin, so the server resolves it directly from the incoming request; the marketing site renders on the server too, but for a different reason — being crawlable is the entire point of it, so it prerenders every route rather than depending on a live request. That gives it a Nitro server, but the only routes on it are the ones `@nuxtjs/seo` generates — `robots.txt` and the sitemaps. Anything that needs to read or write state belongs behind the dashboard's `server/` routes, not here.
+
+<!-- #endregion marketing-boundary -->
 
 <!-- #region dashboard-boundary -->
 

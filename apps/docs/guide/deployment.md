@@ -36,3 +36,10 @@ Rebuild the app whenever you change:
 
 - `AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`, or organization flags (login-page capabilities are captured at build time);
 - anything in `packages/*` (the server bundle inlines them).
+
+## Documentation site
+
+`apps/docs` is not deployed with the dashboard. It ships its own `vercel.json` so it can be
+deployed as a separate Vercel project with **Root Directory** set to `apps/docs`: the install and
+build commands `cd` back to the workspace root so `pnpm` and Turborepo resolve the monorepo
+correctly, and the build output is `.vitepress/dist`.

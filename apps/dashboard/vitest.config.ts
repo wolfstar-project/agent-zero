@@ -28,7 +28,7 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['test/unit/**/*.{test,spec}.ts', '{app,config}/**/*.{test,spec}.ts'],
+          include: ['test/unit/**/*.{test,spec}.ts', '{app,config,modules}/**/*.{test,spec}.ts'],
         },
       },
       await defineVitestProject({

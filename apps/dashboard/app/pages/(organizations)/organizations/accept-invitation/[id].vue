@@ -26,17 +26,22 @@
 
 <script setup lang="ts">
 const route = useRoute();
-const { client } = useAuth();
 
 const status = ref<'pending' | 'accepted' | 'failed'>('pending');
 
 /**
  * The invitation id arrives from an email link, so it is untrusted input: it is passed straight to
  * the auth server, which owns the decision, and never used to build a redirect target here.
+ *
+ * `useAuthClient()` is called here rather than at setup scope: it resolves to `null` during SSR
+ * and stays the value captured at setup for the rest of the component's life, so calling it at
+ * setup scope would permanently pin `client` to `null` even after hydration. `onMounted` only runs
+ * client-side, once hydration has completed, so the client is available every time this runs.
  */
 onMounted(async () => {
   const invitationId = String(route.params.id ?? '');
-  if (!invitationId) {
+  const client = useAuthClient();
+  if (!invitationId || !client) {
     status.value = 'failed';
     return;
   }

@@ -34,6 +34,7 @@ These instructions apply to humans and coding agents working in this repository.
 - `apps/docs`: the VitePress documentation site. Not deployed with the dashboard. The canonical architecture and provider references remain in `docs/*.md` (the site includes them verbatim); edit those files, not copies.
 - `apps/mail-preview`: dev-only Maizzle preview server for `packages/mail` templates. Not deployed; nothing may import it.
 - `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), plus `GET /api/dashboard`, and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only process that opens the database, and it does so through `packages/database`.
+- `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, no credentials, no session, no runtime-package imports; nothing imports it. Server-rendered and prerendered because it must be crawlable, so the only Nitro routes are the ones `@nuxtjs/seo` generates. Copy lives in `packages/i18n` (`locales/<locale>/marketing.json`), never in the app.
 
 The runtime must remain independent from HTTP, source-control platforms, terminal UI, and specific model providers. Adapters depend on the runtime; the runtime must not depend on adapters. Authentication is an adapter concern: neither `packages/database` nor `packages/auth` may import a runtime package or execute repository work; `apps/dashboard`'s `server/auth.config.ts` composes `packages/auth`'s policy into the Better Auth options the Nuxt module builds an instance from, and is the only place in the repository that reaches the database.
 
@@ -62,6 +63,9 @@ Use the smallest relevant check while iterating, then run the complete set befor
 
 ## Pull requests
 
+- Use the `git-commit` skill to inspect, stage, and commit each logical change with a Conventional Commit message.
+- After committing, verify that the current branch is not `main` and is based on `main`; if it is not, report that instead of offering to open a pull request.
+- Only after that branch validation succeeds, ask the user whether to use the `create-pull-request` skill; invoke it only after explicit confirmation.
 - Use Conventional Commit-style titles such as `feat(cli): add JSON output` or `fix(runner): reject escaped paths`.
 - Explain the problem, the chosen boundary, verification evidence, and safety impact.
 - Keep refactors separate from behavior changes when possible.

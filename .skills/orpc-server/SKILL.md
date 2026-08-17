@@ -20,9 +20,10 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   - `auth.config.ts` (at the `server/` root) configures `@onmax/nuxt-better-auth`, which mounts
     `/api/auth/**` itself — there is no hand-written auth route file.
   - `api/dashboard.get.ts` serves the aggregate dashboard view.
-  Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports:
-  `apps/dashboard/tsconfig.json`'s plain `tsc` pass (part of `typecheck`, separate from `vue-tsc`)
-  has no visibility into Nuxt's generated ambient auto-import types.
+  Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports, so
+  every symbol's origin stays visible at the call site. `typecheck` is one `nuxt typecheck` pass
+  (Golar, configured in `apps/dashboard/golar.config.ts`) covering `app/`, `modules/`, `server/`,
+  and `test/` — there is no separate `tsc --project` or `vue-tsc` invocation.
 - `apps/dashboard` pins `nuxt` to the stable v4 channel (`^4.5.2` in `package.json`), whose
   `@nuxt/nitro-server` depends on `nitropack` v2 + classic h3 (`h3@^1.15.11`, also a direct
   dependency), not the standalone Nitro v3 package. Route handlers use classic h3's API:

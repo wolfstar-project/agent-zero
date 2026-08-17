@@ -7,8 +7,8 @@ dist/
 /.vitepress/
 !.vitepress/config.ts
 .maizzle/
-.vitepress/cache/
-.vitepress/.temp/
+**/.vitepress/cache/
+**/.vitepress/.temp/
 .vitehub/
 *.tsbuildinfo
 coverage/

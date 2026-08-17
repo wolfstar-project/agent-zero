@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "sortImports": {},
+  "sortPackageJson": true,
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.output/**",
+    "**/coverage/**",
+    "**/node_modules/**",
+    "**/.turbo/**",
+    "**/.vitepress/cache/**",
+    "pnpm-lock.yaml",
+    ".agents/skills/**",
+    ".claude/skills/**",
+    ".skills/**"
+  ]
+}
