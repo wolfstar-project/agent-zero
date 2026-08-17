@@ -645,6 +645,27 @@
                 }
               },
               "additionalProperties": false
+            },
+            "changelog": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "heading": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "type": "string"
+                },
+                "empty": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
