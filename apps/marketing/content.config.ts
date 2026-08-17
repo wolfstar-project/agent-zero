@@ -26,11 +26,22 @@ const blogSchema = z.object({
 });
 
 /**
- * A single `legal` and a single `blog` collection, sourced from `en/` only: this site's long-form
- * content ships in English regardless of the visitor's UI locale. `packages/i18n` remains the
- * source of UI copy (nav labels, buttons, page titles for the other pages); these collections
- * exist because document and post bodies are prose too long to live as i18n string values, not
- * because the two systems compete for the same content.
+ * Frontmatter every changelog entry declares. `version` is the release tag shown as a badge;
+ * `date` sorts the listing, same as `blogSchema.date`.
+ */
+const changelogSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  version: z.string(),
+  date: z.string(),
+});
+
+/**
+ * A single `legal`, `blog`, and `changelog` collection, sourced from `en/` only: this site's
+ * long-form content ships in English regardless of the visitor's UI locale. `packages/i18n`
+ * remains the source of UI copy (nav labels, buttons, page titles for the other pages); these
+ * collections exist because document, post, and entry bodies are prose too long to live as i18n
+ * string values, not because the two systems compete for the same content.
  */
 export default defineContentConfig({
   collections: {
@@ -43,6 +54,11 @@ export default defineContentConfig({
       type: 'page',
       source: { include: 'en/blog/**', prefix: '/blog' },
       schema: blogSchema,
+    }),
+    changelog: defineCollection({
+      type: 'page',
+      source: { include: 'en/changelog/**', prefix: '/changelog' },
+      schema: changelogSchema,
     }),
   },
 });

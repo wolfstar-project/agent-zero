@@ -213,6 +213,13 @@
         "readMore": "Read more",
         "backToBlog": "Back to blog",
         "empty": "No posts yet."
+      },
+      "changelog": {
+        "title": "Changelog",
+        "description": "What shipped in Agent Zero, release by release.",
+        "heading": "Changelog",
+        "subtitle": "Every release, straight from GitHub",
+        "empty": "No releases yet."
       }
     },
     "legal": {

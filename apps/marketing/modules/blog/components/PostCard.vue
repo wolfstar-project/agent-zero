@@ -26,14 +26,13 @@
       </span>
       <span class="min-w-0 truncate text-sm font-650">{{ post.author }}</span>
       <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="postPath">
-        {{ $t('marketing.pages.blog.readMore') }} →
+        {{ $t("marketing.pages.blog.readMore") }} →
       </NuxtLink>
     </div>
   </li>
 </template>
 
 <script setup lang="ts">
-const { locale } = useI18n();
 const localePath = useLocalePath();
 
 const { post } = defineProps<{
@@ -52,14 +51,6 @@ const { post } = defineProps<{
 // `prefix_except_default` an `it` visitor following it unresolved would land back on the English
 // route and lose their locale.
 const postPath = computed(() => localePath(post.path));
-
-// The post itself ships in English only (see content.config.ts); the date still renders in the
-// visitor's own locale format, since that much doesn't require a translated document.
-const formattedDate = computed(() =>
-  new Date(post.date).toLocaleDateString(locale.value, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }),
-);
+const dateFormatter = useDateFormatter({ year: "numeric", month: "long", day: "numeric" });
+const formattedDate = computed(() => dateFormatter.value.format(new Date(post.date)));
 </script>

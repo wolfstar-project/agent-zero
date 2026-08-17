@@ -36,7 +36,7 @@
         <li
           v-for="plan in pricingPlans"
           :key="plan.id"
-          class="panel flex w-full flex-col p-6"
+          class="panel flex h-full w-full flex-col p-6"
           :class="plan.recommended ? 'border-accent/45 bg-accent/4' : ''"
         >
           <div class="flex items-center justify-between gap-3">

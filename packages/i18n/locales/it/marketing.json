@@ -213,6 +213,13 @@
         "readMore": "Leggi di più",
         "backToBlog": "Torna al blog",
         "empty": "Ancora nessun articolo."
+      },
+      "changelog": {
+        "title": "Changelog",
+        "description": "Cosa è stato rilasciato in Agent Zero, versione dopo versione.",
+        "heading": "Changelog",
+        "subtitle": "Ogni release, direttamente da GitHub",
+        "empty": "Ancora nessuna release."
       }
     },
     "legal": {

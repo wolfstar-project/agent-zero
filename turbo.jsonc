@@ -8,70 +8,70 @@
     "tooling/oxc/.oxfmtrc.json",
     ".oxfmtignore",
     "scripts/tsdown.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
   ],
   "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"]
+      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"],
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": ["*.tsbuildinfo"]
+      "outputs": ["*.tsbuildinfo"],
     },
     "lint": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
     },
     "lint:fix": {
       "dependsOn": ["^build"],
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
     },
     "test:e2e": {
       "dependsOn": ["build"],
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "db:generate": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "db:migrate": {
       "cache": false,
       // Declared because Turborepo's strict env mode would otherwise hide the connection string
       // from drizzle-kit and silently migrate the local default instead.
       "env": ["DATABASE_URL", "AUTH_DATABASE_URL"],
-      "outputs": []
+      "outputs": [],
     },
     "i18n:check": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "i18n:report": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "i18n:schema": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "i18n:status": {
       "cache": false,
-      "outputs": []
+      "outputs": [],
     },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
-      "persistent": true
+      "persistent": true,
     },
     "clean": {
-      "cache": false
-    }
-  }
+      "cache": false,
+    },
+  },
 }
