@@ -3,9 +3,9 @@
   "version": "0.4.0",
   "type": "module",
   "scripts": {
-    "build": "nuxt build --dotenv ../../.env",
+    "build": "nuxt build",
     "clean": "nuxt cleanup && tsc -b --clean",
-    "dev": "nuxt dev --dotenv ../../.env",
+    "dev": "nuxt dev",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" --ignore-pattern \"test/nuxt/pages/**\" app config modules server test",
     "start": "node .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",

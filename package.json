@@ -28,7 +28,7 @@
     "test:e2e": "turbo run test:e2e",
     "test:watch": "vitest",
     "typecheck": "turbo run typecheck",
-    "zero": "node --import tsx packages/cli/src/index.ts"
+    "zero": "node --env-file-if-exists=.env --import tsx packages/cli/src/index.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
