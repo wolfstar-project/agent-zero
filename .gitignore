@@ -4,8 +4,11 @@ node_modules
 dist/
 .output/
 .nuxt/
+/.vitepress/
+!.vitepress/config.ts
 .maizzle/
 .vitepress/cache/
+.vitepress/.temp/
 .vitehub/
 *.tsbuildinfo
 coverage/

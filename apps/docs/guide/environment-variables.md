@@ -1,6 +1,16 @@
 # Environment variables
 
-Agent Zero reads credentials and deployment policy exclusively from the environment. Endpoint URLs and credentials can never be named or embedded in `.agent-zero.yml`, so untrusted repository policy cannot redirect a secret. [`.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/.env.example) is the annotated template; copy it to `.env` for local development.
+Agent Zero reads credentials and deployment policy exclusively from the environment. Endpoint URLs and credentials can never be named or embedded in `.agent-zero.yml`, so untrusted repository policy cannot redirect a secret.
+
+Local environment files follow the runnable process that consumes them:
+
+| Process                            | Template                                                                                                              | Local file            |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| CLI                                | [`.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/.env.example)                               | `.env`                |
+| Dashboard, API, auth, DB, and mail | [`apps/dashboard/.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/apps/dashboard/.env.example) | `apps/dashboard/.env` |
+| Documentation                      | [`apps/docs/.env.example`](https://github.com/wolfstar-project/agent-zero/blob/main/apps/docs/.env.example)           | `apps/docs/.env`      |
+
+Model and source-control credentials occur in both the CLI and dashboard templates because those are independent composition roots. Configure only the process you run; injected deployment variables still take precedence over local files.
 
 ## Model providers
 
@@ -74,7 +84,18 @@ See [Mails](/guide/mails).
 
 ## Dashboard
 
+| Variable | Purpose                       |
+| -------- | ----------------------------- |
+| `PORT`   | Dashboard port (default 3000) |
+
+## CLI
+
 | Variable          | Purpose                                                   |
 | ----------------- | --------------------------------------------------------- |
-| `PORT`            | Dashboard port (default 3000)                             |
 | `AGENT_ZERO_PORT` | Port used by the local development tooling (default 4040) |
+
+## Documentation
+
+| Variable    | Purpose                                                          |
+| ----------- | ---------------------------------------------------------------- |
+| `DOCS_BASE` | VitePress base path (default `/`; use `/<repository>/` on Pages) |

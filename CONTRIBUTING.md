@@ -22,6 +22,7 @@ cd agent-zero
 mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
 aube ci
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
 aube run check:repo
 aube test
 ```
