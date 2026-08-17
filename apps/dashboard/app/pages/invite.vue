@@ -101,7 +101,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { loginPath } from '~~/config/auth';
+import { loginPath } from '~~/config/app';
 
 /**
  * The single redemption page every invitation link points at.

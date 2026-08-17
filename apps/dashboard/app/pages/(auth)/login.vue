@@ -4,13 +4,6 @@
     <p class="mb-6 mt-1 text-xs text-muted">{{ $t('auth.login.subtitle') }}</p>
 
     <form class="flex flex-col gap-3" @submit.prevent="onSubmit">
-      <label v-if="isSigningUp" class="flex flex-col gap-1.5">
-        <span class="label-upper">
-          {{ $t('auth.login.name') }}
-        </span>
-        <input v-model="name" class="input-field" autocomplete="name" required type="text" />
-      </label>
-
       <label class="flex flex-col gap-1.5">
         <span class="label-upper">
           {{ $t('auth.login.email') }}
@@ -25,7 +18,7 @@
         <input
           v-model="password"
           class="input-field"
-          :autocomplete="isSigningUp ? 'new-password' : 'current-password'"
+          autocomplete="current-password"
           required
           type="password"
         />
@@ -40,12 +33,7 @@
       </p>
 
       <button class="btn-accent" :disabled="isPending" type="submit">
-        <template v-if="isSigningUp">
-          {{ isPending ? $t('auth.login.signUpPending') : $t('auth.login.signUp') }}
-        </template>
-        <template v-else>
-          {{ isPending ? $t('auth.login.submitPending') : $t('auth.login.submit') }}
-        </template>
+        {{ isPending ? $t('auth.login.submitPending') : $t('auth.login.submit') }}
       </button>
     </form>
 
@@ -58,13 +46,19 @@
       </button>
     </template>
 
-    <button v-if="canSignUp" class="btn-link mt-5 w-full" type="button" @click="toggleMode">
-      {{ isSigningUp ? $t('auth.login.toSignIn') : $t('auth.login.toSignUp') }}
-    </button>
+    <NuxtLink v-if="canSignUp" class="btn-link mt-5 block w-full text-center" :to="signupPath">
+      {{ $t('auth.login.toSignUp') }}
+    </NuxtLink>
   </section>
 </template>
 
 <script setup lang="ts">
+import { signupPath } from '~~/config/app';
+
+/**
+ * Sign-in only. Registration lives on `signupPath`, which this page links to when the published
+ * policy enables it; the link is hidden otherwise so a closed deployment offers no dead end.
+ */
 definePageMeta({ layout: 'auth' });
 
 const appConfig = useAppConfig();
@@ -72,39 +66,26 @@ const { localizeAuthError } = useAuthErrorMessage();
 
 const signInEmail = useSignIn('email');
 const signInSocial = useSignIn('social');
-const signUpEmail = useSignUp('email');
 
 const canSignUp = appConfig.auth.enableSignup;
 const canUseGithub = appConfig.auth.enableGithubOauth;
 
-const isSigningUp = ref(false);
 const email = ref('');
 const password = ref('');
-const name = ref('');
 
-const action = computed(() => (isSigningUp.value ? signUpEmail : signInEmail));
 const isPending = computed(
-  () => action.value.status.value === 'pending' || signInSocial.status.value === 'pending',
+  () => signInEmail.status.value === 'pending' || signInSocial.status.value === 'pending',
 );
 const errorMessage = computed(() => {
-  const error = action.value.error.value ?? signInSocial.error.value;
+  const error = signInEmail.error.value ?? signInSocial.error.value;
   return error ? localizeAuthError(error) : undefined;
 });
 
 async function onSubmit(): Promise<void> {
-  if (isSigningUp.value) {
-    await signUpEmail.execute({ email: email.value, password: password.value, name: name.value });
-    return;
-  }
   await signInEmail.execute({ email: email.value, password: password.value });
 }
 
 async function onGithub(): Promise<void> {
   await signInSocial.execute({ provider: 'github' });
-}
-
-function toggleMode(): void {
-  isSigningUp.value = !isSigningUp.value;
-  password.value = '';
 }
 </script>

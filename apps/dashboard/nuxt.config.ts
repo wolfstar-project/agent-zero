@@ -1,19 +1,22 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// Read from `@agent-zero/auth/config` rather than restated here, so the build-time label below and
+// the runtime enforcement in `server/auth.config.ts` cannot drift. That subpath carries policy
+// only, with none of the database dependencies `authBetterAuthOptions` needs.
+import { authConfigFromEnvironment } from '@agent-zero/auth/config';
 import { defaultLocale, i18nLocales, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, ui } from './config/app.js';
-import { authConfigFromEnvironment, loginPath } from './config/auth.js';
 import { stripEmptyI18nMessagesPlugin } from './config/i18n-empty-placeholders.js';
 
-// Resolved once at config evaluation so the dashboard's login page publishes the same sign-in
+// Resolved once at config evaluation so the dashboard's auth pages publish the same sign-in
 // policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
 // credentials). Build-time capture is deliberate: the deployment contract (documented in README
 // and .env.example) is that the app is rebuilt whenever those policy variables change. The server
-// config enforces its own policy regardless, so a stale build can only mislabel the login page,
-// never open a sign-in method the server rejects.
+// config enforces its own policy regardless, so a stale build can only mislabel a page, never open
+// a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
 
 // `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
@@ -145,7 +148,8 @@ export default defineNuxtConfig({
   },
   routeRules: {
     '/': { appLayout: 'default', auth: { only: 'user' } },
-    [loginPath]: { auth: { only: 'guest' } },
+    '/login': { auth: { only: 'guest' } },
+    '/signin': { auth: { only: 'guest' } },
     '/organizations': { appLayout: 'default', auth: { only: 'user' } },
     // Reached from an invitation email, so the visitor is frequently signed out at that moment:
     // requiring a session sends them through /login and back, rather than rejecting the link.

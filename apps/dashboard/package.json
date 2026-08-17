@@ -7,7 +7,7 @@
     "clean": "nuxt cleanup && tsc -b --clean",
     "dev": "nuxt dev",
     "lint": "oxlint --config ../../.oxlintrc.json --type-aware --type-check app modules server shared test",
-    "start": "node .output/server/index.mjs",
+    "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
     "test": "vitest run",
     "test:e2e": "playwright test",

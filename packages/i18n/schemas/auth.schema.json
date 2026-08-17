@@ -31,12 +31,6 @@
             "submitPending": {
               "type": "string"
             },
-            "signUp": {
-              "type": "string"
-            },
-            "signUpPending": {
-              "type": "string"
-            },
             "github": {
               "type": "string"
             },
@@ -44,6 +38,24 @@
               "type": "string"
             },
             "toSignUp": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "signup": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "string"
+            },
+            "submitPending": {
+              "type": "string"
+            },
+            "closed": {
               "type": "string"
             },
             "toSignIn": {
