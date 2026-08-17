@@ -11,9 +11,9 @@
     "start:playwright:webserver": "nuxt preview --port 5678",
     "pretest": "nuxt prepare",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:update": "playwright test --update-snapshots",
+    "test:browser": "playwright test",
+    "test:browser:ui": "playwright test --ui",
+    "test:browser:update": "playwright test --update-snapshots",
     "test:nuxt": "nuxt prepare && vitest run --project nuxt",
     "test:unit": "nuxt prepare && vitest run --project unit",
     "typecheck": "nuxt typecheck"
