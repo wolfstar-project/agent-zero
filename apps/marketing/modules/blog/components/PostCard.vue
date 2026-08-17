@@ -26,7 +26,7 @@
       </span>
       <span class="min-w-0 truncate text-sm font-650">{{ post.author }}</span>
       <NuxtLink class="focus-ring ms-auto shrink-0 text-xs text-link font-650" :to="postPath">
-        {{ $t("marketing.pages.blog.readMore") }} →
+        {{ $t('marketing.pages.blog.readMore') }} →
       </NuxtLink>
     </div>
   </li>
@@ -51,6 +51,11 @@ const { post } = defineProps<{
 // `prefix_except_default` an `it` visitor following it unresolved would land back on the English
 // route and lose their locale.
 const postPath = computed(() => localePath({ path: post.path }));
-const dateFormatter = useDateFormatter({ year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+const dateFormatter = useDateFormatter({
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
 const formattedDate = computed(() => dateFormatter.value.format(new Date(post.date)));
 </script>

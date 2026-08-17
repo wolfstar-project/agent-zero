@@ -45,6 +45,11 @@ const { post } = defineProps<{
   };
 }>();
 
-const dateFormatter = useDateFormatter({ year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+const dateFormatter = useDateFormatter({
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
 const formattedDate = computed(() => dateFormatter.value.format(new Date(post.date)));
 </script>

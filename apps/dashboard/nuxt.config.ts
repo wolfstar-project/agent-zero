@@ -35,7 +35,12 @@ const dashboardLocales = i18nLocalesFor([
 ]);
 const resolvedI18nLocales = dashboardLocales.map((locale) => ({
   ...locale,
-  files: locale.files.map((file) => join(i18nLocalesDirectory, file)),
+  // `i18nLocalesFor` only ever produces plain filename strings (see localeFilesFor in
+  // packages/i18n), but `LocaleObject.files` is typed for `@nuxtjs/i18n`'s own richer
+  // `{ path, cache? }` form too, since a consumer could set that shape directly.
+  files: (locale.files ?? []).map((file) =>
+    join(i18nLocalesDirectory, typeof file === 'string' ? file : file.path),
+  ),
 }));
 
 export default defineNuxtConfig({

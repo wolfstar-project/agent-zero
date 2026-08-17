@@ -28,7 +28,6 @@ export default defineNuxtConfig({
   modules: [
     '@unocss/nuxt',
     '@nuxt/icon',
-    '@nuxt/image',
     '@nuxt/content',
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
@@ -52,15 +51,6 @@ export default defineNuxtConfig({
     // Deliberately distinct from the dashboard's key: the two apps are separate origins in
     // production, and sharing a key would only couple them if they were ever proxied under one.
     storageKey: 'agent-zero-color-mode',
-  },
-
-  image: {
-    // Only the default (auto-detected `ipx`) provider registers itself; `provider="none"` on a
-    // `<NuxtImg>` instance — used for the hand-authored logo SVG ipx's svgo pass corrupts, see
-    // Header.vue/Footer.vue — needs its own opt-in or it 500s with "Unknown provider: none".
-    providers: {
-      none: {},
-    },
   },
 
   icon: {
@@ -244,6 +234,21 @@ export default defineNuxtConfig({
       },
       // Root config, unit, and Playwright files run in Node rather than the app's Vue context.
       include: ['../*.ts', '../test/unit/**/*.ts', '../test/e2e/**/*.ts'],
+    },
+  },
+
+  hooks: {
+    ready(nuxt) {
+      // `nuxt-site-config` (via `@nuxtjs/seo`) stores its own internal resolution stack under this
+      // runtimeConfig key. `@nuxt/test-utils`'s vitest environment `structuredClone`s the whole
+      // `runtimeConfig` while resolving the `nuxt` project, and that stack isn't plain-cloneable —
+      // nothing in this app calls `useSiteConfig()` itself, and site-config's own runtime
+      // composables read its module-level singleton directly, not this mirror, so dropping it here
+      // only affects what the test harness snapshots.
+      if (process.env.VITEST) {
+        // oxlint-disable-next-line no-unsafe-type-assertion -- test-only sanitization, see above
+        (nuxt.options.runtimeConfig as Record<string, unknown>)['nuxt-site-config'] = undefined;
+      }
     },
   },
 });

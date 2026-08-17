@@ -77,7 +77,12 @@ const columns = computed(() => [
     id: 'resources',
     labelKey: 'marketing.footer.resources',
     links: [
-      { id: 'blog', labelKey: 'marketing.nav.blog', to: localePath({ path: '/blog' }), external: false },
+      {
+        id: 'blog',
+        labelKey: 'marketing.nav.blog',
+        to: localePath({ path: '/blog' }),
+        external: false,
+      },
       { id: 'docs', labelKey: 'marketing.nav.docs', to: links.docs, external: true },
       {
         id: 'architecture',

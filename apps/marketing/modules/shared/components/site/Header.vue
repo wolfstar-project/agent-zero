@@ -79,9 +79,7 @@ const localePath = useLocalePath();
 // `siteNavigation` keeps a plain `(path: string) => string` signature so it stays checkable by the
 // package's plain `tsc` pass and testable outside Nuxt; this adapts the real `localePath` (which
 // vue-router 5's typed routes now require as `{ path }`, not a bare string) to that shape.
-const navigation = computed(() =>
-  siteNavigation((path) => localePath({ path }), links.docs),
-);
+const navigation = computed(() => siteNavigation((path) => localePath({ path }), links.docs));
 const dashboardUrl = useRuntimeConfig().public.dashboardUrl;
 
 const menuOpen = ref(false);
