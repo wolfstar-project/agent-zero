@@ -63,6 +63,9 @@ Use the smallest relevant check while iterating, then run the complete set befor
 
 ## Pull requests
 
+- Use the `git-commit` skill to inspect, stage, and commit each logical change with a Conventional Commit message.
+- After committing, verify that the current branch is not `main` and is based on `main`; if it is not, report that instead of offering to open a pull request.
+- Only after that branch validation succeeds, ask the user whether to use the `create-pull-request` skill; invoke it only after explicit confirmation.
 - Use Conventional Commit-style titles such as `feat(cli): add JSON output` or `fix(runner): reject escaped paths`.
 - Explain the problem, the chosen boundary, verification evidence, and safety impact.
 - Keep refactors separate from behavior changes when possible.
