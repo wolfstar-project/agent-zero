@@ -117,7 +117,6 @@ import { loginPath } from '~~/config/app';
 definePageMeta({ layout: 'auth' });
 
 const route = useRoute();
-const { client } = useAuth();
 const { localizeAuthError } = useAuthErrorMessage();
 const i18n = useI18n();
 
@@ -171,10 +170,21 @@ function needs(field: string): boolean {
 /**
  * The token arrives from an email link, so it is untrusted input: it is passed straight to the
  * auth server, which owns every decision about it, and is never used to build a redirect target.
+ *
+ * `useAuthClient()` is called here rather than at setup scope: it resolves to `null` during SSR
+ * and stays the value captured at setup for the rest of the component's life, so calling it at
+ * setup scope would permanently pin `client` to `null` even after hydration. `onMounted` only runs
+ * client-side, once hydration has completed, so the client is available every time this runs.
  */
 onMounted(async () => {
   if (!token.value) {
     stage.value = 'missingToken';
+    return;
+  }
+
+  const client = useAuthClient();
+  if (!client) {
+    stage.value = 'invalid';
     return;
   }
 
@@ -215,6 +225,12 @@ async function onSubmit(): Promise<void> {
   const wasConfirm = stage.value === 'CONFIRM';
 
   try {
+    const client = useAuthClient();
+    if (!client) {
+      errorMessage.value = localizeAuthError(undefined, 'auth.invite.invalid');
+      return;
+    }
+
     const { error } = await client.invite.redeem({
       token: token.value,
       ...(needs('email') ? { email: email.value } : {}),

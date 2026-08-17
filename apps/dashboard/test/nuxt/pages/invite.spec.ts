@@ -31,8 +31,8 @@ mockNuxtImport('useRoute', () => () => ({
   query: query.value,
   fullPath: `/invite?token=${query.value.token ?? ''}`,
 }));
-mockNuxtImport('useAuth', () => () => ({
-  client: { invite: { get: getInvite, redeem: redeemInvite } },
+mockNuxtImport('useAuthClient', () => () => ({
+  invite: { get: getInvite, redeem: redeemInvite },
 }));
 
 function respondWith(nextAction: string | null, requiredFields: string[] = []): void {
@@ -116,7 +116,7 @@ describe('invite page', () => {
     const wrapper = await mountSuspended(InvitePage);
     const href = wrapper.find('a').attributes('href');
 
-    expect(href).toBe('/login?redirect=%2Finvite%3Ftoken%3Da-token');
+    expect(href).toBe('/login?redirect=/invite?token=a-token');
   });
 
   it('reports a spent invitation rather than rendering a form', async () => {
