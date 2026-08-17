@@ -117,7 +117,10 @@ import { loginPath } from '~~/config/app';
 definePageMeta({ layout: 'auth' });
 
 const route = useRoute();
-const { client } = useAuth();
+// Null while the auth plugin has not installed the client yet (and on a server render that runs
+// before it does); both call sites below treat that as "invitation not resolvable here" rather
+// than throwing on an email link.
+const client = useAuthClient();
 const { localizeAuthError } = useAuthErrorMessage();
 const i18n = useI18n();
 
