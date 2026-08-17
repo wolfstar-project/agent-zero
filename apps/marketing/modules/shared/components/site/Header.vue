@@ -3,7 +3,7 @@
     <div class="shell h-16 flex items-center gap-4">
       <NuxtLink
         class="focus-ring flex shrink-0 items-center gap-2.5"
-        :to="localePath('/')"
+        :to="localePath({ path: '/' })"
         :aria-label="site.name"
       >
         <SiteAppLogo class="h-8 w-8 shrink-0" />
@@ -76,7 +76,12 @@
 
 <script setup lang="ts">
 const localePath = useLocalePath();
-const navigation = computed(() => siteNavigation(localePath, links.docs));
+// `siteNavigation` keeps a plain `(path: string) => string` signature so it stays checkable by the
+// package's plain `tsc` pass and testable outside Nuxt; this adapts the real `localePath` (which
+// vue-router 5's typed routes now require as `{ path }`, not a bare string) to that shape.
+const navigation = computed(() =>
+  siteNavigation((path) => localePath({ path }), links.docs),
+);
 const dashboardUrl = useRuntimeConfig().public.dashboardUrl;
 
 const menuOpen = ref(false);

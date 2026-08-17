@@ -19,7 +19,6 @@ export const links = {
   repository: 'https://github.com/wolfstar-project/agent-zero',
   issues: 'https://github.com/wolfstar-project/agent-zero/issues',
   security: 'https://github.com/wolfstar-project/agent-zero/blob/main/SECURITY.md',
-  changelog: 'https://github.com/wolfstar-project/agent-zero/releases',
   architecture: 'https://github.com/wolfstar-project/agent-zero/blob/main/docs/architecture.md',
   docs: 'https://github.com/wolfstar-project/agent-zero#readme',
   contactEmail: 'hello@agent-zero.dev',

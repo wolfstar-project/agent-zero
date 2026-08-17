@@ -65,6 +65,6 @@ function retry(): void {
 
 async function goHome(): Promise<void> {
   // Back to the home page of the locale the visitor was already reading, not the default one.
-  await clearError({ redirect: localePath('/') });
+  await clearError({ redirect: localePath({ path: '/' }) });
 }
 </script>

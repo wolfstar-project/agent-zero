@@ -1,5 +1,3 @@
-import process from 'node:process';
-
 import { defineConfig } from 'drizzle-kit';
 
 import { optionalDatabaseUrlFromEnvironment } from './src/client.js';
@@ -22,9 +20,6 @@ export default defineConfig({
   schema: './src/schema/index.ts',
   out: './drizzle',
   dbCredentials: {
-    url:
-      process.env.NODE_ENV === 'development'
-        ? LOCAL_DEVELOPMENT_URL
-        : (optionalDatabaseUrlFromEnvironment() ?? LOCAL_DEVELOPMENT_URL),
+    url: optionalDatabaseUrlFromEnvironment() ?? LOCAL_DEVELOPMENT_URL,
   },
 });

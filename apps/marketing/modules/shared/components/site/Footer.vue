@@ -56,20 +56,20 @@ const columns = computed(() => [
       {
         id: 'pricing',
         labelKey: 'marketing.nav.pricing',
-        to: localePath('/pricing'),
+        to: localePath({ path: '/pricing' }),
         external: false,
       },
       {
         id: 'contact',
         labelKey: 'marketing.nav.contact',
-        to: localePath('/contact'),
+        to: localePath({ path: '/contact' }),
         external: false,
       },
       {
         id: 'changelog',
         labelKey: 'marketing.footer.changelog',
-        to: links.changelog,
-        external: true,
+        to: localePath({ path: '/changelog' }),
+        external: false,
       },
     ],
   },
@@ -77,7 +77,7 @@ const columns = computed(() => [
     id: 'resources',
     labelKey: 'marketing.footer.resources',
     links: [
-      { id: 'blog', labelKey: 'marketing.nav.blog', to: localePath('/blog'), external: false },
+      { id: 'blog', labelKey: 'marketing.nav.blog', to: localePath({ path: '/blog' }), external: false },
       { id: 'docs', labelKey: 'marketing.nav.docs', to: links.docs, external: true },
       {
         id: 'architecture',
@@ -95,13 +95,13 @@ const columns = computed(() => [
       {
         id: 'privacy',
         labelKey: 'marketing.footer.privacy',
-        to: localePath('/legal/privacy'),
+        to: localePath({ path: '/legal/privacy' }),
         external: false,
       },
       {
         id: 'terms',
         labelKey: 'marketing.footer.terms',
-        to: localePath('/legal/terms'),
+        to: localePath({ path: '/legal/terms' }),
         external: false,
       },
     ],

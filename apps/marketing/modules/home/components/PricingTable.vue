@@ -111,6 +111,17 @@ const dashboardUrl = useRuntimeConfig().public.dashboardUrl;
 
 const intervals: readonly BillingInterval[] = ['monthly', 'yearly'];
 
+// Roving tabindex: only the checked radio is a tab stop, and Arrow keys both move focus and
+// change the selection, matching how a native radiogroup behaves.
+const optionRefs = ref<HTMLButtonElement[]>([]);
+
+function selectRelative(offset: 1 | -1): void {
+  const currentIndex = intervals.indexOf(interval.value);
+  const nextIndex = (currentIndex + offset + intervals.length) % intervals.length;
+  interval.value = intervals[nextIndex]!;
+  optionRefs.value[nextIndex]?.focus();
+}
+
 /** Tiers without a list price show "Custom" where the amount would be. */
 function priceLabel(plan: PricingPlan): string {
   if (!plan.price) return t('marketing.pricing.custom');
@@ -124,6 +135,6 @@ function isExternalCta(plan: PricingPlan): boolean {
 function ctaHref(plan: PricingPlan): string {
   if (plan.ctaTarget === 'repository') return links.repository;
   if (plan.ctaTarget === 'dashboard') return dashboardUrl;
-  return localePath('/contact');
+  return localePath({ path: '/contact' });
 }
 </script>

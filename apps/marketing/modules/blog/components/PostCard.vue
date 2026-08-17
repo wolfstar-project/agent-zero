@@ -50,7 +50,7 @@ const { post } = defineProps<{
 // `post.path` comes straight from `@nuxt/content` (e.g. `/blog/foo`) with no locale prefix; under
 // `prefix_except_default` an `it` visitor following it unresolved would land back on the English
 // route and lose their locale.
-const postPath = computed(() => localePath(post.path));
-const dateFormatter = useDateFormatter({ year: "numeric", month: "long", day: "numeric" });
+const postPath = computed(() => localePath({ path: post.path }));
+const dateFormatter = useDateFormatter({ year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 const formattedDate = computed(() => dateFormatter.value.format(new Date(post.date)));
 </script>

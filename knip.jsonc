@@ -96,6 +96,7 @@
         "app/error.vue",
         "app/pages/**/*.vue",
         "app/layouts/**/*.vue",
+        "app/composables/**/*.ts",
         "modules/**/*.vue",
         "modules/**/*.ts",
         "config/**/*.ts",

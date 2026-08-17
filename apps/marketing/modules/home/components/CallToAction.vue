@@ -9,7 +9,7 @@
             {{ $t('marketing.cta.primary') }}
             <Icon aria-hidden="true" class="h-4 w-4 rtl:scale-x-[-1]" name="lucide:arrow-right" />
           </a>
-          <NuxtLink class="btn btn-subtle" :to="localePath('/contact')">
+          <NuxtLink class="btn btn-subtle" :to="localePath({ path: '/contact' })">
             {{ $t('marketing.cta.secondary') }}
           </NuxtLink>
         </div>

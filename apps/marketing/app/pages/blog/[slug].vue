@@ -1,7 +1,7 @@
 <template>
   <BlogPost v-if="post" :post="post">
     <template #before>
-      <NuxtLink class="focus-ring text-xs text-link font-650" :to="localePath('/blog')">
+      <NuxtLink class="focus-ring text-xs text-link font-650" :to="localePath({ path: '/blog' })">
         ← {{ $t("marketing.pages.blog.backToBlog") }}
       </NuxtLink>
     </template>
@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-const route = useRoute();
+const route = useRoute<'blog-slug'>();
 const localePath = useLocalePath();
 
 const slug = computed(() => String(route.params.slug));

@@ -9,7 +9,7 @@
         <p class="m-0 mt-6 max-w-xl lede">{{ $t('marketing.hero.subtitle') }}</p>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
-          <NuxtLink class="btn btn-accent" :to="localePath('/pricing')">
+          <NuxtLink class="btn btn-accent" :to="localePath({ path: '/pricing' })">
             {{ $t('marketing.hero.primaryCta') }}
             <Icon aria-hidden="true" class="h-4 w-4 rtl:scale-x-[-1]" name="lucide:arrow-right" />
           </NuxtLink>
