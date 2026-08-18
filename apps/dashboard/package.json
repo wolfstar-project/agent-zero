@@ -8,6 +8,8 @@
     "dev": "nuxt dev",
     "lint": "oxlint --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" --ignore-pattern \"test/nuxt/pages/**\" app config modules server test",
     "lint:fix": "oxlint --fix --config ../../tooling/oxc/apps.oxlintrc.json --type-aware --type-check --ignore-pattern \"test/nuxt/components/**\" --ignore-pattern \"test/nuxt/pages/**\" app config modules server test",
+    "prelint": "nuxt prepare",
+    "prelint:fix": "nuxt prepare",
     "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "start:playwright:webserver": "nuxt preview --port 5678",
     "pretest": "nuxt prepare",
