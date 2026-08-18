@@ -49,6 +49,8 @@ aube test
 
 Read [AGENTS.md](AGENTS.md) and the matching files in `.agents/skills/` before making architectural or safety-sensitive changes.
 
+If an AI agent helps you write a change, read [AI_POLICY.md](AI_POLICY.md) first: you still own the diff, you still run the checks, and you disclose the agent in the pull request.
+
 Documentation lives in `apps/docs`, a VitePress site (`aube run dev --filter=@agent-zero/docs` to preview it). The canonical architecture and provider references stay in `docs/*.md` and are included by the site — edit those files rather than duplicating their content into site pages.
 
 ## Development workflow

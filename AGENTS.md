@@ -1,13 +1,56 @@
-# Agent Zero contributor instructions
+# Agent Zero development guide
 
 These instructions apply to humans and coding agents working in this repository.
+
+## Overview
+
+Agent Zero is an open-source autonomous engineer that finds, fixes, and verifies problems in pull requests. This is an [aube](https://aube.jdx.dev) workspace containing the runtime packages, their adapters, and a single deployable Nuxt app. Turborepo orchestrates builds and checks.
+
+**Key information:**
+
+- Node version: `24.19.0` (`>=24.2` supported; see `mise.toml` and `engines`)
+- Package manager: `aube@1.38.0` (pinned in `package.json` via `packageManager`)
+- TypeScript: `^5.9.2`, overridden to `typescript-native-bridge` so checks run on tsgo
+- Main branch: `main`
 
 ## Start here
 
 1. Read `README.md`, `CONTRIBUTING.md`, and the relevant skill in `.agents/skills/`.
 2. Inspect the package you are changing and its tests before editing.
 3. Keep the change narrow and preserve package boundaries.
-4. Run the checks listed in `CONTRIBUTING.md` before handing off the change.
+4. Run the checks listed in [Required checks](#required-checks) before handing off the change.
+5. If an AI agent helped write the change, follow [AI_POLICY.md](AI_POLICY.md).
+
+## Folder structure
+
+- `./packages` — runtime packages and their adapters, published under `@agent-zero/*`
+- `./apps` — the deployable dashboard plus the docs, marketing, and mail-preview sites
+- `./docs` — canonical architecture and provider references, included verbatim by `apps/docs`
+- `./tooling` — shared Oxlint and Oxfmt configuration
+- `./scripts` — repository checks and the shared tsdown configuration
+- `./.agents/skills` — Agent Skills; `.skills/` holds the Skilld-managed subset
+- `./.github` — CI workflows, issue and pull request templates
+
+## Workspace packages
+
+| Path                      | Name                         | Description                                                      |
+| ------------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| `packages/agent`          | `@agent-zero/agent`          | Orchestration and state transitions only                         |
+| `packages/runner`         | `@agent-zero/runner`         | The only boundary allowed to run commands or mutate a checkout   |
+| `packages/models`         | `@agent-zero/models`         | Model-provider abstractions                                      |
+| `packages/source-control` | `@agent-zero/source-control` | Provider-neutral contracts plus GitHub, GitLab, Bitbucket, Gitea |
+| `packages/config`         | `@agent-zero/config`         | Configuration parsing and policy                                 |
+| `packages/shared`         | `@agent-zero/shared`         | Stable cross-package contracts                                   |
+| `packages/cli`            | `@agent-zero/cli`            | Argument parsing and terminal presentation                       |
+| `packages/database`       | `@agent-zero/database`       | Schema, Drizzle client, and checked-in migrations                |
+| `packages/auth`           | `@agent-zero/auth`           | Authentication policy and the Better Auth options factory        |
+| `packages/api`            | `@agent-zero/api`            | The oRPC router and control-plane operations                     |
+| `packages/i18n`           | `@agent-zero/i18n`           | Locale messages and i18n tooling                                 |
+| `packages/mail`           | `@agent-zero/mail`           | Transactional mail templates                                     |
+| `apps/dashboard`          | `@agent-zero/dashboard`      | The single deployable app and composition root                   |
+| `apps/docs`               | `@agent-zero/docs`           | VitePress documentation site (not deployed with the dashboard)   |
+| `apps/marketing`          | `@agent-zero/marketing`      | Frontend-only public marketing site                              |
+| `apps/mail-preview`       | `@agent-zero/mail-preview`   | Dev-only Maizzle preview server for `packages/mail`              |
 
 ## Toolchain
 
@@ -18,6 +61,65 @@ These instructions apply to humans and coding agents working in this repository.
 - Use tsdown through each tsdown-built package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`. `apps/dashboard` uses the Nuxt build pipeline, with a local Nuxt module (`apps/dashboard/modules/vitehub.ts`) composing ViteHub into Nuxt's own Nitro build.
 - Use Oxlint with type-aware checks and Oxfmt. Do not add ESLint or Prettier.
 - Do not edit `dist/`, `.turbo/`, or generated declaration files.
+
+## Environment setup
+
+```bash
+# Install the pinned Node.js and aube versions
+mise install            # or: npm install -g --ignore-scripts=false @endevco/aube
+
+# Install workspace dependencies
+aube ci
+
+# Seed local environment files
+cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
+```
+
+`aube run <script>` and `aube test` check install freshness first and install only when `node_modules` is stale, so a separate install step is rarely needed.
+
+## Commands
+
+### Root-level scripts
+
+```bash
+aube run dev             # watch workspace development tasks
+aube run zero doctor     # inspect the local environment
+aube test                # deterministic Vitest suites
+aube run test:browser    # dashboard and marketing browser suites
+aube run typecheck       # TypeScript checks across the graph
+aube run lint:ci         # Oxfmt check, type-aware Oxlint, and Knip
+aube run lint:fix        # auto-fix lint findings
+aube run format          # write Oxfmt formatting
+aube run build           # build and package validation
+aube run check:repo      # community files and Agent Skills
+aube run db:generate     # generate Drizzle migrations
+aube run db:migrate      # apply migrations to the configured database
+aube run i18n:report     # find missing or dynamic i18n keys
+aube run mail:preview    # start the Maizzle preview server
+aube run skills:list     # show Skilld-managed project skills
+aube run skills:install  # restore Skilld links for Codex
+aube run clean           # remove build artifacts
+```
+
+### Package scripts
+
+Every runtime package exposes `build`, `clean`, `lint`, `lint:fix`, `test`, and `typecheck`. `packages/database` adds `db:generate` and `db:migrate`, `packages/i18n` adds the `i18n:*` scripts, and the Nuxt apps add `dev`, `preview`, and browser-test scripts.
+
+### Targeting specific packages
+
+```bash
+# Test one package
+aube run test --filter=@agent-zero/runner
+
+# Build a package and its dependencies
+aube run build --filter=@agent-zero/dashboard
+
+# Type-check one package
+aube run typecheck --filter=@agent-zero/api
+```
+
+Use the smallest relevant check while iterating, then run the complete set before opening a pull request.
 
 ## Architecture boundaries
 
@@ -49,6 +151,13 @@ Persistence and policy are separate boundaries. `packages/database` owns tables,
 - Tests must not depend on live network access, wall-clock timing, or mutable external state.
 - Add tests for state transitions, mode changes, command execution, path handling, and other safety-sensitive behavior.
 
+## Code style and linting
+
+- Oxfmt owns formatting and Oxlint owns linting, both configured under `tooling/oxc`. Avoid unrelated formatting churn.
+- Knip guards against unused files, exports, and dependencies; it runs as part of `lint:ci`.
+- Git hooks are installed by the `prepare` script and skipped in CI: `pre-commit` formats staged files through nano-staged, and `commit-msg` enforces Conventional Commits through commitlint.
+- Add tests beside the source as `*.test.ts`.
+
 ## Required checks
 
 ```bash
@@ -59,7 +168,17 @@ aube test
 aube run build
 ```
 
-Use the smallest relevant check while iterating, then run the complete set before opening a pull request.
+## CI/CD
+
+| Workflow                     | Purpose                                                   | Trigger                         |
+| ---------------------------- | --------------------------------------------------------- | ------------------------------- |
+| `ci.yaml`                    | Lint, repository metadata, typecheck, tests, build, i18n  | PR, push to `main`, merge group |
+| `autofix.yml`                | Pushes formatting and lint fixes back to the pull request | PR, merge group                 |
+| `zizmor.yaml`                | Static analysis of GitHub Actions workflows               | PR, push to `main`, merge group |
+| `semantic-pull-requests.yml` | Validates PR titles against Conventional Commits          | PR opened, edited, synchronized |
+| `release.yaml`               | Validates release artifacts                               | Manual dispatch                 |
+| `labelsync.yml`              | Syncs repository labels                                   | Daily schedule, manual dispatch |
+| `stale.yml`                  | Marks and closes stale issues and pull requests           | Daily schedule, manual dispatch |
 
 ## Pull requests
 
@@ -68,8 +187,53 @@ Use the smallest relevant check while iterating, then run the complete set befor
 - Only after that branch validation succeeds, ask the user whether to use the `create-pull-request` skill; invoke it only after explicit confirmation.
 - Use Conventional Commit-style titles such as `feat(cli): add JSON output` or `fix(runner): reject escaped paths`.
 - Explain the problem, the chosen boundary, verification evidence, and safety impact.
+- Fill in the Agent context section of the pull request template when an AI agent helped, as required by [AI_POLICY.md](AI_POLICY.md).
 - Keep refactors separate from behavior changes when possible.
 - Update documentation, examples, and skills when commands, boundaries, or contributor workflows change.
+
+## Important files for agents
+
+| File                                  | Purpose                                                               |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `package.json`                        | Root scripts, pinned package manager, dev dependencies                |
+| `pnpm-workspace.yaml`                 | Workspace members, catalogs, and the TypeScript override              |
+| `pnpm-lock.yaml`                      | The only lockfile; written in place by aube                           |
+| `turbo.jsonc`                         | Task graph, caching, and per-task environment inputs                  |
+| `mise.toml`                           | Pinned Node.js and aube versions                                      |
+| `tsconfig.base.json`, `tsconfig.json` | Shared and root TypeScript configuration                              |
+| `tooling/oxc`                         | Oxlint and Oxfmt configuration                                        |
+| `knip.jsonc`                          | Unused-code analysis configuration                                    |
+| `scripts/check-repository.mjs`        | Validates community files and Agent Skills                            |
+| `scripts/tsdown.config.ts`            | Shared build configuration for tsdown packages                        |
+| `.agents/skills/`                     | Agent Skills, including the Agent Zero architecture and safety skills |
+
+## Troubleshooting
+
+```bash
+# Stale or inconsistent build artifacts
+aube run clean
+aube run build
+
+# Reinstall dependencies from the lockfile
+aube ci
+
+# Stock TypeScript loaded instead of the tsgo bridge
+# (tsc prints "TNB ACTIVE" on the first type-check; no banner means the install is stale)
+aube ci
+aube run typecheck
+
+# Inspect the local environment
+aube run zero doctor
+```
+
+## Additional resources
+
+- [Contributing guide](CONTRIBUTING.md)
+- [AI contributions policy](AI_POLICY.md)
+- [Governance](GOVERNANCE.md)
+- [Security policy](SECURITY.md)
+- [Support channels](SUPPORT.md)
+- [Issue tracker](https://github.com/wolfstar-project/agent-zero/issues)
 
 <!-- skilld -->
 

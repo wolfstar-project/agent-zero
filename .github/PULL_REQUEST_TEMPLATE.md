@@ -24,6 +24,16 @@
 - [ ] I did not expose secrets, tokens, personal data, or untrusted output in logs.
 - [ ] I updated documentation and Agent Skills when workflows or boundaries changed.
 
+## Agent context
+
+<!--
+If an AI agent helped author this change, describe the tools and session here.
+See AI_POLICY.md. Leave "None" if no agent was involved.
+-->
+
+- Agent/tools used:
+- What the agent did, and what you changed or verified yourself:
+
 ## Reviewer notes
 
 <!-- Highlight risky decisions, follow-up work, screenshots, or areas needing special attention. -->
