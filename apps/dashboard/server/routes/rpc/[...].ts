@@ -1,11 +1,6 @@
 import { accessFromEnvironment, requestLoggerStorage, rpcRouter } from '@agent-zero/api';
 import { EvlogHandlerPlugin } from '@orpc/evlog';
 import { RPCHandler } from '@orpc/server/fetch';
-import { defineEventHandler, toWebRequest } from 'h3';
-
-import { buildRpcContext } from '../../utils/context.js';
-import { errorResponse, json } from '../../utils/respond.js';
-import { taskStore } from '../../utils/store.js';
 
 const handler = new RPCHandler(rpcRouter, {
   plugins: [new EvlogHandlerPlugin({ storage: requestLoggerStorage })],
@@ -21,7 +16,7 @@ const access = accessFromEnvironment();
  * {@link rpcRouter}, which run behind the runner boundary. Same-origin only (no CORS plugin): the
  * dashboard's own client is the only intended caller. Cross-origin REST callers use `/api/v1/**`.
  */
-const route = defineEventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const request = toWebRequest(event);
   try {
     const { matched, response } = await handler.handle(request, {
@@ -29,10 +24,9 @@ const route = defineEventHandler(async (event) => {
       context: buildRpcContext(request, access, taskStore),
     });
     if (matched) return response;
-    return json(404, { error: 'Not found' });
   } catch (error) {
-    return errorResponse(error);
+    throw errors.internal(error);
   }
+  // Outside the `catch` above, so an unmatched path stays a 404 instead of being rethrown as 500.
+  throw errors.notFound();
 });
-
-export default route;
