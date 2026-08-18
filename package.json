@@ -37,11 +37,11 @@
     "@commitlint/config-conventional": "^21.2.0",
     "@e18e/eslint-plugin": "^0.8.0",
     "@redstardev/unplugin-version-injector": "0.0.2",
-    "@types/node": "^24.3.0",
+    "@types/node": "^26.2.0",
     "husky": "^9.1.7",
     "knip": "^6.32.0",
     "nano-staged": "^1.0.2",
-    "oxfmt": "^0.62.0",
+    "oxfmt": "^0.63.0",
     "oxlint": "^1.44.0",
     "oxlint-tsgolint": "^7.0.2001",
     "publint": "^0.3.23",
@@ -58,5 +58,5 @@
   "engines": {
     "node": ">=24.2"
   },
-  "packageManager": "aube@1.38.0"
+  "packageManager": "aube@1.41.0"
 }
