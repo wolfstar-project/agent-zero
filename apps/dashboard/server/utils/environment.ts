@@ -14,7 +14,13 @@ export function dashboardUrlFromEnvironment(
   return environment.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined;
 }
 
-/** Without this secret the webhook route ingests nothing; signature verification cannot run. */
+/**
+ * Without this secret the webhook route ingests nothing; signature verification cannot run.
+ *
+ * The value is read verbatim: GitHub signs each delivery with the exact bytes configured on the
+ * hook, so trimming here would silently break verification for a secret that legitimately has
+ * surrounding whitespace. Only an absent or empty variable counts as unconfigured.
+ */
 export function githubWebhookSecretFromEnvironment(
   environment: Readonly<Record<string, string | undefined>>,
 ): string | undefined {

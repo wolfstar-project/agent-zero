@@ -26,13 +26,13 @@ describe('dashboardUrlFromEnvironment', () => {
 });
 
 describe('githubWebhookSecretFromEnvironment', () => {
-  it('reads the configured webhook secret', () => {
-    expect(githubWebhookSecretFromEnvironment({ GITHUB_WEBHOOK_SECRET: ' shh ' })).toBe('shh');
+  it('reads the configured webhook secret verbatim, since GitHub signs with those exact bytes', () => {
+    expect(githubWebhookSecretFromEnvironment({ GITHUB_WEBHOOK_SECRET: ' shh ' })).toBe(' shh ');
   });
 
-  it('treats an absent or blank secret as unconfigured so the route fails closed', () => {
+  it('treats an absent or empty secret as unconfigured so the route fails closed', () => {
     expect(githubWebhookSecretFromEnvironment({})).toBeUndefined();
-    expect(githubWebhookSecretFromEnvironment({ GITHUB_WEBHOOK_SECRET: '   ' })).toBeUndefined();
+    expect(githubWebhookSecretFromEnvironment({ GITHUB_WEBHOOK_SECRET: '' })).toBeUndefined();
   });
 });
 
