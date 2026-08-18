@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultViteHubPreset, viteHubPresetFromEnvironment } from '../../config/hosting.js';
+import {
+  defaultViteHubPreset,
+  viteHubPresetFromEnvironment,
+  viteHubVercelEntryAlias,
+  viteHubVercelEntryName,
+} from '../../config/hosting.js';
 
 describe('viteHubPresetFromEnvironment', () => {
   it('builds the self-hosted bundle when no deployment target is configured', () => {
@@ -26,6 +31,14 @@ describe('viteHubPresetFromEnvironment', () => {
   it('rejects a target it has no plan for instead of emitting an unservable bundle', () => {
     expect(() => viteHubPresetFromEnvironment({ NITRO_PRESET: 'bun' })).toThrow(
       /Unsupported deployment target "bun"/u,
+    );
+  });
+});
+
+describe('viteHubVercelEntryAlias', () => {
+  it('names the entry ViteHub asserts on beside the function the preset emitted', () => {
+    expect(viteHubVercelEntryAlias('/app/.vercel/output/functions/__fallback.func')).toBe(
+      `/app/.vercel/output/functions/${viteHubVercelEntryName}`,
     );
   });
 });

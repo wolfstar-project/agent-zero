@@ -1,4 +1,5 @@
-import { dirname, join } from 'node:path';
+import { symlink, unlink } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Read from `@agent-zero/auth/config` rather than restated here, so the build-time label below and
@@ -9,6 +10,7 @@ import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18
 import { defineNuxtConfig } from 'nuxt/config';
 
 import { app, loginPath, ui } from './config/app.js';
+import { viteHubPresetFromEnvironment, viteHubVercelEntryAlias } from './config/hosting.js';
 
 // Resolved once at config evaluation so the dashboard's auth pages publish the same sign-in
 // policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
@@ -17,6 +19,14 @@ import { app, loginPath, ui } from './config/app.js';
 // config enforces its own policy regardless, so a stale build can only mislabel a page, never open
 // a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// ViteHub's deployment preset is a build-time decision that also pins Nitro's own preset, so the
+// deployment target has to be resolved here rather than detected later: `node` emits the
+// self-hosted `.output/` bundle, `vercel` emits `.vercel/output`. See `config/hosting.ts`.
+const viteHubPreset = viteHubPresetFromEnvironment();
+
+// Set by the `compiled` hook below and consumed by `close`, which removes the bridge again.
+let viteHubVercelEntry: string | undefined;
 
 // `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
 // locale directory has to be wired through each locale's `files` entries instead (the module's own
@@ -57,10 +67,16 @@ export default defineNuxtConfig({
   future: {
     compatibilityVersion: 5,
   },
-  // `modules/` is scanned by Nuxt itself, so the local modules (shared, auth, dashboard,
-  // organizations, i18n-strip-empty, vitehub) register themselves — and register their own
-  // component and composable directories — without being listed here.
+  // `modules/` is scanned by Nuxt itself, so the local feature modules (shared, auth, dashboard,
+  // organizations, i18n-strip-empty) register themselves — and register their own component and
+  // composable directories — without being listed here. Installed modules are listed below.
   modules: [
+    // `server/utils/store.ts` imports `kv` from `vite-hub/kv`; that Runtime Helper only resolves a
+    // live driver when this integration ran during the build that produced the app. `kv` stays at
+    // its resolved default (`fs-lite` under `.data/kv` when self-hosted, the host's own driver —
+    // Upstash on Vercel — otherwise): ViteHub picks the driver from the deployment preset, and a
+    // serverless function has no writable filesystem to keep task history on.
+    ['vite-hub/nuxt', { preset: viteHubPreset, kv: true }],
     '@unocss/nuxt',
     '@nuxt/icon',
     '@nuxtjs/i18n',
@@ -138,6 +154,33 @@ export default defineNuxtConfig({
     head: {
       meta: [{ name: 'color-scheme', content: 'dark light' }],
       title: app.title,
+    },
+  },
+
+  nitro: {
+    hooks: {
+      // `vite-hub@0.0.3`'s `vercel` plan asserts on a function directory the installed
+      // `nitropack@2.13.4` no longer emits under that name (see `config/hosting.ts`). Linking the
+      // name it expects to the one the preset produced lets its check pass on an otherwise correct
+      // bundle; `close` removes the link, so the deployment ships one function, not two.
+      async compiled(nitro) {
+        if (viteHubPreset !== 'vercel') return;
+        const serverDirectory = nitro.options.output.serverDir;
+        viteHubVercelEntry = viteHubVercelEntryAlias(serverDirectory);
+        await symlink(basename(serverDirectory), viteHubVercelEntry, 'dir').catch(
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== 'EEXIST') throw error;
+          },
+        );
+      },
+      async close() {
+        if (!viteHubVercelEntry) return;
+        const entry = viteHubVercelEntry;
+        viteHubVercelEntry = undefined;
+        await unlink(entry).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== 'ENOENT') throw error;
+        });
+      },
     },
   },
 

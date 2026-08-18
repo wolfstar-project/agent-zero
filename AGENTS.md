@@ -15,7 +15,7 @@ These instructions apply to humans and coding agents working in this repository.
 - Use aube for dependencies and scripts. It reads and writes `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place; keep both files and do not create npm, Yarn, or Bun lockfiles.
 - `typescript` is overridden to `typescript-native-bridge` in `pnpm-workspace.yaml`, so `tsc` and every Compiler API consumer type-check on tsgo. Keep the pin exact and reinstall after changing it.
 - Use Turborepo through the root scripts; do not duplicate orchestration in package scripts.
-- Use tsdown through each tsdown-built package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`. `apps/dashboard` uses the Nuxt build pipeline, with a local Nuxt module (`apps/dashboard/modules/vitehub.ts`) composing ViteHub into Nuxt's own Nitro build.
+- Use tsdown through each tsdown-built package's `tsdown.config.ts` and the shared `scripts/tsdown.config.ts`. `apps/dashboard` uses the Nuxt build pipeline, registering `vite-hub/nuxt` from `apps/dashboard/nuxt.config.ts` to compose ViteHub into Nuxt's own Nitro build.
 - Use Oxlint with type-aware checks and Oxfmt. Do not add ESLint or Prettier.
 - Do not edit `dist/`, `.turbo/`, or generated declaration files.
 

@@ -1,3 +1,5 @@
+import { dirname, join } from 'node:path';
+
 /**
  * Deployment-target resolution for the ViteHub integration in `modules/vitehub.ts`.
  *
@@ -49,4 +51,21 @@ export function viteHubPresetFromEnvironment(
   }
 
   return preset;
+}
+
+/**
+ * Function directory `vite-hub@0.0.3`'s `vercel` deployment plan asserts on after the build
+ * (`functions/__server.func/index.mjs`).
+ *
+ * The installed `nitropack@2.13.4` emits that function as `functions/__fallback.func` instead, and
+ * its generated `config.json` routes to it under that name — nothing is wrong with the bundle,
+ * only with the name ViteHub looks for. `nuxt.config.ts` bridges the two with a symlink that
+ * exists just long enough for that assertion and is removed afterwards, so the deployment carries
+ * one function rather than two. Drop the bridge once ViteHub's plan matches the preset's layout.
+ */
+export const viteHubVercelEntryName = '__server.func';
+
+/** Resolves that alias beside whichever function directory the Nitro preset actually emitted. */
+export function viteHubVercelEntryAlias(serverDirectory: string): string {
+  return join(dirname(serverDirectory), viteHubVercelEntryName);
 }

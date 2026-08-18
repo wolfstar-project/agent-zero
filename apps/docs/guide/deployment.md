@@ -24,7 +24,7 @@ node apps/dashboard/.output/server/index.mjs
 
 ## Task history storage
 
-Task history uses the ViteHub KV Runtime Helper: filesystem-backed `fs-lite` by default (`.data/agent-zero`), with Cloudflare KV, Deno KV, or Upstash available as driver configuration without touching application code. Records are redacted before they are written.
+Task history uses the ViteHub KV Runtime Helper: filesystem-backed `fs-lite` by default (`.data/kv`), with Cloudflare KV, Deno KV, or Upstash available as driver configuration without touching application code. Records are redacted before they are written.
 
 ## Hosted sandboxes
 
@@ -43,13 +43,13 @@ Rebuild the app whenever you change:
 Directory** set to `apps/dashboard`: the install and build commands `cd` back to the workspace root
 so aube and Turborepo resolve the monorepo correctly.
 
-The build command sets `NITRO_PRESET=vercel`. The dashboard composes ViteHub into Nitro
-(`modules/vitehub.ts`), and ViteHub's deployment preset pins Nitro's own preset, so the build
-target is a deliberate choice rather than something Nitro auto-detects: without that variable every
-build emits the self-hosted `node-server` bundle in `.output/`, which Vercel cannot serve — it
-fails with _No Output Directory named "dist" found_. With it, `config/hosting.ts` resolves the
-`vercel` deployment preset and the build writes `.vercel/output` (Vercel's Build Output API)
-instead. `VITEHUB_HOSTING` selects the same target and takes precedence.
+The build command sets `NITRO_PRESET=vercel`. `nuxt.config.ts` registers `vite-hub/nuxt` with a
+deployment preset, and that preset pins Nitro's own, so the build target is a deliberate choice
+rather than something Nitro auto-detects: without that variable every build emits the self-hosted
+`node-server` bundle in `.output/`, which Vercel cannot serve — it fails with _No Output Directory
+named "dist" found_. With it, `config/hosting.ts` resolves the `vercel` preset and the build writes
+`.vercel/output` (Vercel's Build Output API) instead. `VITEHUB_HOSTING` selects the same target and
+takes precedence.
 
 Because they select the target, `NITRO_PRESET` and `VITEHUB_HOSTING` are declared on the app build
 tasks in `turbo.jsonc`: Turborepo's strict environment mode hides a variable a task does not
@@ -62,6 +62,15 @@ On a hosted preset the KV Runtime Helper resolves the host's own driver rather t
 one, because a serverless function has nowhere durable to write: on Vercel that is Upstash, so set
 `KV_REST_API_URL` and `KV_REST_API_TOKEN` or task history fails at runtime. See
 [Database](/guide/database).
+
+::: warning Upstream version mismatch
+`vite-hub@0.0.3`'s `vercel` plan checks for a server function at
+`.vercel/output/functions/__server.func/index.mjs`, while the installed `nitropack@2.13.4` emits —
+and routes to — `__fallback.func`. The bundle is correct; only the name ViteHub looks for is not,
+so `nuxt.config.ts` links that name to the emitted function for the length of the check and removes
+the link afterwards. Delete the two `nitro.hooks` entries and `viteHubVercelEntryName` in
+`config/hosting.ts` once a ViteHub release expects the preset's own layout.
+:::
 
 `apps/marketing` sets `NITRO_PRESET` the same way. It composes no ViteHub integration, so the
 variable only picks its Nitro preset, and it has no KV store to configure.
