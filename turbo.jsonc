@@ -28,6 +28,14 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**"],
     },
+    "@agent-zero/marketing#build": {
+      "dependsOn": ["^build"],
+      // Declared because Turborepo's strict env mode would otherwise hide these from `nuxt build`,
+      // leaving @nuxtjs/seo with no site origin and the dashboard link pointing at localhost.
+      "env": ["MARKETING_SITE_URL", "MARKETING_DASHBOARD_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".output/**"],
+    },
     "@agent-zero/docs#build": {
       "dependsOn": ["^build"],
       "env": ["DOCS_BASE"],
