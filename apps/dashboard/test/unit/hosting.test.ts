@@ -28,6 +28,15 @@ describe('viteHubPresetFromEnvironment', () => {
     ).toBe('vercel');
   });
 
+  it('falls through a set-but-blank variable rather than letting it hide the next one', () => {
+    expect(viteHubPresetFromEnvironment({ VITEHUB_HOSTING: '', NITRO_PRESET: 'vercel' })).toBe(
+      'vercel',
+    );
+    expect(viteHubPresetFromEnvironment({ VITEHUB_HOSTING: '  ', NITRO_PRESET: 'vercel' })).toBe(
+      'vercel',
+    );
+  });
+
   it('rejects a target it has no plan for instead of emitting an unservable bundle', () => {
     expect(() => viteHubPresetFromEnvironment({ NITRO_PRESET: 'bun' })).toThrow(
       /Unsupported deployment target "bun"/u,

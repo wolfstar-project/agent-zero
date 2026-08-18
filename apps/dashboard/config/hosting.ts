@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 
 /**
- * Deployment-target resolution for the ViteHub integration in `modules/vitehub.ts`.
+ * Deployment-target resolution for the ViteHub integration registered in `nuxt.config.ts`.
  *
  * ViteHub's deployment preset is a build-time decision: it fixes the Nitro preset the build emits
  * (`node-server` for the self-hosted bundle, `vercel` for Vercel's Build Output API, and so on)
@@ -34,11 +34,13 @@ export const defaultViteHubPreset: ViteHubPreset = 'node';
 export function viteHubPresetFromEnvironment(
   environment: Record<string, string | undefined> = process.env,
 ): ViteHubPreset {
-  const configured = (environment.VITEHUB_HOSTING ?? environment.NITRO_PRESET ?? '')
-    .trim()
-    .toLowerCase()
-    .replaceAll('_', '-');
-  if (configured === '') return defaultViteHubPreset;
+  // Normalise before choosing, so a variable that is set but blank (an unfilled `.env` entry, an
+  // empty Vercel project variable) falls through to the next one instead of taking precedence and
+  // resolving to the self-hosted default.
+  const configured = [environment.VITEHUB_HOSTING, environment.NITRO_PRESET]
+    .map((value) => (value ?? '').trim().toLowerCase().replaceAll('_', '-'))
+    .find((value) => value !== '');
+  if (configured === undefined) return defaultViteHubPreset;
 
   const preset = viteHubPresets.find(
     (candidate) => configured === candidate || configured.startsWith(`${candidate}-`),
