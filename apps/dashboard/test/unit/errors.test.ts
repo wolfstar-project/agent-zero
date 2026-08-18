@@ -30,4 +30,18 @@ describe('errors', () => {
   it('accepts a thrown non-Error value', () => {
     expect(errors.internal('plain failure').message).toBe('plain failure');
   });
+
+  it('never marks an error fatal or unhandled, so Nitro forwards `message` instead of replacing it', () => {
+    // Nitro's own error handler — not bare h3's `sendError`, which drops `message` — serves every
+    // response in this app. It forwards `error.message` verbatim only while both flags stay
+    // false (h3's default); either one true and the client sees a generic "Server Error" instead.
+    for (const error of [
+      errors.notFound(),
+      errors.misconfigured('GITHUB_WEBHOOK_SECRET'),
+      errors.internal(new Error('boom')),
+    ]) {
+      expect(error.fatal).toBe(false);
+      expect(error.unhandled).toBe(false);
+    }
+  });
 });

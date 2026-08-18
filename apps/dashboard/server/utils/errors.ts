@@ -11,6 +11,16 @@ import { createError } from 'h3';
  *
  * `createError` is imported rather than taken from Nitro's auto-imports — unlike a route, this
  * module is exercised directly from the plain-Node unit suite, where no Nitro globals exist.
+ *
+ * The client-facing text lives in `message`, not `statusMessage` or `data`. Bare h3 (`sendError`)
+ * only ever serialises `statusCode`/`statusMessage`/`data`, dropping `message` — but this app's
+ * Nitro server never reaches that code path: Nitro installs its own error handler
+ * (`nitropack`'s `defaultNitroErrorHandler`, dev and prod builds alike), which reads
+ * `error.message` and forwards it verbatim as long as neither `error.fatal` nor `error.unhandled`
+ * is set. `H3Error` defaults both to `false`, and no entry below sets either, so every message
+ * here — `'Not found'`, the named variable, the redacted failure — reaches the client. Setting
+ * `fatal`/`unhandled` on a future entry would silently replace its message with a generic
+ * "Server Error" instead; `errors.test.ts` asserts both stay unset.
  */
 export const errors = {
   /** No transport matched the request path; the router itself is healthy. */

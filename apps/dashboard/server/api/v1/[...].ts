@@ -15,7 +15,13 @@ const generator = new OpenAPIGenerator({ converters: [new ZodToJsonSchemaConvert
 // `rpcRouter` is static, so the spec is generated once at module load rather than per request to
 // `/api/v1/docs` or `/api/v1/openapi.json`.
 const openApiSpec = generator.generate(rpcRouter, {
-  base: { info: { title: 'Agent Zero control plane', version: '0.3.0' } },
+  base: {
+    info: { title: 'Agent Zero control plane', version: '0.3.0' },
+    // `POST /webhooks/github` is a plain Nitro route, not an oRPC procedure — see
+    // `server/utils/openapi.ts` for why — so it is merged into the generated spec here instead of
+    // appearing as a path the OpenAPI transport itself serves.
+    webhooks: { github: githubWebhookPathItem },
+  },
 });
 
 /**
