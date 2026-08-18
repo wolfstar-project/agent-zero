@@ -10,17 +10,18 @@ import { OpenAPIHandler } from '@orpc/openapi/fetch';
 import { OpenAPIReferenceHandlerPlugin } from '@orpc/openapi/plugins';
 import { CORSPlugin } from '@orpc/server/plugins';
 import { ZodToJsonSchemaConverter } from '@orpc/zod';
-import { defineEventHandler, toWebRequest } from 'h3';
-
-import { buildRpcContext } from '../../utils/context.js';
-import { errorResponse, json } from '../../utils/respond.js';
-import { taskStore } from '../../utils/store.js';
 
 const generator = new OpenAPIGenerator({ converters: [new ZodToJsonSchemaConverter()] });
 // `rpcRouter` is static, so the spec is generated once at module load rather than per request to
 // `/api/v1/docs` or `/api/v1/openapi.json`.
 const openApiSpec = generator.generate(rpcRouter, {
-  base: { info: { title: 'Agent Zero control plane', version: '0.3.0' } },
+  base: {
+    info: { title: 'Agent Zero control plane', version: '0.3.0' },
+    // `POST /webhooks/github` is a plain Nitro route, not an oRPC procedure — see
+    // `server/utils/openapi.ts` for why — so it is merged into the generated spec here instead of
+    // appearing as a path the OpenAPI transport itself serves.
+    webhooks: { github: githubWebhookPathItem },
+  },
 });
 
 /**
@@ -47,7 +48,7 @@ const handler = new OpenAPIHandler(rpcRouter, {
 // Fails closed: without configured tokens every mutation is rejected while reads stay open.
 const access = accessFromEnvironment();
 
-const route = defineEventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const request = toWebRequest(event);
   try {
     const { matched, response } = await handler.handle(request, {
@@ -55,10 +56,9 @@ const route = defineEventHandler(async (event) => {
       context: buildRpcContext(request, access, taskStore),
     });
     if (matched) return response;
-    return json(404, { error: 'Not found' });
   } catch (error) {
-    return errorResponse(error);
+    throw errors.internal(error);
   }
+  // Outside the `catch` above, so an unmatched path stays a 404 instead of being rethrown as 500.
+  throw errors.notFound();
 });
-
-export default route;

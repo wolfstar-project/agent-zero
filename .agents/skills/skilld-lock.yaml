@@ -188,3 +188,17 @@ skills:
     generator: external
     path: skills/nuxt-seo
     ref: main
+  nitro:
+    repo: antfu/skills
+    source: github
+    syncedAt: 2026-08-18
+    generator: external
+    path: skills/nitro
+    ref: main
+  nuxt:
+    repo: onmax/nuxt-skills
+    source: github
+    syncedAt: 2026-08-18
+    generator: external
+    path: skills/nuxt
+    ref: main

@@ -37,7 +37,8 @@
       "continue": "Go to dashboard"
     },
     "errors": {
-      "generic": "That organization action could not be completed."
+      "generic": "That organization action could not be completed.",
+      "invitationDeliveryUnavailable": "Invitations are unavailable: this deployment has no email delivery configured."
     }
   }
 }

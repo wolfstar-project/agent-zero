@@ -117,6 +117,9 @@
           "properties": {
             "generic": {
               "type": "string"
+            },
+            "invitationDeliveryUnavailable": {
+              "type": "string"
             }
           },
           "additionalProperties": false

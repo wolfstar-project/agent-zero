@@ -3,10 +3,23 @@ import { betterEnrollment } from '@octopi-ai/better-enrollment';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError } from 'better-auth/api';
 import { organization } from 'better-auth/plugins';
+import type { OrganizationOptions } from 'better-auth/plugins';
 
 import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './config.js';
 import type { AuthConfig, GithubOauthCredentials } from './config.js';
+
+/**
+ * Error code an organization invitation is refused with when the deployment cannot deliver it.
+ *
+ * Travels to the client as the error body's `code`, so a UI can say why in the visitor's language
+ * rather than rendering this package's English message: an operator has to configure a transport,
+ * and the org admin who pressed "invite" should be told that rather than shown a generic failure.
+ * The dashboard mirrors the literal instead of importing it — this package pulls Better Auth and
+ * the database adapter, neither of which may reach a browser bundle.
+ */
+export const ORGANIZATION_INVITATION_DELIVERY_UNAVAILABLE = 'INVITATION_DELIVERY_UNAVAILABLE';
 
 /**
  * Delivers a private (email-bound) enrollment invitation.
@@ -168,6 +181,7 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
         allowUserToCreateOrganization: config.allowUserToCreateOrganization,
         membershipLimit: config.organizationMembershipLimit,
         invitationExpiresIn: config.invitationExpiresInSeconds,
+        ...organizationInvitationDelivery(options),
       }),
     );
   }
@@ -243,6 +257,67 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
   }
 
   return plugins;
+}
+
+/**
+ * Decide what the organization plugin does with its own member invitations.
+ *
+ * Better Auth mints an invitation id and nothing else: it builds no link, and the dashboard never
+ * shows one to the inviter, so `sendInvitationEmail` is the only path an organization invitation
+ * travels. Wiring it to the same delivery this package already declares for private enrollment
+ * invitations keeps one contract for "an invitation addressed to a mailbox", and keeps
+ * `packages/auth` free of any dependency on `packages/mail`.
+ *
+ * Without a transport or a dashboard origin the capability is closed at creation instead: an
+ * invitation nobody can be told about is a pending row that silently consumes a seat and leaves
+ * its recipient waiting for mail that is never sent. Organizations themselves stay available on
+ * such a deployment — pre-provisioned memberships, roles, and switching are unaffected — which is
+ * why this is a refusal at the endpoint rather than a startup guard like the enrollment one.
+ */
+function organizationInvitationDelivery(
+  options: AuthDatabaseOptions,
+): Pick<OrganizationOptions, 'organizationHooks' | 'sendInvitationEmail'> {
+  const { dashboardUrl, sendPrivateInvitationEmail: send } = options;
+
+  if (!send || !dashboardUrl) {
+    return {
+      organizationHooks: {
+        beforeCreateInvitation: () => {
+          throw new APIError('SERVICE_UNAVAILABLE', {
+            code: ORGANIZATION_INVITATION_DELIVERY_UNAVAILABLE,
+            message: 'organization invitations require a configured invitation delivery transport',
+          });
+        },
+      },
+    };
+  }
+
+  return {
+    sendInvitationEmail: async (data) => {
+      await send({
+        to: data.email,
+        // Better Auth invites an address rather than a person: the recipient may have no account
+        // yet, and the inviter is never asked for a name to go with the address.
+        name: null,
+        inviterName: data.inviter.user.name,
+        organizationName: data.organization.name,
+        acceptUrl: organizationInvitationUrl(dashboardUrl, data.id),
+      });
+    },
+  };
+}
+
+/**
+ * Build the link an organization invitation points at.
+ *
+ * The id is path-encoded rather than interpolated raw: it comes back from the store, and a link is
+ * the one place a stray `/` or `?` would change what the recipient's browser asks for.
+ */
+function organizationInvitationUrl(dashboardUrl: string, invitationId: string): string {
+  return new URL(
+    `/organizations/accept-invitation/${encodeURIComponent(invitationId)}`,
+    dashboardUrl,
+  ).toString();
 }
 
 /**

@@ -4,6 +4,22 @@ import type { AuthActionError } from '@onmax/nuxt-better-auth';
 import { useI18n } from 'vue-i18n';
 
 /**
+ * Every error this composable is handed: the module's own action errors, and the
+ * `{ status, statusText, code?, message? }` a Better Auth client plugin resolves with. The latter
+ * carries no `raw`, so accepting only `AuthActionError` would reject every page that calls the
+ * client directly — `invite.get`, `invite.redeem`, and the organization actions — even though
+ * both shapes carry the two fields read below.
+ */
+export type LocalizableAuthError =
+  | AuthActionError
+  | {
+      readonly message?: string | undefined;
+      readonly code?: string | undefined;
+      readonly status?: number | undefined;
+      readonly statusText?: string | undefined;
+    };
+
+/**
  * Resolve a Better Auth error into a localized string.
  *
  * Prefers `auth.errors.<CODE>` when a translation exists. An unrecognised code falls back to the
@@ -15,7 +31,7 @@ export function useAuthErrorMessage() {
   const i18n = useI18n();
 
   function localizeAuthError(
-    error: AuthActionError | null | undefined,
+    error: LocalizableAuthError | null | undefined,
     fallbackKey = 'auth.errors.GENERIC',
   ): string {
     if (!error) return i18n.t(fallbackKey);
