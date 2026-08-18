@@ -72,6 +72,62 @@ describe('sendEmail', () => {
     expect(mail.text).toContain('2026-08-24T20:00:00.000Z');
   });
 
+  it('names the organization a private invitation grants access to', async () => {
+    const { sent, provider } = recordingProvider();
+
+    await sendEmail(
+      {
+        to: 'sam@example.com',
+        templateId: 'privateInvitation',
+        context: {
+          name: 'Sam',
+          inviterName: 'Dana',
+          organizationName: 'Acme Ops',
+          acceptUrl: 'https://dashboard.example.com/invite?token=abc',
+        },
+      },
+      { provider, from: 'noreply@example.com' },
+    );
+
+    const [mail] = sent;
+    assertSent(mail);
+    expect(mail.to).toBe('sam@example.com');
+    expect(mail.subject).toBe('You have been invited to Agent Zero');
+    expect(mail.text).toContain('Hello Sam,');
+    expect(mail.text).toContain('Dana invited you to join Acme Ops on Agent Zero.');
+    // The token travels in this message and nowhere else, so the link has to survive both halves
+    // of it: the button, and the pasteable address for clients that strip anchors.
+    expect(mail.html).toContain('https://dashboard.example.com/invite?token=abc');
+    expect(mail.text).toContain('https://dashboard.example.com/invite?token=abc');
+  });
+
+  it('renders the optional halves of a private invitation away rather than empty', async () => {
+    // An app-wide invitation has no organization, and the inviter is not always asked for the
+    // invitee's name: both arrive as empty strings, which must not reach the message as a stray
+    // greeting or a sentence about joining nothing.
+    const { sent, provider } = recordingProvider();
+
+    await sendEmail(
+      {
+        to: 'sam@example.com',
+        templateId: 'privateInvitation',
+        context: {
+          name: '',
+          inviterName: 'Dana',
+          organizationName: '',
+          acceptUrl: 'https://dashboard.example.com/invite?token=abc',
+        },
+      },
+      { provider, from: 'noreply@example.com' },
+    );
+
+    const [mail] = sent;
+    assertSent(mail);
+    expect(mail.text).toContain('Hello,');
+    expect(mail.text).toContain('Dana invited you to create an account on Agent Zero.');
+    expect(mail.text).not.toContain('join');
+  });
+
   it('inlines styles so the message survives clients that drop stylesheets', async () => {
     const { sent, provider } = recordingProvider();
 

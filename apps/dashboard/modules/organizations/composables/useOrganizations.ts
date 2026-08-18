@@ -3,13 +3,25 @@
 import { useAuthClient } from '@onmax/nuxt-better-auth/composables';
 import { useState } from 'nuxt/app';
 
+import { INVITATION_DELIVERY_UNAVAILABLE } from '../types/organization.js';
 import type { Organization, OrganizationMember, OrganizationRole } from '../types/organization.js';
 
-/** Surface the server's message without assuming a shape the plugin may not return. */
+/**
+ * Translation key per error code this app can explain. Everything else falls back to the generic
+ * message: the server's own text is untrusted input, and the page renders what this returns.
+ */
+const ERROR_MESSAGE_KEYS: Readonly<Record<string, string>> = {
+  [INVITATION_DELIVERY_UNAVAILABLE]: 'organizations.errors.invitationDeliveryUnavailable',
+};
+
+/** Resolve a Better Auth error into a translation key, without assuming a shape it may not have. */
 function messageFrom(cause: unknown): string {
-  if (cause && typeof cause === 'object' && 'message' in cause) {
-    const { message } = cause as { message?: unknown };
-    if (typeof message === 'string' && message !== '') return message;
+  if (cause && typeof cause === 'object' && 'code' in cause) {
+    const { code } = cause as { code?: unknown };
+    if (typeof code === 'string') {
+      const key = ERROR_MESSAGE_KEYS[code];
+      if (key) return key;
+    }
   }
   return 'organizations.errors.generic';
 }
