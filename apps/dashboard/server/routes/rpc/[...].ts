@@ -4,7 +4,8 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { defineEventHandler, toWebRequest } from 'h3';
 
 import { buildRpcContext } from '../../utils/context.js';
-import { errorResponse, json } from '../../utils/respond.js';
+import { errors } from '../../utils/errors.js';
+import { errorResponse } from '../../utils/respond.js';
 import { taskStore } from '../../utils/store.js';
 
 const handler = new RPCHandler(rpcRouter, {
@@ -21,7 +22,7 @@ const access = accessFromEnvironment();
  * {@link rpcRouter}, which run behind the runner boundary. Same-origin only (no CORS plugin): the
  * dashboard's own client is the only intended caller. Cross-origin REST callers use `/api/v1/**`.
  */
-const route = defineEventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const request = toWebRequest(event);
   try {
     const { matched, response } = await handler.handle(request, {
@@ -29,10 +30,8 @@ const route = defineEventHandler(async (event) => {
       context: buildRpcContext(request, access, taskStore),
     });
     if (matched) return response;
-    return json(404, { error: 'Not found' });
+    return errors.notFound();
   } catch (error) {
     return errorResponse(error);
   }
 });
-
-export default route;

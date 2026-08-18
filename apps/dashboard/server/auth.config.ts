@@ -3,7 +3,7 @@ import { createMailer, mailProviderNameFromEnvironment } from '@agent-zero/mail'
 import { defineServerAuth } from '@onmax/nuxt-better-auth/config';
 import { memoryAdapter } from 'better-auth/adapters/memory';
 
-import { dashboardUrlFromEnvironment } from './utils/auth-environment.js';
+import { dashboardUrlFromEnvironment } from './utils/environment.js';
 
 // This module is the composition root for authentication, so it is where the mail transport is
 // bound and injected. `packages/auth` declares the delivery contract structurally and never

@@ -20,6 +20,8 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   - `auth.config.ts` (at the `server/` root) configures `@onmax/nuxt-better-auth`, which mounts
     `/api/auth/**` itself — there is no hand-written auth route file.
   - `api/dashboard.get.ts` serves the aggregate dashboard view.
+  Each route file exports its handler directly (`export default defineEventHandler(...)`), with no
+  intermediate `const route` binding, so the file's one public shape is the one Nitro scans for.
   Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports, so
   every symbol's origin stays visible at the call site. `typecheck` is one `nuxt typecheck` pass
   (Golar, configured in `apps/dashboard/golar.config.ts`) covering `app/`, `modules/`, `server/`,
@@ -52,6 +54,15 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   `viteHubNuxtModule(options, nuxt)` export directly — there is no `modules: ['vite-hub/nuxt']`
   one-liner). Prove KV changes with a real `nuxt build` and a request against a route that reads
   the store, not just `nuxt prepare` or a type check.
+- Transport failures come from the catalogue in `server/utils/errors.ts` (`errors.notFound()`,
+  `errors.misconfigured(variable)`), serialised through `server/utils/respond.ts`; a route names the
+  failure instead of spelling out a status and body inline, so the same disposition cannot drift
+  between transports. Successful dispositions still return their own payload through `json(...)`.
+- Environment variables the server reads live in `server/utils/environment.ts`, one resolver each,
+  taking the environment record as an argument rather than reading `process.env` themselves. They
+  deliberately do not move to Nuxt's `runtimeConfig`: its defaults are baked at build time and
+  would require renaming every variable to a `NUXT_`-prefixed form, while a deployment sets
+  `GITHUB_WEBHOOK_SECRET` and `AGENT_ZERO_CHECKOUT_PATH` at run time.
 - Keep transport-specific headers, status mapping, and request objects out of runtime packages.
 - Nuxt's Nitro server is the only top-level HTTP host; do not introduce Express, Hono, or a second
   one.

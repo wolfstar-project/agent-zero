@@ -1,6 +1,11 @@
 import { githubTokenFromEnvironment, ingestWebhook } from '@agent-zero/api';
 import { defineEventHandler, toWebRequest } from 'h3';
 
+import {
+  checkoutPathFromEnvironment,
+  githubWebhookSecretFromEnvironment,
+} from '../../utils/environment.js';
+import { errors } from '../../utils/errors.js';
 import { errorResponse, json } from '../../utils/respond.js';
 import { deliveryClaimStore, taskStore } from '../../utils/store.js';
 
@@ -15,13 +20,13 @@ import { deliveryClaimStore, taskStore } from '../../utils/store.js';
  * duplicate run. Without a configured secret or checkout the route fails closed and ingests
  * nothing.
  */
-const route = defineEventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const request = toWebRequest(event);
   try {
-    const secret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (!secret) return json(503, { error: 'GITHUB_WEBHOOK_SECRET is not configured' });
-    const checkoutPath = process.env.AGENT_ZERO_CHECKOUT_PATH;
-    if (!checkoutPath) return json(503, { error: 'AGENT_ZERO_CHECKOUT_PATH is not configured' });
+    const secret = githubWebhookSecretFromEnvironment(process.env);
+    if (!secret) return errors.misconfigured('GITHUB_WEBHOOK_SECRET');
+    const checkoutPath = checkoutPathFromEnvironment(process.env);
+    if (!checkoutPath) return errors.misconfigured('AGENT_ZERO_CHECKOUT_PATH');
 
     const outcome = await ingestWebhook(
       {
@@ -47,5 +52,3 @@ const route = defineEventHandler(async (event) => {
     return errorResponse(error);
   }
 });
-
-export default route;
