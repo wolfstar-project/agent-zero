@@ -86,4 +86,4 @@ export const githubWebhookPathItem = {
       },
     },
   },
-};
+} satisfies NonNullable<OpenAPIDocument['webhooks']>[string];
