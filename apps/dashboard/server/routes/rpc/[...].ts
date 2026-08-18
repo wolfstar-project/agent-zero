@@ -1,12 +1,6 @@
 import { accessFromEnvironment, requestLoggerStorage, rpcRouter } from '@agent-zero/api';
 import { EvlogHandlerPlugin } from '@orpc/evlog';
 import { RPCHandler } from '@orpc/server/fetch';
-import { defineEventHandler, toWebRequest } from 'h3';
-
-import { buildRpcContext } from '../../utils/context.js';
-import { errors } from '../../utils/errors.js';
-import { errorResponse } from '../../utils/respond.js';
-import { taskStore } from '../../utils/store.js';
 
 const handler = new RPCHandler(rpcRouter, {
   plugins: [new EvlogHandlerPlugin({ storage: requestLoggerStorage })],
@@ -30,8 +24,9 @@ export default defineEventHandler(async (event) => {
       context: buildRpcContext(request, access, taskStore),
     });
     if (matched) return response;
-    return errors.notFound();
   } catch (error) {
-    return errorResponse(error);
+    throw errors.internal(error);
   }
+  // Outside the `catch` above, so an unmatched path stays a 404 instead of being rethrown as 500.
+  throw errors.notFound();
 });

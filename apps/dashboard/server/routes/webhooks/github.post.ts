@@ -1,13 +1,4 @@
 import { githubTokenFromEnvironment, ingestWebhook } from '@agent-zero/api';
-import { defineEventHandler, toWebRequest } from 'h3';
-
-import {
-  checkoutPathFromEnvironment,
-  githubWebhookSecretFromEnvironment,
-} from '../../utils/environment.js';
-import { errors } from '../../utils/errors.js';
-import { errorResponse, json } from '../../utils/respond.js';
-import { deliveryClaimStore, taskStore } from '../../utils/store.js';
 
 /**
  * The production GitHub webhook entry point at `POST /webhooks/github`.
@@ -21,14 +12,15 @@ import { deliveryClaimStore, taskStore } from '../../utils/store.js';
  * nothing.
  */
 export default defineEventHandler(async (event) => {
-  const request = toWebRequest(event);
-  try {
-    const secret = githubWebhookSecretFromEnvironment(process.env);
-    if (!secret) return errors.misconfigured('GITHUB_WEBHOOK_SECRET');
-    const checkoutPath = checkoutPathFromEnvironment(process.env);
-    if (!checkoutPath) return errors.misconfigured('AGENT_ZERO_CHECKOUT_PATH');
+  const secret = githubWebhookSecretFromEnvironment(process.env);
+  if (!secret) throw errors.misconfigured('GITHUB_WEBHOOK_SECRET');
+  const checkoutPath = checkoutPathFromEnvironment(process.env);
+  if (!checkoutPath) throw errors.misconfigured('AGENT_ZERO_CHECKOUT_PATH');
 
-    const outcome = await ingestWebhook(
+  const request = toWebRequest(event);
+  let outcome;
+  try {
+    outcome = await ingestWebhook(
       {
         body: await request.text(),
         headers: Object.fromEntries(request.headers.entries()),
@@ -41,14 +33,18 @@ export default defineEventHandler(async (event) => {
         github: { token: githubTokenFromEnvironment() },
       },
     );
-
-    // The response never carries the run's evidence or result; GitHub's delivery log only needs
-    // the disposition, and everything else is reachable through the authenticated control plane.
-    if (outcome.status === 'rejected') return json(400, { status: 'rejected' });
-    if (outcome.status === 'ignored')
-      return json(200, { status: 'ignored', reason: outcome.reason });
-    return json(200, { status: 'accepted', taskId: outcome.result.id });
   } catch (error) {
-    return errorResponse(error);
+    throw errors.internal(error);
   }
+
+  // The response never carries the run's evidence or result; GitHub's delivery log only needs
+  // the disposition, and everything else is reachable through the authenticated control plane.
+  // A rejected delivery is a client-side signature failure, not a server fault, so it answers
+  // 400 with its own body rather than an error envelope.
+  if (outcome.status === 'rejected') {
+    setResponseStatus(event, 400);
+    return { status: 'rejected' };
+  }
+  if (outcome.status === 'ignored') return { status: 'ignored', reason: outcome.reason };
+  return { status: 'accepted', taskId: outcome.result.id };
 });

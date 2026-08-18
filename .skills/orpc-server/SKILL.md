@@ -22,8 +22,13 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   - `api/dashboard.get.ts` serves the aggregate dashboard view.
   Each route file exports its handler directly (`export default defineEventHandler(...)`), with no
   intermediate `const route` binding, so the file's one public shape is the one Nitro scans for.
-  Both `server/**/*.ts` and `app/**/*.ts` use explicit imports rather than Nuxt's auto-imports, so
-  every symbol's origin stays visible at the call site. `typecheck` is one `nuxt typecheck` pass
+  `server/**/*.ts` relies on Nitro's auto-imports: h3 helpers (`defineEventHandler`, `toWebRequest`,
+  `setResponseStatus`, `createError`) and this app's own `server/utils/**` exports (`errors`,
+  `taskStore`, `buildRpcContext`, the environment resolvers) are used unimported. Import explicitly
+  only what auto-imports cannot provide — workspace and third-party packages, and anything a
+  plain-Node unit test loads directly (`server/utils/errors.ts` imports `createError` from `h3` for
+  exactly that reason). `app/**/*.ts` is unchanged and still uses explicit imports.
+  `typecheck` is one `nuxt typecheck` pass
   (Golar, configured in `apps/dashboard/golar.config.ts`) covering `app/`, `modules/`, `server/`,
   and `test/` — there is no separate `tsc --project` or `vue-tsc` invocation.
 - `apps/dashboard` pins `nuxt` to the stable v4 channel (`^4.5.2` in `package.json`), whose
@@ -54,10 +59,13 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   `viteHubNuxtModule(options, nuxt)` export directly — there is no `modules: ['vite-hub/nuxt']`
   one-liner). Prove KV changes with a real `nuxt build` and a request against a route that reads
   the store, not just `nuxt prepare` or a type check.
-- Transport failures come from the catalogue in `server/utils/errors.ts` (`errors.notFound()`,
-  `errors.misconfigured(variable)`), serialised through `server/utils/respond.ts`; a route names the
-  failure instead of spelling out a status and body inline, so the same disposition cannot drift
-  between transports. Successful dispositions still return their own payload through `json(...)`.
+- Transport failures are `H3Error`s from the catalogue in `server/utils/errors.ts`
+  (`errors.notFound()`, `errors.misconfigured(variable)`, `errors.internal(error)`), thrown and left
+  to Nitro to serialise. A route names the failure instead of spelling out a status inline, so the
+  same disposition cannot drift between transports, and there is no hand-rolled `Response` builder.
+  `errors.internal` redacts the message with `redactSecrets` and attaches no `cause`, because Nitro
+  logs a thrown error whole. Successful dispositions return a plain object, with
+  `setResponseStatus(event, ...)` when the status is not 200.
 - Environment variables the server reads live in `server/utils/environment.ts`, one resolver each,
   taking the environment record as an argument rather than reading `process.env` themselves. They
   deliberately do not move to Nuxt's `runtimeConfig`: its defaults are baked at build time and
