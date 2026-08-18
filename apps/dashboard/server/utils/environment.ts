@@ -18,7 +18,7 @@ export function dashboardUrlFromEnvironment(
 export function githubWebhookSecretFromEnvironment(
   environment: Readonly<Record<string, string | undefined>>,
 ): string | undefined {
-  return environment.GITHUB_WEBHOOK_SECRET?.trim() || undefined;
+  return environment.GITHUB_WEBHOOK_SECRET || undefined;
 }
 
 /** The checkout every ingested delivery runs against, behind the runner boundary. */
