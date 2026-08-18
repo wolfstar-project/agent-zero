@@ -1,6 +1,8 @@
 import { defineNuxtModule } from 'nuxt/kit';
 import viteHubNuxtModule from 'vite-hub/nuxt';
 
+import { viteHubPresetFromEnvironment } from '../config/hosting.js';
+
 /**
  * Registers ViteHub's KV Runtime Helper inside Nuxt's own Nitro pipeline.
  *
@@ -12,12 +14,19 @@ import viteHubNuxtModule from 'vite-hub/nuxt';
 export default defineNuxtModule({
   meta: { name: 'agent-zero-vitehub' },
   async setup(_options, nuxt) {
+    // ViteHub's deployment preset also sets Nitro's: it pins `nitro.preset` to the plan's own
+    // preset during the build. Hard-coding `node` here therefore forced the self-hosted
+    // `node-server` bundle even on a host with its own output contract — on Vercel that meant a
+    // `.output/` directory the platform cannot serve, and a build that failed looking for `dist`.
+    const preset = viteHubPresetFromEnvironment();
+
     await viteHubNuxtModule(
       {
-        preset: 'node',
-        // Local single-node default. Cloudflare KV, Deno KV, or Upstash drop in as drivers here
-        // without touching application code.
-        kv: { driver: 'fs-lite', base: '.data/agent-zero' },
+        preset,
+        // The filesystem driver is the self-hosted single-node default. A hosted preset gets the
+        // host's own driver from ViteHub instead (Upstash on Vercel, Workers KV on Cloudflare),
+        // because a serverless function has no writable `.data/agent-zero` to persist into.
+        kv: preset === 'node' ? { driver: 'fs-lite', base: '.data/agent-zero' } : true,
       },
       // `vite-hub/nuxt`'s duck-typed `NuxtLike` parameter type doesn't structurally match the
       // real (generically-hookable) `Nuxt` type from `@nuxt/kit`, even though a real `Nuxt`

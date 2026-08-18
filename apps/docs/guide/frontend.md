@@ -39,7 +39,7 @@ Route groups — `(auth)`, `(dashboard)`, `(organizations)` — organize pages w
 
 The `server/` directory hosts the API transports, webhook ingress, and the Better Auth mount — see [API overview](/guide/api/overview) and [Authentication](/guide/authentication/overview).
 
-A local Nuxt module, `modules/vitehub.ts`, composes the ViteHub KV Runtime Helper into Nuxt's own Nitro build (`preset: 'node'`), giving the server a `KeyValueStorage` backed by `fs-lite` on the filesystem by default, with Cloudflare KV, Deno KV, or Upstash as drop-in driver configuration.
+A local Nuxt module, `modules/vitehub.ts`, composes the ViteHub KV Runtime Helper into Nuxt's own Nitro build, giving the server a `KeyValueStorage` backed by `fs-lite` on the filesystem by default, with Cloudflare KV, Deno KV, or Upstash as drop-in driver configuration. Its deployment preset comes from `config/hosting.ts` (`node` unless `NITRO_PRESET` or `VITEHUB_HOSTING` names a host), and that preset also fixes the Nitro preset the build emits — see [Deployment](/guide/deployment).
 
 ## Internationalization
 

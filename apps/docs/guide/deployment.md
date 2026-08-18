@@ -37,6 +37,35 @@ Rebuild the app whenever you change:
 - `AUTH_ENABLE_SIGNUP`, `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`, or organization flags (login-page capabilities are captured at build time);
 - anything in `packages/*` (the server bundle inlines them).
 
+## Vercel
+
+`apps/dashboard` ships its own `vercel.json` so it can be deployed as a Vercel project with **Root
+Directory** set to `apps/dashboard`: the install and build commands `cd` back to the workspace root
+so aube and Turborepo resolve the monorepo correctly.
+
+The build command sets `NITRO_PRESET=vercel`. The dashboard composes ViteHub into Nitro
+(`modules/vitehub.ts`), and ViteHub's deployment preset pins Nitro's own preset, so the build
+target is a deliberate choice rather than something Nitro auto-detects: without that variable every
+build emits the self-hosted `node-server` bundle in `.output/`, which Vercel cannot serve — it
+fails with _No Output Directory named "dist" found_. With it, `config/hosting.ts` resolves the
+`vercel` deployment preset and the build writes `.vercel/output` (Vercel's Build Output API)
+instead. `VITEHUB_HOSTING` selects the same target and takes precedence.
+
+Because they select the target, `NITRO_PRESET` and `VITEHUB_HOSTING` are declared on the app build
+tasks in `turbo.jsonc`: Turborepo's strict environment mode hides a variable a task does not
+declare (`NITRO_*` is forwarded by its Nuxt framework inference, `VITEHUB_HOSTING` is not), and
+declaring them keeps the target in the cache key so a self-hosted build is never restored into a
+hosted one. Both `.output/**` and `.vercel/output/**` are listed as build outputs for the same
+reason.
+
+On a hosted preset the KV Runtime Helper resolves the host's own driver rather than the filesystem
+one, because a serverless function has nowhere durable to write: on Vercel that is Upstash, so set
+`KV_REST_API_URL` and `KV_REST_API_TOKEN` or task history fails at runtime. See
+[Database](/guide/database).
+
+`apps/marketing` sets `NITRO_PRESET` the same way. It composes no ViteHub integration, so the
+variable only picks its Nitro preset, and it has no KV store to configure.
+
 ## Documentation site
 
 `apps/docs` is not deployed with the dashboard. It ships its own `vercel.json` so it can be
