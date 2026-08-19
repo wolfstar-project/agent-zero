@@ -8,6 +8,7 @@ import { ORPCError, os } from '@orpc/server';
 import { z } from 'zod';
 
 import type { Principal } from '../access.js';
+import type { AuditActor, AuditRecorder } from '../audit.js';
 import type { TaskStore } from '../control-plane.js';
 import {
   approvalInput,
@@ -26,6 +27,12 @@ export interface RpcContext {
   principal?: Principal;
   /** Whether `tasks.create` may target this repository. Fails closed when absent. */
   mayTargetRepository?: (repository: string) => boolean;
+  /**
+   * Durable audit trail supplied by the composition root. Optional like the predicate above, but
+   * for the opposite reason: an embedded caller that keeps no audit log should still be able to
+   * drive the router, so procedures record through `?.` rather than requiring a recorder.
+   */
+  audit?: AuditRecorder;
 }
 
 const procedure = os.$context<RpcContext>();
@@ -74,16 +81,45 @@ export const rpcRouter = {
         openapi({ method: 'POST', path: '/tasks', tags: ['Tasks'], summary: 'Queue a task run' }),
       )
       .input(taskInput)
-      .handler(({ input, context }) => {
-        if (!context.mayTargetRepository?.(input.repository))
+      .handler(async ({ input, context }) => {
+        // Refusals are audited as deliberately as grants: a token repeatedly reaching for a
+        // repository or a mode it was never given is the signal a trail exists to preserve.
+        const actor = principalActor(context.principal);
+        if (!context.mayTargetRepository?.(input.repository)) {
+          await context.audit?.record({
+            actor,
+            action: 'task.create',
+            outcome: 'denied',
+            metadata: { repository: input.repository, reason: 'repository-not-allow-listed' },
+          });
           throw new ORPCError('FORBIDDEN', {
             message: 'Repository is not allow-listed for task creation',
           });
-        if (!context.principal.modes.includes(input.mode))
+        }
+        if (!context.principal.modes.includes(input.mode)) {
+          await context.audit?.record({
+            actor,
+            action: 'task.create',
+            outcome: 'denied',
+            metadata: {
+              repository: input.repository,
+              mode: input.mode,
+              reason: 'mode-not-granted',
+            },
+          });
           throw new ORPCError('FORBIDDEN', {
             message: `Execution mode '${input.mode}' is not granted to this principal`,
           });
-        return createTask(input, context.store);
+        }
+        const task = await createTask(input, context.store);
+        await context.audit?.record({
+          actor,
+          action: 'task.created',
+          outcome: 'success',
+          subject: { type: 'task', id: task.id },
+          metadata: { repository: input.repository, mode: input.mode },
+        });
+        return task;
       }),
   },
   approvals: {
@@ -97,16 +133,32 @@ export const rpcRouter = {
         }),
       )
       .input(approvalInput)
-      .handler(({ input, context }) =>
-        decideApproval(
+      .handler(async ({ input, context }) => {
+        // No denial branch to audit here: `decideApproval` refuses an unknown task or one that is
+        // not awaiting review by throwing before it touches the record, so nothing happened that
+        // a trail would have to explain.
+        const task = await decideApproval(
           input.taskId,
           input.decision,
           context.principal.name,
           input.comment,
           context.store,
-        ),
-      ),
+        );
+        await context.audit?.record({
+          actor: principalActor(context.principal),
+          action: 'approval.decided',
+          outcome: 'success',
+          subject: { type: 'task', id: input.taskId },
+          metadata: { decision: input.decision, repository: task.repository },
+        });
+        return task;
+      }),
   },
 };
+
+/** The audited identity of an authenticated caller; never the name the request asked to use. */
+function principalActor(principal: Principal): AuditActor {
+  return { kind: 'principal', name: principal.name };
+}
 
 export type RpcRouter = typeof rpcRouter;

@@ -2,6 +2,7 @@ import { createRouterClient } from '@orpc/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Principal } from '../access.js';
+import type { AuditEntryInput, AuditRecorder } from '../audit.js';
 import { MemoryTaskStore, type StoredTask } from '../control-plane.js';
 import { rpcRouter } from './router.js';
 
@@ -13,14 +14,34 @@ const FORBIDDEN_ERROR = /not allow-listed/i;
 const MODE_ERROR = /not granted/i;
 
 let store: MemoryTaskStore;
+let audited: AuditEntryInput[];
 
 interface ClientOptions {
   principal?: Principal;
   allowRepository?: boolean;
 }
 
+/** Collects what the router recorded; the durable store has its own tests in `audit.test.ts`. */
+const recorder: AuditRecorder = {
+  async record(entry) {
+    audited.push(entry);
+  },
+};
+
 /** A server-side client exercises every procedure without opening a network port. */
 function client(options: ClientOptions = {}) {
+  return createRouterClient(rpcRouter, {
+    context: {
+      store,
+      ...(options.principal ? { principal: options.principal } : {}),
+      mayTargetRepository: () => options.allowRepository ?? false,
+      audit: recorder,
+    },
+  });
+}
+
+/** Deliberately omits the recorder: the audit trail is an optional capability, not a requirement. */
+function unaudited(options: ClientOptions = {}) {
   return createRouterClient(rpcRouter, {
     context: {
       store,
@@ -50,6 +71,7 @@ function awaiting(id: string): StoredTask {
 
 beforeEach(() => {
   store = new MemoryTaskStore();
+  audited = [];
 });
 
 describe('rpc router', () => {
@@ -143,5 +165,85 @@ describe('rpc router', () => {
     await expect(
       operator().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
     ).rejects.toThrow(APPROVAL_ERROR);
+  });
+});
+
+describe('rpc audit trail', () => {
+  it('records a repository refusal against the principal that attempted it', async () => {
+    await expect(
+      client({ principal: { name: 'ci', modes: ['autonomous'] } }).tasks.create({
+        repository: '/etc',
+        feedback: 'x',
+        mode: 'autonomous',
+      }),
+    ).rejects.toThrow(FORBIDDEN_ERROR);
+
+    expect(audited).toEqual([
+      {
+        actor: { kind: 'principal', name: 'ci' },
+        action: 'task.create',
+        outcome: 'denied',
+        metadata: { repository: '/etc', reason: 'repository-not-allow-listed' },
+      },
+    ]);
+  });
+
+  it('records a mode refusal with the mode that was not granted', async () => {
+    await expect(
+      client({
+        principal: { name: 'ci', modes: ['observe'] },
+        allowRepository: true,
+      }).tasks.create({ repository: '.', feedback: 'x', mode: 'fix' }),
+    ).rejects.toThrow(MODE_ERROR);
+
+    expect(audited).toEqual([
+      {
+        actor: { kind: 'principal', name: 'ci' },
+        action: 'task.create',
+        outcome: 'denied',
+        metadata: { repository: '.', mode: 'fix', reason: 'mode-not-granted' },
+      },
+    ]);
+  });
+
+  it('records an approval decision against the principal, never a wire-supplied actor', async () => {
+    await store.save(awaiting('az_1'));
+
+    await operator().approvals.decide({
+      taskId: 'az_1',
+      decision: 'approved',
+      // @ts-expect-error the schema no longer accepts an actor from the wire
+      actor: 'impostor',
+    });
+
+    expect(audited).toEqual([
+      {
+        actor: { kind: 'principal', name: 'release-manager' },
+        action: 'approval.decided',
+        outcome: 'success',
+        subject: { type: 'task', id: 'az_1' },
+        metadata: { decision: 'approved', repository: 'acme/app' },
+      },
+    ]);
+  });
+
+  it('records nothing for a decision that never reached the record', async () => {
+    await store.save({ ...awaiting('az_1'), status: 'completed' });
+
+    await expect(
+      operator().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+    ).rejects.toThrow(APPROVAL_ERROR);
+    expect(audited).toEqual([]);
+  });
+
+  it('serves callers that keep no audit trail at all', async () => {
+    await store.save(awaiting('az_1'));
+
+    await expect(
+      unaudited({
+        principal: { name: 'release-manager', modes: ['autonomous'] },
+        allowRepository: true,
+      }).approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+    ).resolves.toMatchObject({ approval: { actor: 'release-manager' } });
   });
 });
