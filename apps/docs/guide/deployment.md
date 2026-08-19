@@ -68,8 +68,12 @@ one, because a serverless function has nowhere durable to write: on Vercel that 
 `.vercel/output/functions/__server.func/index.mjs`, while the installed `nitropack@2.13.4` emits —
 and routes to — `__fallback.func`. The bundle is correct; only the name ViteHub looks for is not,
 so `nuxt.config.ts` links that name to the emitted function for the length of the check and removes
-the link afterwards. Delete the two `nitro.hooks` entries and `viteHubVercelEntryName` in
-`config/hosting.ts` once a ViteHub release expects the preset's own layout.
+the link afterwards. That bridge is registered as a Nitro **module**, not under `nitro.hooks`: a
+handler placed there replaces the preset's own handler for the same hook, and the `vercel` preset
+writes `config.json` and every `.vc-config.json` from its `compiled` hook — without them the
+directory exists but Vercel cannot read it, and the build fails with the same missing-`dist` error.
+Delete the module and `viteHubVercelEntryName` in `config/hosting.ts` once a ViteHub release
+expects the preset's own layout.
 :::
 
 `apps/marketing` sets `NITRO_PRESET` the same way. It composes no ViteHub integration, so the

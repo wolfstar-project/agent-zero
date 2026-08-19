@@ -25,7 +25,7 @@ const authPolicy = authConfigFromEnvironment();
 // self-hosted `.output/` bundle, `vercel` emits `.vercel/output`. See `config/hosting.ts`.
 const viteHubPreset = viteHubPresetFromEnvironment();
 
-// Set by the `compiled` hook below and consumed by `close`, which removes the bridge again.
+// Set by the `compiled` listener below and consumed by `close`, which removes the bridge again.
 let viteHubVercelEntry: string | undefined;
 
 // `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
@@ -158,30 +158,39 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    hooks: {
-      // `vite-hub@0.0.3`'s `vercel` plan asserts on a function directory the installed
-      // `nitropack@2.13.4` no longer emits under that name (see `config/hosting.ts`). Linking the
-      // name it expects to the one the preset produced lets its check pass on an otherwise correct
-      // bundle; `close` removes the link, so the deployment ships one function, not two.
-      async compiled(nitro) {
+    // Registered as a Nitro module rather than through `nitro.hooks`: a handler under that key
+    // replaces the preset's own handler for the same hook, and the `vercel` preset writes
+    // `config.json` and each function's `.vc-config.json` from its `compiled` hook — losing it
+    // leaves an output directory Vercel cannot read. A module appends its listeners instead, and
+    // runs after the preset's and before ViteHub's, which is the order this bridge needs.
+    modules: [
+      (nitro) => {
         if (viteHubPreset !== 'vercel') return;
-        const serverDirectory = nitro.options.output.serverDir;
-        viteHubVercelEntry = viteHubVercelEntryAlias(serverDirectory);
-        await symlink(basename(serverDirectory), viteHubVercelEntry, 'dir').catch(
-          (error: NodeJS.ErrnoException) => {
-            if (error.code !== 'EEXIST') throw error;
-          },
-        );
-      },
-      async close() {
-        if (!viteHubVercelEntry) return;
-        const entry = viteHubVercelEntry;
-        viteHubVercelEntry = undefined;
-        await unlink(entry).catch((error: NodeJS.ErrnoException) => {
-          if (error.code !== 'ENOENT') throw error;
+
+        // `vite-hub@0.0.3`'s `vercel` plan asserts on a function directory the installed
+        // `nitropack@2.13.4` no longer emits under that name (see `config/hosting.ts`). Linking
+        // the name it expects to the one the preset produced lets its check pass on an otherwise
+        // correct bundle; `close` removes the link, so the deployment ships one function, not two.
+        nitro.hooks.hook('compiled', async () => {
+          const serverDirectory = nitro.options.output.serverDir;
+          viteHubVercelEntry = viteHubVercelEntryAlias(serverDirectory);
+          await symlink(basename(serverDirectory), viteHubVercelEntry, 'dir').catch(
+            (error: NodeJS.ErrnoException) => {
+              if (error.code !== 'EEXIST') throw error;
+            },
+          );
+        });
+
+        nitro.hooks.hook('close', async () => {
+          if (!viteHubVercelEntry) return;
+          const entry = viteHubVercelEntry;
+          viteHubVercelEntry = undefined;
+          await unlink(entry).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error;
+          });
         });
       },
-    },
+    ],
   },
 
   routeRules: {
