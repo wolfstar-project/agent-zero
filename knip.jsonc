@@ -46,9 +46,12 @@
       ],
     },
     "apps/docs": {
-      // VitePress discovers its config (and an optional theme) from the
-      // filesystem; nothing imports them.
-      "entry": [".vitepress/config.ts"],
+      // A Docus app: Nuxt discovers the config and app.config from the
+      // filesystem; nothing imports them. The docus layer is referenced only
+      // as the `extends: ['docus']` string in nuxt.config.ts, which knip
+      // cannot trace to the dependency.
+      "entry": ["nuxt.config.ts", "app/app.config.ts"],
+      "ignoreDependencies": ["docus"],
     },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does

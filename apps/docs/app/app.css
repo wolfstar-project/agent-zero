@@ -1,0 +1,122 @@
+/* Agent Zero brand theme, mapped from the `--az-*` custom properties the dashboard and
+   marketing apps define in their `app/assets/css/main.css`. Those apps stay the source of
+   truth for the palette; this file restates the same oklch values on Nuxt UI's semantic
+   tokens because Docus themes through Tailwind/Nuxt UI rather than raw custom properties. */
+
+@theme static {
+  --font-sans: 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+
+  /* Brand green ramp anchored on the two accents: 400 is the dark-mode accent
+     oklch(0.82 0.2 136), 600 the light-mode accent oklch(0.46 0.17 140). */
+  --color-green-50: oklch(0.97 0.03 138);
+  --color-green-100: oklch(0.94 0.06 138);
+  --color-green-200: oklch(0.89 0.1 137);
+  --color-green-300: oklch(0.86 0.14 137);
+  --color-green-400: oklch(0.82 0.2 136);
+  --color-green-500: oklch(0.66 0.19 138);
+  --color-green-600: oklch(0.46 0.17 140);
+  --color-green-700: oklch(0.4 0.15 140);
+  --color-green-800: oklch(0.35 0.12 141);
+  --color-green-900: oklch(0.3 0.1 141);
+  --color-green-950: oklch(0.22 0.07 142);
+
+  /* Green-tinted neutral ramp: a stock gray reads visibly wrong beside the accent, so the
+     ramp endpoints are the exact canvas/panel/raised/line/muted values from the apps. */
+  --color-neutral-50: oklch(0.985 0.004 145);
+  --color-neutral-100: oklch(0.965 0.006 145);
+  --color-neutral-200: oklch(0.93 0.01 145);
+  --color-neutral-300: oklch(0.82 0.014 145);
+  --color-neutral-400: oklch(0.7 0.018 160);
+  --color-neutral-500: oklch(0.55 0.02 155);
+  --color-neutral-600: oklch(0.44 0.025 155);
+  --color-neutral-700: oklch(0.3 0.014 160);
+  --color-neutral-800: oklch(0.22 0.014 160);
+  --color-neutral-900: oklch(0.18 0.012 160);
+  --color-neutral-950: oklch(0.15 0.012 160);
+}
+
+:root {
+  /* Square corners: the brand renders no radius on panels or controls. */
+  --ui-radius: 0;
+
+  /* Light mode = the exact light `--az-*` values. */
+  --ui-bg: oklch(0.985 0.004 145); /* canvas */
+  --ui-bg-muted: oklch(0.965 0.006 145); /* panel */
+  --ui-bg-elevated: oklch(0.93 0.01 145); /* raised */
+  --ui-bg-accented: oklch(0.9 0.012 145);
+  --ui-bg-inverted: oklch(0.15 0.012 160);
+  --ui-border: oklch(0.82 0.014 145); /* line */
+  --ui-border-muted: oklch(0.88 0.012 145);
+  --ui-border-accented: oklch(0.82 0.014 145);
+  --ui-border-inverted: oklch(0.3 0.014 160);
+  --ui-text-dimmed: oklch(0.55 0.02 150);
+  --ui-text-muted: oklch(0.44 0.025 155); /* muted */
+  --ui-text-toned: oklch(0.35 0.022 155);
+  --ui-text: oklch(0.26 0.02 155);
+  --ui-text-highlighted: oklch(0.18 0.018 155); /* ink */
+  --ui-text-inverted: oklch(0.96 0.008 145);
+  --ui-primary: oklch(0.46 0.17 140); /* accent */
+  --ui-warning: oklch(0.55 0.14 75);
+  --ui-error: oklch(0.55 0.2 25);
+  --ui-info: oklch(0.48 0.17 250);
+
+  /* The theme-aware brand SVGs in public/ read these two. */
+  --az-accent: var(--ui-primary);
+  --az-ink: var(--ui-text-highlighted);
+  --az-grid: color-mix(in oklch, var(--ui-primary) 5%, transparent);
+}
+
+.dark {
+  --ui-bg: oklch(0.15 0.012 160); /* canvas */
+  --ui-bg-muted: oklch(0.18 0.012 160); /* panel */
+  --ui-bg-elevated: oklch(0.22 0.014 160); /* raised */
+  --ui-bg-accented: oklch(0.25 0.014 160);
+  --ui-bg-inverted: oklch(0.985 0.004 145);
+  --ui-border: oklch(0.3 0.014 160); /* line */
+  --ui-border-muted: oklch(0.26 0.014 160);
+  --ui-border-accented: oklch(0.3 0.014 160);
+  --ui-border-inverted: oklch(0.82 0.014 145);
+  --ui-text-dimmed: oklch(0.55 0.02 160);
+  --ui-text-muted: oklch(0.7 0.018 160); /* muted */
+  --ui-text-toned: oklch(0.82 0.012 155);
+  --ui-text: oklch(0.9 0.01 150);
+  --ui-text-highlighted: oklch(0.96 0.008 145); /* ink */
+  --ui-text-inverted: oklch(0.18 0.018 155);
+  --ui-primary: oklch(0.82 0.2 136); /* accent */
+  --ui-warning: oklch(0.82 0.15 80);
+  --ui-error: oklch(0.68 0.2 25);
+  --ui-info: oklch(0.73 0.15 250);
+
+  --az-accent: var(--ui-primary);
+  --az-ink: var(--ui-text-highlighted);
+  --az-grid: color-mix(in oklch, var(--ui-primary) 3%, transparent);
+}
+
+/* Signature canvas: the same 32px accent-tinted graph-paper grid the dashboard and
+   marketing sites draw on their body. */
+body {
+  background:
+    linear-gradient(var(--az-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--az-grid) 1px, transparent 1px),
+    var(--ui-bg);
+  background-size:
+    32px 32px,
+    32px 32px,
+    100% 100%;
+  background-repeat: repeat, repeat, no-repeat;
+}
+
+::selection {
+  color: var(--ui-bg);
+  background: var(--ui-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-color: var(--ui-border) var(--ui-bg);
+}

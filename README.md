@@ -17,7 +17,7 @@
 
 ## Documentation
 
-The full documentation — getting started, architecture, configuration, API, authentication, and deployment — lives in [`apps/docs`](./apps/docs), a VitePress site. Run it locally with `aube run dev --filter=@agent-zero/docs`. The canonical architecture and provider references stay in [`docs/`](./docs) and are included by the site, so both always read the same source.
+The full documentation — getting started, architecture, configuration, API, authentication, and deployment — lives in [`apps/docs`](./apps/docs), a [Docus](https://docus.dev) site. Run it locally with `aube run dev --filter=@agent-zero/docs`. The canonical architecture and provider references stay in [`docs/`](./docs) and are included by the site, so both always read the same source.
 
 ---
 
@@ -101,7 +101,7 @@ aube run dev
 ```
 
 The root `.env` configures the CLI. Each app loads its own file: the dashboard uses
-`apps/dashboard/.env`, while the docs app optionally uses `apps/docs/.env` for `DOCS_BASE`.
+`apps/dashboard/.env`, while the docs app optionally uses `apps/docs/.env` for `NUXT_APP_BASE_URL`.
 
 `aube run <script>` and `aube test` check install freshness first, so a separate install step is rarely needed. aube reads and writes the existing `pnpm-lock.yaml` and `pnpm-workspace.yaml` in place — the lockfile stays in pnpm's v9 format for anyone who still runs pnpm.
 
