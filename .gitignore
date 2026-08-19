@@ -4,6 +4,8 @@ node_modules
 dist/
 .output/
 .nuxt/
+# Written by the Nitro `vercel` preset and by the Vercel CLI's own local link file.
+.vercel/
 /.vitepress/
 !.vitepress/config.ts
 .maizzle/

@@ -107,6 +107,23 @@ See [Mails](/guide/mails).
 | -------- | ----------------------------- |
 | `PORT`   | Dashboard port (default 3000) |
 
+## Deployment target
+
+Build-time only: these pick the deployment preset the dashboard build emits, and with it the KV
+driver its task history resolves. Unset means the self-hosted `node-server` bundle in `.output/`.
+
+| Variable                                | Purpose                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `NITRO_PRESET`                          | Deployment target as the Nitro preset each plan pins: `vercel`, `node-server`, `cloudflare-module`, `deno-deploy`, `netlify`    |
+| `VITEHUB_HOSTING`                       | The same target as a ViteHub plan name: `vercel`, `node`, `cloudflare`, `deno`, `netlify`; takes precedence over `NITRO_PRESET` |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Upstash credentials the KV store reads at runtime on a host without a writable filesystem                                       |
+
+Each variable is matched against its own vocabulary and nothing else: a value ViteHub would refuse
+to build under — `vercel-edge` or a bare `node` in `NITRO_PRESET`, say — is rejected up front
+rather than resolved to the neighbouring target.
+
+See [Deployment](/guide/deployment).
+
 ## Documentation
 
 | Variable    | Purpose                                                          |
