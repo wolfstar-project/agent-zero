@@ -1,6 +1,10 @@
 import {
+  createAuditRecorder,
+  PersistentAuditLogStore,
   PersistentDeliveryClaimStore,
   PersistentTaskStore,
+  type AuditLogStore,
+  type AuditRecorder,
   type DeliveryClaimStore,
   type KeyValueStorage,
   type TaskStore,
@@ -52,3 +56,17 @@ export const taskStore: TaskStore = new PersistentTaskStore(storage);
  * concurrent deliveries within one process.
  */
 export const deliveryClaimStore: DeliveryClaimStore = new PersistentDeliveryClaimStore(storage);
+
+/**
+ * The durable audit trail, read by `server/api/audit-logs.get.ts` and written by the procedures
+ * both transports serve. It shares the deployment's KV backend with task history rather than
+ * opening a store of its own, so an audit record survives a restart exactly as a task does.
+ */
+export const auditLogStore: AuditLogStore = new PersistentAuditLogStore(storage);
+
+/**
+ * One recorder per server process, injected into the RPC context by both transports. Built here
+ * rather than in `context.ts` because it is a deployment-owned capability, like the stores above,
+ * and because the recorder must be the same instance for every request the process serves.
+ */
+export const auditRecorder: AuditRecorder = createAuditRecorder({ store: auditLogStore });

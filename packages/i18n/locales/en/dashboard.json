@@ -65,6 +65,40 @@
       "summary": "Run summary",
       "emptyTitle": "No task selected",
       "emptyBody": "Select a queue record to inspect evidence and usage."
+    },
+    "audit": {
+      "header": {
+        "eyebrow": "Agent Zero / Governance",
+        "title": "Audit Log"
+      },
+      "table": {
+        "title": "Recorded actions",
+        "order": "Newest first",
+        "caption": "Actions recorded by the control plane, newest first.",
+        "columns": {
+          "time": "Time",
+          "actor": "Actor",
+          "action": "Action",
+          "subject": "Subject",
+          "outcome": "Outcome"
+        },
+        "loading": "Loading the audit log…",
+        "loadMore": "Load older entries",
+        "emptyTitle": "No actions recorded yet",
+        "emptyBody": "Task submissions and approval decisions appear here as they are made."
+      },
+      "outcome": {
+        "success": "success",
+        "denied": "denied",
+        "failure": "failure"
+      },
+      "error": {
+        "title": "The audit log could not be read",
+        "forbidden": "Reading the audit log requires the admin role. Ask an administrator for access.",
+        "unauthorized": "Your session has expired. Sign in again to read the audit log.",
+        "generic": "The audit log is temporarily unavailable. Try again in a moment.",
+        "retry": "Try again"
+      }
     }
   }
 }
