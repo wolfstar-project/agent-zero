@@ -18,23 +18,35 @@
     },
     "@agent-zero/dashboard#build": {
       "dependsOn": ["^build"],
+      // NITRO_PRESET and VITEHUB_HOSTING select the deployment target (config/hosting.ts), which
+      // fixes both the Nitro preset the build emits and the KV driver it resolves. Strict env mode
+      // hides VITEHUB_HOSTING from `nuxt build` unless it is declared here, and declaring both
+      // keeps the target in the cache key, so a self-hosted `node-server` build can never be
+      // restored into a hosted one.
       "env": [
         "AUTH_ENABLE_SIGNUP",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "AUTH_ENABLE_ORGANIZATIONS",
         "NUXT_PUBLIC_SITE_URL",
+        "NITRO_PRESET",
+        "VITEHUB_HOSTING",
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".output/**"],
+      // `.vercel/output/**` is where the `vercel` preset writes instead of `.output/`; both are
+      // listed so a cache hit restores whichever bundle the resolved target produced.
+      "outputs": [".output/**", ".vercel/output/**"],
     },
     "@agent-zero/marketing#build": {
       "dependsOn": ["^build"],
       // Declared because Turborepo's strict env mode would otherwise hide these from `nuxt build`,
       // leaving @nuxtjs/seo with no site origin and the dashboard link pointing at localhost.
-      "env": ["MARKETING_SITE_URL", "MARKETING_DASHBOARD_URL"],
+      // NITRO_PRESET is declared so the deployment target is explicit and part of the cache key.
+      // Nitro does auto-detect a host from the platform variables Turborepo passes through, but
+      // those are not hashed, so a cached self-hosted build could otherwise be restored into one.
+      "env": ["MARKETING_SITE_URL", "MARKETING_DASHBOARD_URL", "NITRO_PRESET"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".output/**"],
+      "outputs": [".output/**", ".vercel/output/**"],
     },
     "@agent-zero/docs#build": {
       "dependsOn": ["^build"],
