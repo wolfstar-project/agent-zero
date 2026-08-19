@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -127,23 +127,48 @@ export async function credentialSummaries(
 }
 
 /**
- * Record a session for one deployment, leaving every other entry untouched.
+ * Replace the credential file with `store`, atomically and without ever widening its permissions.
  *
- * The file is created owner-only before anything is written to it, and `chmod` runs again
- * afterwards so an existing file created under a laxer umask is tightened rather than trusted.
+ * `writeFile`'s `mode` only applies when it creates the file, so writing straight to an existing
+ * world-readable `credentials.json` would publish every token in it for as long as it took a
+ * follow-up `chmod` to run — and permanently if that `chmod` failed. Writing to a fresh
+ * owner-only temporary file and renaming over the target closes that window: the bytes are never
+ * readable by anyone else, and `rename` is atomic within a directory, so a concurrent reader sees
+ * either the old file or the new one and never a half-written one.
+ *
+ * The temporary name carries the process id so two concurrent writers do not clobber each other's
+ * scratch file. It does not make the surrounding read-modify-write atomic — two processes racing
+ * to save different origins can still lose one entry — but that needs a lock file, and losing a
+ * session to a race is recoverable by signing in again, whereas leaking one is not.
  */
+async function writeStore(store: CredentialStore, path: string): Promise<void> {
+  await mkdir(dirname(path), { recursive: true, mode: DIRECTORY_OWNER_ONLY });
+  const temporaryPath = `${path}.${process.pid}.tmp`;
+  // `wx` fails rather than truncating an existing file, so the mode below is always the mode the
+  // file is created with rather than one inherited from something already there.
+  const handle = await open(temporaryPath, 'wx', OWNER_ONLY);
+  try {
+    await handle.writeFile(`${JSON.stringify(store, null, 2)}\n`, 'utf8');
+  } finally {
+    await handle.close();
+  }
+
+  try {
+    await rename(temporaryPath, path);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+/** Record a session for one deployment, leaving every other entry untouched. */
 export async function saveCredential(
   origin: string,
   credential: StoredCredential,
   path = credentialsPath(),
 ): Promise<void> {
   const store = await readCredentials(path);
-  await mkdir(dirname(path), { recursive: true, mode: DIRECTORY_OWNER_ONLY });
-  await writeFile(path, `${JSON.stringify({ ...store, [origin]: credential }, null, 2)}\n`, {
-    encoding: 'utf8',
-    mode: OWNER_ONLY,
-  });
-  await chmod(path, OWNER_ONLY);
+  await writeStore({ ...store, [origin]: credential }, path);
 }
 
 /**
@@ -171,10 +196,6 @@ export async function forgetCredential(
     return true;
   }
 
-  await writeFile(path, `${JSON.stringify(remaining, null, 2)}\n`, {
-    encoding: 'utf8',
-    mode: OWNER_ONLY,
-  });
-  await chmod(path, OWNER_ONLY);
+  await writeStore(remaining, path);
   return true;
 }

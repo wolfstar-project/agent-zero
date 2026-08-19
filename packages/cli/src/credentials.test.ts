@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -112,6 +112,27 @@ describe('saveCredential', () => {
     await saveCredential(CLOUD, { accessToken: 'cloud', expiresAt: 'later' }, path);
 
     expect((await stat(path)).mode & 0o777).toBe(0o600);
+  });
+
+  it('replaces a permissive file instead of writing the token through it', async () => {
+    // The distinction the mode assertion above cannot make: writing in place would put the token
+    // into a world-readable inode and only narrow it afterwards, leaving it readable for as long
+    // as that took — and for good if the narrowing failed. A different inode proves the bytes
+    // landed in a file that was owner-only from creation.
+    await writeFile(path, '{}', { encoding: 'utf8', mode: 0o666 });
+    const before = await stat(path);
+
+    await saveCredential(CLOUD, { accessToken: 'cloud', expiresAt: 'later' }, path);
+    const after = await stat(path);
+
+    expect(after.ino).not.toBe(before.ino);
+    expect(after.mode & 0o777).toBe(0o600);
+  });
+
+  it('leaves no scratch file behind for another user to read', async () => {
+    await saveCredential(CLOUD, { accessToken: 'cloud', expiresAt: 'later' }, path);
+
+    expect((await readdir(directory)).toSorted()).toEqual(['credentials.json']);
   });
 });
 

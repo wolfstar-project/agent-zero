@@ -168,6 +168,15 @@ async function signIn(url: string | undefined): Promise<void> {
   try {
     while (Date.now() < deadline) {
       await delay(intervalMs);
+      // Clack installs a SIGINT handler that stops the spinner, but nothing interrupts this loop:
+      // without the check it would keep polling until approval or the ten-minute deadline, so
+      // Ctrl-C would appear to do nothing. Checked after the delay because that is where the
+      // signal lands.
+      if (spinner.isCancelled) {
+        p.log.info('Sign-in cancelled.');
+        return;
+      }
+
       const outcome = await pollDeviceToken(origin, request.deviceCode);
 
       if (outcome.kind === 'token') {
