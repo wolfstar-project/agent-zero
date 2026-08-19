@@ -1,6 +1,6 @@
 import { symlink, unlink } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { basename } from 'node:path';
+import process from 'node:process';
 
 // Read from `@agent-zero/auth/config` rather than restated here, so the build-time label below and
 // the runtime enforcement in `server/auth.config.ts` cannot drift. That subpath carries policy
@@ -9,8 +9,7 @@ import { authConfigFromEnvironment } from '@agent-zero/auth/config';
 import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
-import { app, loginPath, ui } from './config/app.js';
-import { viteHubPresetFromEnvironment, viteHubVercelEntryAlias } from './config/hosting.js';
+import { viteHubPresetFromEnvironment, viteHubVercelEntryAlias } from './config/env.js';
 
 // Resolved once at config evaluation so the dashboard's auth pages publish the same sign-in
 // policy `server/auth.config.ts` enforces at runtime (AUTH_ENABLE_SIGNUP, GitHub OAuth
@@ -22,23 +21,15 @@ const authPolicy = authConfigFromEnvironment();
 
 // ViteHub's deployment preset is a build-time decision that also pins Nitro's own preset, so the
 // deployment target has to be resolved here rather than detected later: `node` emits the
-// self-hosted `.output/` bundle, `vercel` emits `.vercel/output`. See `config/hosting.ts`.
+// self-hosted `.output/` bundle, `vercel` emits `.vercel/output`. See `config/env.ts`.
 const viteHubPreset = viteHubPresetFromEnvironment();
 
 // Set by the `compiled` listener below and consumed by `close`, which removes the bridge again.
 let viteHubVercelEntry: string | undefined;
 
-// `@nuxtjs/i18n`'s `langDir` does not support absolute paths in production, so a module-provided
-// locale directory has to be wired through each locale's `files` entries instead (the module's own
-// documented pattern for this). `i18nLocalesFor` keeps its `files` entries package-relative
-// (`en/common.json`) so they stay portable; this is the one place that resolves them against the
-// installed package's real `locales/` directory.
-const i18nPackageDirectory = dirname(
-  fileURLToPath(import.meta.resolve('@agent-zero/i18n/package.json')),
-);
-const i18nLocalesDirectory = join(i18nPackageDirectory, 'locales');
 // Only the scopes this app renders: every listed file is deep-merged into the bundle whether or
-// not a key from it is read, so the marketing site's copy has no business being here.
+// not a key from it is read, so the marketing site's copy has no business being here — the reverse
+// of the reason `apps/marketing/nuxt.config.ts` doesn't load `dashboard.json`.
 const dashboardLocales = i18nLocalesFor([
   'common.json',
   'errors.json',
@@ -46,15 +37,6 @@ const dashboardLocales = i18nLocalesFor([
   'dashboard.json',
   'organizations.json',
 ]);
-const resolvedI18nLocales = dashboardLocales.map((locale) => ({
-  ...locale,
-  // `i18nLocalesFor` only ever produces plain filename strings (see localeFilesFor in
-  // packages/i18n), but `LocaleObject.files` is typed for `@nuxtjs/i18n`'s own richer
-  // `{ path, cache? }` form too, since a consumer could set that shape directly.
-  files: (locale.files ?? []).map((file) =>
-    join(i18nLocalesDirectory, typeof file === 'string' ? file : file.path),
-  ),
-}));
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-09',
@@ -66,6 +48,10 @@ export default defineNuxtConfig({
   ssr: true,
   future: {
     compatibilityVersion: 5,
+  },
+  devServer: {
+    // 3001 is the marketing site (frontend only, no API and no session).
+    port: 3000,
   },
   // `modules/` is scanned by Nuxt itself, so the local feature modules (shared, auth, dashboard,
   // organizations, i18n-strip-empty) register themselves — and register their own component and
@@ -81,17 +67,24 @@ export default defineNuxtConfig({
     '@nuxt/icon',
     '@nuxtjs/i18n',
     '@onmax/nuxt-better-auth',
-    [
-      '@nuxtjs/color-mode',
-      {
-        preference: ui.colorModePreference,
-        fallback: ui.colorModeFallback,
-        dataValue: 'theme',
-        storageKey: ui.colorModeStorageKey,
-      },
-    ],
+    '@nuxt/test-utils',
+    '@nuxtjs/color-mode',
   ],
   css: ['~/assets/css/main.css'],
+
+  $test: {
+    debug: {
+      hydration: true,
+    },
+  },
+
+  colorMode: {
+    preference: 'system',
+    fallback: 'dark',
+    dataValue: 'theme',
+    classSuffix: '',
+    storageKey: 'agent-zero-color-mode',
+  },
 
   icon: {
     // Icons stay fully client-bundled rather than served or fetched at runtime, regardless of the
@@ -104,11 +97,15 @@ export default defineNuxtConfig({
   },
 
   i18n: {
-    locales: resolvedI18nLocales,
+    locales: dashboardLocales,
     defaultLocale,
     // The dashboard is a single internal surface, so localised URL prefixes would only churn
     // route paths without buying any of the SEO they exist for.
     strategy: 'no_prefix',
+    // Paths are resolved relative to `restructureDir` (default "i18n/"), so this points at
+    // i18n/locales/ — a symlink to `packages/i18n/locales`, keeping one copy of the dictionaries
+    // for every app. The vue-i18n runtime config is auto-loaded from i18n/i18n.config.ts.
+    langDir: 'locales',
     detectBrowserLanguage: {
       useCookie: true,
       cookieKey: localeCookieName,
@@ -121,11 +118,23 @@ export default defineNuxtConfig({
     // Full mode: the module reads `server/auth.config.ts`, mounts Better Auth at `/api/auth/**`
     // itself, and resolves sessions server-side from the request cookie for SSR.
     redirects: {
-      login: loginPath,
+      login: '/login',
       guest: '/',
       authenticated: '/',
-      logout: loginPath,
+      logout: '/login',
     },
+  },
+
+  router: {
+    options: {
+      scrollBehaviorType: 'smooth',
+    },
+  },
+
+  experimental: {
+    entryImportMap: false,
+    typescriptPlugin: true,
+    typedPages: true,
   },
 
   runtimeConfig: {
@@ -153,7 +162,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       meta: [{ name: 'color-scheme', content: 'dark light' }],
-      title: app.title,
+      // Repeated in `app/app.vue`'s `useSeoMeta()`: the document needs a title before the app
+      // boots, and the social tags need the same string once it has. Pages override both.
+      title: 'Agent Zero · Dashboard',
     },
   },
 
@@ -168,7 +179,7 @@ export default defineNuxtConfig({
         if (viteHubPreset !== 'vercel') return;
 
         // `vite-hub@0.0.3`'s `vercel` plan asserts on a function directory the installed
-        // `nitropack@2.13.4` no longer emits under that name (see `config/hosting.ts`). Linking
+        // `nitropack@2.13.4` no longer emits under that name (see `config/env.ts`). Linking
         // the name it expects to the one the preset produced lets its check pass on an otherwise
         // correct bundle; `close` removes the link, so the deployment ships one function, not two.
         nitro.hooks.hook('compiled', async () => {
@@ -201,6 +212,12 @@ export default defineNuxtConfig({
     // Reached from an invitation email, so the visitor is frequently signed out at that moment:
     // requiring a session sends them through /login and back, rather than rejecting the link.
     '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },
+  },
+
+  vite: {
+    css: {
+      transformer: 'lightningcss',
+    },
   },
 
   typescript: {

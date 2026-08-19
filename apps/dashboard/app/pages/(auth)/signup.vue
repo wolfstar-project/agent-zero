@@ -57,15 +57,13 @@
 
     <p v-else class="m-0 mt-4 text-xs text-muted">{{ $t('auth.signup.closed') }}</p>
 
-    <NuxtLink class="btn-link mt-5 block w-full text-center" :to="loginPath">
+    <NuxtLink class="btn-link mt-5 block w-full text-center" to="/login">
       {{ $t('auth.signup.toSignIn') }}
     </NuxtLink>
   </section>
 </template>
 
 <script setup lang="ts">
-import { loginPath } from '~~/config/app';
-
 /**
  * Registration lives on its own route rather than behind a toggle on the sign-in page, so the two
  * flows have distinct URLs to link to, bookmark, and gate.

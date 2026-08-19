@@ -71,6 +71,7 @@
         "modules/**/*.vue",
         "modules/**/*.ts",
         "config/**/*.ts",
+        "i18n/i18n.config.ts",
         "golar.config.ts",
         "server/**/*.ts",
         // Loaded by `@onmax/nuxt-better-auth` from its configured `serverConfig` path.

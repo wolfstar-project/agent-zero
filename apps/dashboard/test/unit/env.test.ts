@@ -5,7 +5,7 @@ import {
   viteHubPresetFromEnvironment,
   viteHubVercelEntryAlias,
   viteHubVercelEntryName,
-} from '../../config/hosting.js';
+} from '../../config/env.js';
 
 // Hoisted so the linter's no-regex-in-call rule holds and each pattern is compiled once.
 const unsupportedNitroPreset = /Unsupported NITRO_PRESET value/u;

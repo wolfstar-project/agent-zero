@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-const route = useRoute();
+const route = useRoute('organizations-accept-invitation-id');
 
 const status = ref<'pending' | 'accepted' | 'failed'>('pending');
 

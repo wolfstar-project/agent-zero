@@ -47,7 +47,7 @@ The build command sets `NITRO_PRESET=vercel`. `nuxt.config.ts` registers `vite-h
 deployment preset, and that preset pins Nitro's own, so the build target is a deliberate choice
 rather than something Nitro auto-detects: without that variable every build emits the self-hosted
 `node-server` bundle in `.output/`, which Vercel cannot serve — it fails with _No Output Directory
-named "dist" found_. With it, `config/hosting.ts` resolves the `vercel` preset and the build writes
+named "dist" found_. With it, `config/env.ts` resolves the `vercel` preset and the build writes
 `.vercel/output` (Vercel's Build Output API) instead. `VITEHUB_HOSTING` selects the same target and
 takes precedence.
 
@@ -72,7 +72,7 @@ the link afterwards. That bridge is registered as a Nitro **module**, not under 
 handler placed there replaces the preset's own handler for the same hook, and the `vercel` preset
 writes `config.json` and every `.vc-config.json` from its `compiled` hook — without them the
 directory exists but Vercel cannot read it, and the build fails with the same missing-`dist` error.
-Delete the module and `viteHubVercelEntryName` in `config/hosting.ts` once a ViteHub release
+Delete the module and `viteHubVercelEntryName` in `config/env.ts` once a ViteHub release
 expects the preset's own layout.
 :::
 

@@ -56,7 +56,7 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   `apps/dashboard/server/utils/store.ts`, so KV drivers stay interchangeable; never store review
   input or checkout paths. ViteHub is composed into Nuxt's own Nitro build from
   `apps/dashboard/nuxt.config.ts`, which registers `vite-hub/nuxt` as an ordinary module entry
-  (`['vite-hub/nuxt', { preset, kv: true }]`) with the deployment preset from `config/hosting.ts`. Prove KV changes with a real `nuxt build` and a request against a route that reads
+  (`['vite-hub/nuxt', { preset, kv: true }]`) with the deployment preset from `config/env.ts`. Prove KV changes with a real `nuxt build` and a request against a route that reads
   the store, not just `nuxt prepare` or a type check.
 - Transport failures are `H3Error`s from the catalogue in `server/utils/errors.ts`
   (`errors.notFound()`, `errors.misconfigured(variable)`, `errors.internal(error)`), thrown and left
