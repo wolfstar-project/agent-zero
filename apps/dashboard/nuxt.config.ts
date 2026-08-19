@@ -198,6 +198,11 @@ export default defineNuxtConfig({
     '/login': { auth: { only: 'guest' } },
     '/signin': { auth: { only: 'guest' } },
     '/organizations': { appLayout: 'default', auth: { only: 'user' } },
+    // Approving a device request mints a session for a client that never sees this browser, so the
+    // approval has to be attributable: a signed-out visitor is sent to sign in and back rather
+    // than being shown the form. The auth layout, not the shell, because the visitor arriving here
+    // typed a code off a terminal and has no business in the navigation.
+    '/device': { auth: { only: 'user' } },
     // Reached from an invitation email, so the visitor is frequently signed out at that moment:
     // requiring a session sends them through /login and back, rather than rejecting the link.
     '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },

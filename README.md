@@ -113,12 +113,16 @@ The root `.env` configures the CLI. Each app loads its own file: the dashboard u
 zero init                   create .agent-zero.yml
 zero --version              print the injected CLI version
 zero doctor [--json]        inspect the local environment
+zero login [--url X]        sign this machine in through the device flow
+zero logout [--url X]       forget a stored session
 zero review (--feedback X | --proactive)  inspect without editing
 zero fix (--feedback X | --proactive)     validate, edit, and verify (policy permitting)
 zero run (--feedback X | --proactive)     run using the configured mode
 ```
 
 The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args) and renders with [`@clack/prompts`](https://github.com/bombshell-dev/clack). Use `--proactive` to inspect the working-tree diff without reviewer feedback. When neither trigger is provided in a terminal, it asks for the task interactively; use `--feedback` or `--proactive` with `--json` for scripts and CI.
+
+`zero login` runs the [RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628) device flow: it prints a short code, you approve it at the deployment's `/device` page in a browser you are already signed into, and the CLI stores the resulting session token in `$XDG_CONFIG_HOME/agent-zero/credentials.json` (owner-readable only). The same command serves a cloud-managed deployment and a self-hosted one — pick which with `--url`, or set `AGENT_ZERO_URL`; without either it targets `http://localhost:3000`. Tokens are kept per origin, so signing into one deployment never evicts another, and `zero logout` without `--url` forgets all of them. The deployment must have `AUTH_ENABLE_DEVICE_AUTHORIZATION=true`; it is off by default.
 
 ---
 

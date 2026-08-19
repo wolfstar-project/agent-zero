@@ -1,9 +1,11 @@
 import { account, session, user, verification } from './auth.js';
+import { deviceCode } from './device.js';
 import { invite, inviteUse } from './enrollment.js';
 import { invitation, member, organization } from './organization.js';
 
 export { account, session, user, verification } from './auth.js';
 export { timestampColumns } from './columns.js';
+export { deviceCode } from './device.js';
 export { invite, inviteUse } from './enrollment.js';
 export { invitation, member, organization } from './organization.js';
 
@@ -28,6 +30,7 @@ export const schema = {
   invitation,
   invite,
   inviteUse,
+  deviceCode,
 };
 
 /** The set of tables the database client is opened with. */

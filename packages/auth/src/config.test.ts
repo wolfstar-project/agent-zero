@@ -5,6 +5,7 @@ import {
   defaultAuthConfig,
   githubCredentialsFromEnvironment,
   MINIMUM_PASSWORD_LENGTH,
+  oauthProxyFromEnvironment,
 } from './config.js';
 
 describe('defaultAuthConfig', () => {
@@ -13,6 +14,29 @@ describe('defaultAuthConfig', () => {
     expect(defaultAuthConfig.enableGithubOauth).toBe(false);
     expect(defaultAuthConfig.enablePasswordLogin).toBe(true);
     expect(defaultAuthConfig.minimumPasswordLength).toBe(MINIMUM_PASSWORD_LENGTH);
+  });
+
+  it('starts closed to the device flow, which mints a session for a browserless client', () => {
+    expect(defaultAuthConfig.enableDeviceAuthorization).toBe(false);
+  });
+});
+
+describe('oauthProxyFromEnvironment', () => {
+  it('returns the settings when both halves are present', () => {
+    expect(
+      oauthProxyFromEnvironment({
+        OAUTH_PROXY_PRODUCTION_URL: 'https://app.example.test',
+        OAUTH_PROXY_SECRET: 'shared-secret',
+      }),
+    ).toEqual({ productionUrl: 'https://app.example.test', secret: 'shared-secret' });
+  });
+
+  it('fails closed when only one half is configured', () => {
+    expect(
+      oauthProxyFromEnvironment({ OAUTH_PROXY_PRODUCTION_URL: 'https://app.example.test' }),
+    ).toBeUndefined();
+    expect(oauthProxyFromEnvironment({ OAUTH_PROXY_SECRET: 'shared-secret' })).toBeUndefined();
+    expect(oauthProxyFromEnvironment({})).toBeUndefined();
   });
 });
 
@@ -69,6 +93,15 @@ describe('authConfigFromEnvironment', () => {
 
   it('keeps invitations disabled unless explicitly opted in', () => {
     expect(authConfigFromEnvironment({}).enableInvitations).toBe(false);
+    expect(
+      authConfigFromEnvironment({ AUTH_ENABLE_DEVICE_AUTHORIZATION: 'true' })
+        .enableDeviceAuthorization,
+    ).toBe(true);
+    expect(
+      authConfigFromEnvironment({ AUTH_ENABLE_DEVICE_AUTHORIZATION: 'TRUE' })
+        .enableDeviceAuthorization,
+    ).toBe(false);
+    expect(authConfigFromEnvironment({}).enableDeviceAuthorization).toBe(false);
     expect(authConfigFromEnvironment({ AUTH_ENABLE_INVITATIONS: 'TRUE' }).enableInvitations).toBe(
       false,
     );

@@ -28,7 +28,7 @@ export interface BetterAuthSessionApi {
  * structurally, while a test double does not have to fabricate the dozens of fields the mapping
  * below never looks at.
  */
-export interface BetterAuthSessionPayload {
+interface BetterAuthSessionPayload {
   session: Pick<Session, 'id'>;
   /** `role` is an additional field the deployment adds, so it is absent from Better Auth's `User`. */
   user: Pick<User, 'id' | 'email'> & { readonly role?: unknown };

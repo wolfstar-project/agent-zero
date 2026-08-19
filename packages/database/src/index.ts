@@ -9,6 +9,7 @@ export {
 } from './client.js';
 export {
   account,
+  deviceCode,
   invitation,
   invite,
   inviteUse,

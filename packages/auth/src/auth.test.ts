@@ -200,6 +200,45 @@ describe('createAuth with organizations', () => {
     dashboardUrl: completeEnvironment.AUTH_DASHBOARD_ORIGIN,
   };
 
+  it('always registers the route-free session and sign-in-hint plugins', () => {
+    const ids = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    }).plugins.map((plugin) => plugin.id);
+
+    expect(ids).toContain('multi-session');
+    expect(ids).toContain('last-login-method');
+  });
+
+  it('withholds the device flow until an operator grants it', () => {
+    const off = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const on = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableDeviceAuthorization: true },
+    });
+
+    expect(off.plugins.map((plugin) => plugin.id)).not.toContain('device-authorization');
+    expect(on.plugins.map((plugin) => plugin.id)).toContain('device-authorization');
+  });
+
+  it('registers the OAuth proxy only for a deployment that configured both halves', () => {
+    const without = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const configured = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+      oauthProxy: { productionUrl: 'https://app.example.test', secret: 'shared-secret' },
+    });
+
+    expect(without.plugins.map((plugin) => plugin.id)).not.toContain('oauth-proxy');
+    expect(configured.plugins.map((plugin) => plugin.id)).toContain('oauth-proxy');
+  });
+
   it('registers organizations without delivery or a dashboard origin', () => {
     const options = authBetterAuthOptions({
       databaseUrl: completeEnvironment.DATABASE_URL,

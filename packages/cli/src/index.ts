@@ -36,6 +36,13 @@ import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
 import {
+  forgetCredential,
+  credentialsPath,
+  normalizeOrigin,
+  saveCredential,
+} from './credentials.js';
+import { pollDeviceToken, requestDeviceCode } from './login.js';
+import {
   claudeCodeProcessSpawner,
   claudeCodeRefusalReason,
   environmentForModel,
@@ -79,6 +86,16 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (args.command === 'login') {
+    await signIn(args.url);
+    return;
+  }
+
+  if (args.command === 'logout') {
+    await signOut(args.url);
+    return;
+  }
+
   if (args.command === 'review' || args.command === 'fix' || args.command === 'run') {
     await runAgent(args.command, args.feedback, args.proactive, args.json);
     return;
@@ -96,6 +113,8 @@ function showHelp(): void {
       'zero init',
       'zero --version',
       'zero doctor [--json]',
+      'zero login [--url <deployment>]',
+      'zero logout [--url <deployment>]',
       'zero review (--feedback <text> | --proactive) [--json]',
       'zero fix (--feedback <text> | --proactive) [--json]',
       'zero run (--feedback <text> | --proactive) [--json]',
@@ -104,6 +123,103 @@ function showHelp(): void {
   );
   p.note(['0  concluded', '1  failed', '2  needs a human'].join('\n'), 'Exit codes');
   p.outro('Use --feedback or --proactive for non-interactive environments.');
+}
+
+/**
+ * Which deployment `login` and `logout` act on.
+ *
+ * `--url` wins, then `AGENT_ZERO_URL`, then the local development origin the README documents.
+ * There is deliberately no built-in hosted default: a wrong one would send an operator's device
+ * code to a host nobody in this repository controls, so a cloud-managed deployment is named
+ * explicitly exactly like a self-hosted one.
+ */
+function resolveDeploymentOrigin(url: string | undefined): string {
+  return normalizeOrigin(url ?? process.env.AGENT_ZERO_URL?.trim() ?? 'http://localhost:3000');
+}
+
+/**
+ * Sign this machine in through the RFC 8628 device flow.
+ *
+ * The CLI never sees a password: it prints a short code, the operator approves it in a browser
+ * they are already signed into, and only then does a session token come back. Polling honours the
+ * interval the deployment asked for, and backs off further whenever it answers `slow_down`, so a
+ * long approval does not turn into a self-inflicted rate limit.
+ */
+async function signIn(url: string | undefined): Promise<void> {
+  const origin = resolveDeploymentOrigin(url);
+  p.intro(`Agent Zero · login`);
+
+  const request = await requestDeviceCode(origin);
+  p.note(
+    [
+      `Open  ${request.verificationUriComplete ?? request.verificationUri}`,
+      `Code  ${request.userCode}`,
+    ].join('\n'),
+    origin,
+  );
+
+  const spinner = p.spinner();
+  spinner.start('Waiting for approval');
+
+  const deadline = Date.now() + request.expiresInSeconds * 1_000;
+  let intervalMs = request.intervalSeconds * 1_000;
+
+  try {
+    while (Date.now() < deadline) {
+      await delay(intervalMs);
+      const outcome = await pollDeviceToken(origin, request.deviceCode);
+
+      if (outcome.kind === 'token') {
+        await saveCredential(origin, {
+          accessToken: outcome.token.accessToken,
+          expiresAt: new Date(Date.now() + outcome.token.expiresInSeconds * 1_000).toISOString(),
+        });
+        spinner.stop('Approved');
+        p.log.success(`Signed in to ${origin}`);
+        p.outro(`Token stored in ${credentialsPath()}`);
+        return;
+      }
+
+      if (outcome.kind === 'denied') {
+        spinner.stop('Denied');
+        throw new Error('The request was denied in the browser.');
+      }
+
+      if (outcome.kind === 'expired') {
+        spinner.stop('Expired');
+        throw new Error('The code expired before it was approved. Run zero login again.');
+      }
+
+      // The server only says "too fast", never how much slower; RFC 8628 prescribes adding to the
+      // interval rather than guessing a new one.
+      if (outcome.kind === 'slowDown') intervalMs += request.intervalSeconds * 1_000;
+    }
+
+    spinner.stop('Expired');
+    throw new Error('The code expired before it was approved. Run zero login again.');
+  } catch (error) {
+    // `spinner.stop` is idempotent, and the throws above have already called it; this covers a
+    // transport failure mid-poll, which would otherwise leave the spinner running over the error.
+    spinner.stop('Failed');
+    throw error;
+  }
+}
+
+/** Forget a stored session. Without `--url` this forgets every deployment, not just one. */
+async function signOut(url: string | undefined): Promise<void> {
+  p.intro('Agent Zero · logout');
+  const origin = url === undefined ? undefined : resolveDeploymentOrigin(url);
+  const forgotten = await forgetCredential(origin);
+
+  if (forgotten)
+    p.log.success(origin ? `Signed out of ${origin}` : 'Signed out of every deployment');
+  else p.log.info(origin ? `No stored session for ${origin}` : 'No stored sessions');
+
+  p.outro('Done.');
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function initializeProject(): Promise<void> {
