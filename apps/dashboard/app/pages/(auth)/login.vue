@@ -46,17 +46,15 @@
       </button>
     </template>
 
-    <NuxtLink v-if="canSignUp" class="btn-link mt-5 block w-full text-center" :to="signupPath">
+    <NuxtLink v-if="canSignUp" class="btn-link mt-5 block w-full text-center" to="/signup">
       {{ $t('auth.login.toSignUp') }}
     </NuxtLink>
   </section>
 </template>
 
 <script setup lang="ts">
-import { signupPath } from '~~/config/app';
-
 /**
- * Sign-in only. Registration lives on `signupPath`, which this page links to when the published
+ * Sign-in only. Registration lives on `/signup`, which this page links to when the published
  * policy enables it; the link is hidden otherwise so a closed deployment offers no dead end.
  */
 definePageMeta({ layout: 'auth' });

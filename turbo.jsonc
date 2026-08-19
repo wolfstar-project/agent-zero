@@ -18,7 +18,7 @@
     },
     "@agent-zero/dashboard#build": {
       "dependsOn": ["^build"],
-      // NITRO_PRESET and VITEHUB_HOSTING select the deployment target (config/hosting.ts), which
+      // NITRO_PRESET and VITEHUB_HOSTING select the deployment target (config/env.ts), which
       // fixes both the Nitro preset the build emits and the KV driver it resolves. Strict env mode
       // hides VITEHUB_HOSTING from `nuxt build` unless it is declared here, and declaring both
       // keeps the target in the cache key, so a self-hosted `node-server` build can never be
