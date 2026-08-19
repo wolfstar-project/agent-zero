@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 // Read from `@agent-zero/auth/config` rather than restated here, so the build-time label below and
 // the runtime enforcement in `server/auth.config.ts` cannot drift. That subpath carries policy
 // only, with none of the database dependencies `authBetterAuthOptions` needs.
-import { authConfigFromEnvironment } from '@agent-zero/auth/config';
+import { authConfigFromEnvironment, infraFromEnvironment } from '@agent-zero/auth/config';
 import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
@@ -19,6 +19,12 @@ import { viteHubPresetFromEnvironment, viteHubVercelEntryAlias } from './config/
 // config enforces its own policy regardless, so a stale build can only mislabel a page, never open
 // a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// Only the KV origin is read out of the hosted-infrastructure settings, and only so the browser
+// can be told where to identify. The API key sitting next to it in `infraFromEnvironment()` is
+// never touched here: appConfig is published to the client, so anything read into it leaves the
+// server.
+const infraKvUrl = infraFromEnvironment()?.kvUrl ?? '';
 
 // ViteHub's deployment preset is a build-time decision that also pins Nitro's own preset, so the
 // deployment target has to be resolved here rather than detected later: `node` emits the
@@ -153,6 +159,11 @@ export default defineNuxtConfig({
       // a self-hosted deployment's visitors to a third party. appConfig having no env override
       // channel is what makes `BETTER_AUTH_*` the single source for both halves.
       enableInfra: authPolicy.enableInfra,
+      // The project's own ingestion endpoint. Without it `sentinelClient()` falls back to Better
+      // Auth's shared global one, which its own startup warning calls out as not recommended.
+      // Not a secret — the visitor's browser posts to it directly — unlike the API key it is
+      // provisioned alongside, which stays server-side.
+      infraKvUrl,
     },
   },
 
