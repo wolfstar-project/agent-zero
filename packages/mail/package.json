@@ -25,16 +25,15 @@
   "scripts": {
     "build": "tsdown",
     "clean": "tsc -b --clean",
-    "lint": "oxlint --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src",
-    "lint:fix": "oxlint --fix --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src",
+    "lint": "oxlint --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src scripts",
+    "lint:fix": "oxlint --fix --config ../../tooling/oxc/packages.oxlintrc.json --type-aware --type-check src scripts",
+    "mail:compile": "node scripts/compile-templates.ts",
     "test": "vitest run src --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --pretty false --noEmit"
   },
-  "dependencies": {
-    "@maizzle/framework": "^6.0.13",
-    "@maizzle/tailwindcss": "^1.5.6"
-  },
   "devDependencies": {
+    "@maizzle/framework": "^6.0.13",
+    "@maizzle/tailwindcss": "^1.5.6",
     "@types/nodemailer": "^8.0.1",
     "nodemailer": "^9.0.5",
     "oxlint": "^1.44.0",

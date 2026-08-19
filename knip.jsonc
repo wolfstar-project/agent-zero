@@ -26,9 +26,11 @@
       "entry": ["src/index.ts", "scripts/*.ts", "lunaria.config.ts"],
     },
     "packages/mail": {
-      // maizzle.config.ts is discovered by Maizzle's own `render()` call by filesystem
-      // convention (it walks up from the template path), not imported by anything in src/.
-      "entry": ["src/index.ts", "maizzle.config.ts"],
+      // The template compiler is invoked directly (`node scripts/compile-templates.ts`) from
+      // package.json rather than imported, so it is its own entry point. maizzle.config.ts is
+      // discovered by Maizzle's own `render()` call by filesystem convention (it walks up from
+      // the template path), not imported by anything in src/.
+      "entry": ["src/index.ts", "scripts/*.ts", "maizzle.config.ts"],
       // Resolved by Maizzle's Tailwind integration from the package name, not imported
       // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
       "ignoreDependencies": ["@maizzle/tailwindcss"],

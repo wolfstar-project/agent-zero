@@ -87,6 +87,12 @@
       "env": ["DATABASE_URL", "AUTH_DATABASE_URL"],
       "outputs": [],
     },
+    // Rewrites the checked-in render of every mail template (packages/mail). Uncached: it is run
+    // deliberately after editing a template, and its output is a source file, not a build artifact.
+    "mail:compile": {
+      "cache": false,
+      "outputs": [],
+    },
     "i18n:check": {
       "cache": false,
       "outputs": [],

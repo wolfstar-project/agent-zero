@@ -1,13 +1,32 @@
-import { fileURLToPath } from 'node:url';
-
-import { render } from '@maizzle/framework';
-
 import { mailProviderFromEnvironment } from './provider/index.js';
 import type { MailProvider } from './provider/types.js';
-import { mailTemplates, type MailTemplateContext, type MailTemplateId } from './util/templates.js';
+import compiledTemplates from './util/compiled-templates.json' with { type: 'json' };
+import {
+  escapeMailHtml,
+  interpolateMailTemplate,
+  mailTemplateVariantKey,
+  type CompiledMailTemplates,
+} from './util/compiled.js';
+import {
+  mailTemplateConditionalFields,
+  mailTemplates,
+  type MailTemplateContext,
+  type MailTemplateId,
+} from './util/templates.js';
 
-/** Templates ship beside the compiled output, so resolve them relative to this module. */
-const emailsDirectory = fileURLToPath(new URL('../emails/', import.meta.url));
+/**
+ * The templates as they were rendered at build time by `scripts/compile-templates.ts`.
+ *
+ * Imported rather than read from disk so the markup travels inside the module: the deployments
+ * that send mail bundle this package into a single server file, where a path resolved from
+ * `import.meta.url` no longer points anywhere near `emails/`.
+ */
+const compiled = compiledTemplates as CompiledMailTemplates;
+
+/** Plaintext is already plain: a value goes in exactly as the recipient should read it. */
+function asPlaintext(value: string): string {
+  return value;
+}
 
 /** A message to deliver, addressed by template id rather than by file path. */
 export interface SendEmailOptions<Id extends MailTemplateId = MailTemplateId> {
@@ -34,29 +53,40 @@ function resolveFrom(from: string | undefined): string {
 }
 
 /**
- * Render a template and hand it to the configured provider.
+ * Fill in a template and hand it to the configured provider.
  *
- * Rendering happens per send rather than at build time: the templates carry per-recipient tokens,
- * so there is no reusable compiled artifact to cache, and Maizzle's pipeline (SSR, CSS inlining,
- * plaintext) is what turns the Vue source into something a mail client renders.
+ * Rendering happened at build time (`scripts/compile-templates.ts`), because Maizzle's pipeline —
+ * Vue SSR, CSS inlining, plaintext — runs a bundler, and the deployments that send mail are
+ * serverless functions with neither a writable working directory nor the platform-native binary
+ * that bundler needs. What is left per message is the part that genuinely varies: choosing the
+ * variant whose branches match this context, and substituting the values into it.
  */
 export async function sendEmail<Id extends MailTemplateId>(
   options: SendEmailOptions<Id>,
   mailer: MailerOptions = {},
 ): Promise<void> {
   const template = mailTemplates[options.templateId];
-  const { html, plaintext } = await render(`${emailsDirectory}${template.file}`, {
-    ...options.context,
-    plaintext: true,
-  });
+  const variantKey = mailTemplateVariantKey(
+    mailTemplateConditionalFields(options.templateId),
+    options.context,
+  );
+  const variant = compiled[options.templateId][variantKey];
+  if (!variant) {
+    // Only reachable when the checked-in artifact was rendered from a different registry than the
+    // one this build ships, which `aube run mail:compile` repairs and `mail.test.ts` catches.
+    throw new Error(
+      `mail template ${options.templateId} has no compiled variant ${JSON.stringify(variantKey)}`,
+    );
+  }
 
+  const context = options.context as Readonly<Record<string, string>>;
   const provider = mailer.provider ?? mailProviderFromEnvironment();
 
   await provider({
     to: options.to,
     subject: options.subject ?? template.subject,
-    html,
-    text: plaintext ?? '',
+    html: interpolateMailTemplate(variant.html, context, escapeMailHtml),
+    text: interpolateMailTemplate(variant.text, context, asPlaintext),
     from: resolveFrom(mailer.from),
   });
 }

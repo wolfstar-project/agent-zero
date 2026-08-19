@@ -44,27 +44,98 @@ export interface MailTemplateContext {
 
 export type MailTemplateId = keyof MailTemplateContext;
 
-interface MailTemplateDefinition {
+/** Context keys of one template, as the compiler and the sender both address them: by name. */
+export type MailTemplateField<Id extends MailTemplateId> = keyof MailTemplateContext[Id] & string;
+
+/**
+ * How a template uses one of its context fields.
+ *
+ * Templates are rendered to static markup at build time (`aube run mail:compile`), because
+ * rendering a Vue SFC needs a bundler and the deployment that sends the message has none. A
+ * branch therefore cannot be taken at send time: the compiler renders one variant per combination
+ * of the `conditional` fields being filled or empty, and `sendEmail` picks the variant its own
+ * context matches. `interpolated` fields are substituted into whichever variant was picked, so
+ * marking a field `conditional` that the template only prints doubles the compiled output for
+ * nothing.
+ */
+export type MailTemplateFieldUse = 'interpolated' | 'conditional';
+
+interface MailTemplateDefinition<Id extends MailTemplateId> {
   /** Path relative to this package's `emails/` directory. */
   readonly file: string;
   readonly subject: string;
+  /**
+   * Every field the template's context carries, and how the template uses it.
+   *
+   * Spelled out rather than derived from {@link MailTemplateContext}, which only exists at
+   * compile time: the compiler needs the field names as values to render a placeholder for each.
+   * The mapped type makes the two agree — a field that is added to the context and not listed
+   * here, or listed here and not in the context, fails to type-check.
+   */
+  readonly fields: { readonly [Field in MailTemplateField<Id>]: MailTemplateFieldUse };
 }
 
-export const mailTemplates: Readonly<Record<MailTemplateId, MailTemplateDefinition>> = {
+export const mailTemplates: {
+  readonly [Id in MailTemplateId]: MailTemplateDefinition<Id>;
+} = {
   privateInvitation: {
     file: 'PrivateInvitation.vue',
     subject: 'You have been invited to Agent Zero',
+    fields: {
+      // The inviter is not always asked for the invitee's name, and an invitation can grant an
+      // app-wide role rather than a membership: the template renders each half away when empty.
+      name: 'conditional',
+      organizationName: 'conditional',
+      inviterName: 'interpolated',
+      acceptUrl: 'interpolated',
+    },
   },
   publicInvitation: {
     file: 'PublicInvitation.vue',
     subject: 'Your public Agent Zero invitation is ready',
+    fields: {
+      organizationName: 'conditional',
+      inviterName: 'interpolated',
+      shareUrl: 'interpolated',
+      maxUses: 'interpolated',
+      expiresAt: 'interpolated',
+    },
   },
   emailVerification: {
     file: 'EmailVerification.vue',
     subject: 'Confirm your email address',
+    fields: { name: 'interpolated', verifyUrl: 'interpolated' },
   },
   passwordReset: {
     file: 'PasswordReset.vue',
     subject: 'Reset your password',
+    fields: { name: 'interpolated', resetUrl: 'interpolated' },
   },
 };
+
+/** Every template, in registry order. */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `Object.keys` widens to
+// `string[]`; the mapped type above is what guarantees these keys are exactly the template ids.
+export const mailTemplateIds = Object.keys(mailTemplates) as readonly MailTemplateId[];
+
+/**
+ * Every field one template's context carries, in the order it declares them.
+ *
+ * That order is what names a variant, so the compiler and the sender both read it from here
+ * rather than sorting or re-deriving it.
+ */
+export function mailTemplateFields<Id extends MailTemplateId>(
+  id: Id,
+): readonly MailTemplateField<Id>[] {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as above: `fields` is a mapped
+  // type over exactly this template's context keys, which `Object.keys` cannot express.
+  return Object.keys(mailTemplates[id].fields) as readonly MailTemplateField<Id>[];
+}
+
+/** The subset of {@link mailTemplateFields} the template branches on rather than only printing. */
+export function mailTemplateConditionalFields<Id extends MailTemplateId>(
+  id: Id,
+): readonly MailTemplateField<Id>[] {
+  const { fields } = mailTemplates[id];
+  return mailTemplateFields(id).filter((field) => fields[field] === 'conditional');
+}
