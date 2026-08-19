@@ -18,8 +18,14 @@ export type ViteHubPreset = (typeof viteHubPresets)[number];
 /** Self-hosted single-node bundle: what `aube run build` and `node .output/server/index.mjs` use. */
 export const defaultViteHubPreset: ViteHubPreset = 'node';
 
-/** `VITEHUB_HOSTING` carries ViteHub's own vocabulary: one name per deployment plan. */
-const viteHubHostingTargets: Record<string, ViteHubPreset> = Object.fromEntries(
+/**
+ * `VITEHUB_HOSTING` carries ViteHub's own vocabulary: one name per deployment plan.
+ *
+ * A `Map` rather than an object literal, here and below, so a lookup can only ever find a name
+ * that was put in it: plain property access would resolve `constructor` or `__proto__` through
+ * `Object.prototype` and hand the build something that is not a preset at all.
+ */
+const viteHubHostingTargets: ReadonlyMap<string, ViteHubPreset> = new Map(
   viteHubPresets.map((preset) => [preset, preset]),
 );
 
@@ -31,13 +37,13 @@ const viteHubHostingTargets: Record<string, ViteHubPreset> = Object.fromEntries(
  * is mapped: it is rejected here, with a message naming what to set, rather than deeper in the
  * build with ViteHub's own conflict error.
  */
-const nitroPresetTargets: Record<string, ViteHubPreset> = {
-  'cloudflare-module': 'cloudflare',
-  'deno-deploy': 'deno',
-  netlify: 'netlify',
-  'node-server': 'node',
-  vercel: 'vercel',
-};
+const nitroPresetTargets: ReadonlyMap<string, ViteHubPreset> = new Map([
+  ['cloudflare-module', 'cloudflare'],
+  ['deno-deploy', 'deno'],
+  ['netlify', 'netlify'],
+  ['node-server', 'node'],
+  ['vercel', 'vercel'],
+]);
 
 function normalizeDeploymentTarget(value: string | undefined): string {
   return (value ?? '').trim().toLowerCase().replaceAll('_', '-');
@@ -76,11 +82,11 @@ export function viteHubPresetFromEnvironment(
   ].find((candidate) => candidate.value !== '');
   if (!configured) return defaultViteHubPreset;
 
-  const preset = configured.targets[configured.value];
+  const preset = configured.targets.get(configured.value);
   if (!preset) {
     throw new Error(
       `Unsupported ${configured.variable} value ${JSON.stringify(configured.value)}. ` +
-        `Expected one of: ${Object.keys(configured.targets).join(', ')}.`,
+        `Expected one of: ${[...configured.targets.keys()].join(', ')}.`,
     );
   }
 

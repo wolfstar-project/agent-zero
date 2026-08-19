@@ -65,6 +65,15 @@ describe('viteHubPresetFromEnvironment', () => {
     );
   });
 
+  it('rejects an inherited object property instead of treating it as a target', () => {
+    expect(() => viteHubPresetFromEnvironment({ VITEHUB_HOSTING: 'constructor' })).toThrow(
+      unsupportedViteHubHosting,
+    );
+    expect(() => viteHubPresetFromEnvironment({ NITRO_PRESET: '__proto__' })).toThrow(
+      unsupportedNitroPreset,
+    );
+  });
+
   it('rejects a target it has no plan for', () => {
     expect(() => viteHubPresetFromEnvironment({ NITRO_PRESET: 'bun' })).toThrow(
       unsupportedNitroPreset,
