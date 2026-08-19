@@ -36,8 +36,9 @@ import * as p from '@clack/prompts';
 
 import { parseCliArguments } from './args.js';
 import {
-  forgetCredential,
+  credentialSummaries,
   credentialsPath,
+  forgetCredential,
   normalizeOrigin,
   saveCredential,
 } from './credentials.js';
@@ -269,6 +270,8 @@ async function runDoctor(asJson: boolean): Promise<void> {
     mode: config.mode,
     isolation: config.runner.isolation,
     network: config.permissions.network,
+    // Which deployments `zero login` holds a session for. Origins and expiry only, never a token.
+    sessions: await credentialSummaries(),
     checks,
   };
 
@@ -282,6 +285,9 @@ async function runDoctor(asJson: boolean): Promise<void> {
   logCheck('Git repository', status.gitRepository);
   logCheck('Model configured', status.modelConfigured);
   p.log.info(`Model provider: ${status.modelProvider} (${status.modelCredentialKind})`);
+  if (status.sessions.length === 0) p.log.info('No stored sessions. Run zero login to sign in.');
+  else
+    for (const session of status.sessions) logCheck(`Session ${session.origin}`, !session.expired);
   if (!status.modelConfigured && isSubscriptionModelProvider(config.model.provider)) {
     if (
       config.model.provider === 'claude-code' &&

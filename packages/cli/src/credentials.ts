@@ -107,6 +107,26 @@ export async function readCredentials(path = credentialsPath()): Promise<Credent
 }
 
 /**
+ * Summarise the stored sessions for `zero doctor`.
+ *
+ * Reports the origin and whether the token is still within its expiry, and deliberately never the
+ * token itself: doctor's output is routinely pasted into an issue. An unparseable `expiresAt` is
+ * reported expired rather than valid, so a corrupted entry reads as "sign in again".
+ */
+export async function credentialSummaries(
+  path = credentialsPath(),
+  now: number = Date.now(),
+): Promise<readonly { origin: string; expired: boolean }[]> {
+  const store = await readCredentials(path);
+  return Object.entries(store)
+    .map(([origin, credential]) => {
+      const expiresAt = Date.parse(credential.expiresAt);
+      return { origin, expired: Number.isNaN(expiresAt) || expiresAt <= now };
+    })
+    .toSorted((left, right) => left.origin.localeCompare(right.origin));
+}
+
+/**
  * Record a session for one deployment, leaving every other entry untouched.
  *
  * The file is created owner-only before anything is written to it, and `chmod` runs again

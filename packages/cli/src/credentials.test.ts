@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
+  credentialSummaries,
   credentialsPath,
   forgetCredential,
   normalizeOrigin,
@@ -137,5 +138,45 @@ describe('forgetCredential', () => {
 
     await saveCredential(SELF_HOSTED, { accessToken: 'self', expiresAt: 'later' }, path);
     await expect(forgetCredential(CLOUD, path)).resolves.toBe(false);
+  });
+});
+
+describe('credentialSummaries', () => {
+  const NOW = Date.parse('2026-08-19T12:00:00.000Z');
+
+  it('reports each deployment and whether its token is still valid', async () => {
+    await saveCredential(
+      CLOUD,
+      { accessToken: 'cloud', expiresAt: '2026-08-19T13:00:00.000Z' },
+      path,
+    );
+    await saveCredential(
+      SELF_HOSTED,
+      { accessToken: 'self', expiresAt: '2026-08-19T11:00:00.000Z' },
+      path,
+    );
+
+    await expect(credentialSummaries(path, NOW)).resolves.toEqual([
+      { origin: CLOUD, expired: false },
+      { origin: SELF_HOSTED, expired: true },
+    ]);
+  });
+
+  it('never surfaces the token itself, because doctor output gets pasted into issues', async () => {
+    await saveCredential(CLOUD, { accessToken: 'secret-token', expiresAt: 'later' }, path);
+
+    expect(JSON.stringify(await credentialSummaries(path, NOW))).not.toContain('secret-token');
+  });
+
+  it('treats an unparseable expiry as expired rather than as still valid', async () => {
+    await saveCredential(CLOUD, { accessToken: 'cloud', expiresAt: 'not-a-date' }, path);
+
+    await expect(credentialSummaries(path, NOW)).resolves.toEqual([
+      { origin: CLOUD, expired: true },
+    ]);
+  });
+
+  it('reports nothing when no deployment has been signed into', async () => {
+    await expect(credentialSummaries(path, NOW)).resolves.toEqual([]);
   });
 });

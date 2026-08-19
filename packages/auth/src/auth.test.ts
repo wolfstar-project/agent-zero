@@ -224,6 +224,23 @@ describe('createAuth with organizations', () => {
     expect(on.plugins.map((plugin) => plugin.id)).toContain('device-authorization');
   });
 
+  it('pairs the device flow with bearer, so the token it mints can actually be presented', () => {
+    // Without `bearer`, `/device/token` returns a session token that `getSession` cannot read
+    // back: it looks for the session cookie, so the CLI would store a credential no request
+    // could carry. The two are one capability and have to move together.
+    const off = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const on = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableDeviceAuthorization: true },
+    });
+
+    expect(off.plugins.map((plugin) => plugin.id)).not.toContain('bearer');
+    expect(on.plugins.map((plugin) => plugin.id)).toContain('bearer');
+  });
+
   it('registers the hosted infrastructure only for the cloud-managed deployment', () => {
     const selfHosted = authBetterAuthOptions({
       databaseUrl: completeEnvironment.DATABASE_URL,

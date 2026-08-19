@@ -6,6 +6,7 @@ import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
 import {
+  bearer,
   deviceAuthorization,
   lastLoginMethod,
   multiSession,
@@ -274,6 +275,20 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
   // until a session token comes back. Gated because completing the flow mints a full session for
   // a client that never sees the browser.
   if (config.enableDeviceAuthorization) {
+    // Registered with the device flow rather than separately, because it is the half that makes
+    // the flow's output usable: `/device/token` returns a session token, but `getSession` reads
+    // the session *cookie*, so without this the CLI would hold a credential no request could
+    // present. `bearer` converts `Authorization: Bearer <session-token>` into that cookie before
+    // the session is resolved.
+    //
+    // It shares the header with the control plane's own operator tokens, which is safe because
+    // `apps/dashboard`'s `buildRpcContext` resolves those first by constant-time comparison and
+    // only falls through to a session lookup when none matched.
+    //
+    // The cost is that a leaked session token becomes replayable as a header, not only as a
+    // cookie. That is inherent to letting a browserless client hold a session at all, which is
+    // exactly what this flag grants, so the two are gated together rather than independently.
+    plugins.push(bearer());
     plugins.push(
       deviceAuthorization({
         // A path, not an absolute URL: Better Auth resolves it against the deployment's own
