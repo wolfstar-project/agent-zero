@@ -8,8 +8,6 @@ import {
   organizationClient,
 } from 'better-auth/client/plugins';
 
-import { useAppConfig } from '#app';
-
 // Better Auth is mounted in this app's own server (`server/auth.config.ts`), so every request is
 // same-origin: no explicit `baseURL` or credentialed CORS is needed.
 //
