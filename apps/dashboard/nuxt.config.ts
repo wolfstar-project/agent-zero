@@ -147,6 +147,12 @@ export default defineNuxtConfig({
       enableSignup: authPolicy.enableSignup,
       enableGithubOauth: authPolicy.enableGithubOauth,
       enableOrganizations: authPolicy.enableOrganizations,
+      // Read by `app/auth.config.ts` to decide whether to load `sentinelClient()`. Unlike the
+      // three above, this one is not a label: the sentinel client identifies every visitor
+      // against Better Auth's KV service from their browser, so publishing it wrongly would send
+      // a self-hosted deployment's visitors to a third party. appConfig having no env override
+      // channel is what makes `BETTER_AUTH_*` the single source for both halves.
+      enableInfra: authPolicy.enableInfra,
     },
   },
 

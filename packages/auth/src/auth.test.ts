@@ -224,6 +224,27 @@ describe('createAuth with organizations', () => {
     expect(on.plugins.map((plugin) => plugin.id)).toContain('device-authorization');
   });
 
+  it('registers the hosted infrastructure only for the cloud-managed deployment', () => {
+    const selfHosted = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const cloud = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableInfra: true },
+      infra: {
+        apiUrl: 'https://dash.example.test',
+        kvUrl: 'https://kv.example.test',
+        apiKey: 'project-key',
+      },
+    });
+
+    expect(selfHosted.plugins.map((plugin) => plugin.id)).not.toContain('sentinel');
+    expect(selfHosted.plugins.map((plugin) => plugin.id)).not.toContain('dash');
+    expect(cloud.plugins.map((plugin) => plugin.id)).toContain('sentinel');
+    expect(cloud.plugins.map((plugin) => plugin.id)).toContain('dash');
+  });
+
   it('registers the OAuth proxy only for a deployment that configured both halves', () => {
     const without = authBetterAuthOptions({
       databaseUrl: completeEnvironment.DATABASE_URL,

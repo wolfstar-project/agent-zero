@@ -4,6 +4,7 @@ import {
   authConfigFromEnvironment,
   defaultAuthConfig,
   githubCredentialsFromEnvironment,
+  infraFromEnvironment,
   MINIMUM_PASSWORD_LENGTH,
   oauthProxyFromEnvironment,
 } from './config.js';
@@ -18,6 +19,36 @@ describe('defaultAuthConfig', () => {
 
   it('starts closed to the device flow, which mints a session for a browserless client', () => {
     expect(defaultAuthConfig.enableDeviceAuthorization).toBe(false);
+  });
+
+  it('starts closed to the hosted infrastructure, which reports events to a third party', () => {
+    expect(defaultAuthConfig.enableInfra).toBe(false);
+  });
+});
+
+describe('infraFromEnvironment', () => {
+  const complete = {
+    BETTER_AUTH_API_URL: 'https://dash.example.test',
+    BETTER_AUTH_KV_URL: 'https://kv.example.test',
+    BETTER_AUTH_API_KEY: 'project-key',
+  };
+
+  it('returns the credentials when all three are present', () => {
+    expect(infraFromEnvironment(complete)).toEqual({
+      apiUrl: 'https://dash.example.test',
+      kvUrl: 'https://kv.example.test',
+      apiKey: 'project-key',
+    });
+  });
+
+  it('fails closed when any one is missing, so a self-hosted install registers neither plugin', () => {
+    for (const omitted of Object.keys(complete)) {
+      const partial = Object.fromEntries(
+        Object.entries(complete).filter(([key]) => key !== omitted),
+      );
+      expect(infraFromEnvironment(partial)).toBeUndefined();
+    }
+    expect(infraFromEnvironment({})).toBeUndefined();
   });
 });
 
@@ -102,6 +133,14 @@ describe('authConfigFromEnvironment', () => {
         .enableDeviceAuthorization,
     ).toBe(false);
     expect(authConfigFromEnvironment({}).enableDeviceAuthorization).toBe(false);
+    expect(authConfigFromEnvironment({}).enableInfra).toBe(false);
+    expect(
+      authConfigFromEnvironment({
+        BETTER_AUTH_API_URL: 'https://dash.example.test',
+        BETTER_AUTH_KV_URL: 'https://kv.example.test',
+        BETTER_AUTH_API_KEY: 'project-key',
+      }).enableInfra,
+    ).toBe(true);
     expect(authConfigFromEnvironment({ AUTH_ENABLE_INVITATIONS: 'TRUE' }).enableInvitations).toBe(
       false,
     );

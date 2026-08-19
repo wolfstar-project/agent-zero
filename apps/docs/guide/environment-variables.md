@@ -73,18 +73,34 @@ Status publishing reads one fixed variable per provider (`GITHUB_TOKEN`, `GITLAB
 
 Registration and GitHub OAuth are off until you turn them on, so a fresh deployment cannot be signed up for by a stranger.
 
-| Variable                                    | Required | Default | Purpose                                                                                                             |
-| ------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `NUXT_BETTER_AUTH_SECRET`                   | yes      | –       | Session signing secret. Required under this name in production; `BETTER_AUTH_SECRET` is a development-only fallback |
-| `DATABASE_URL`                              | yes      | –       | Postgres connection string; the pre-split `AUTH_DATABASE_URL` is still read when this is unset                      |
-| `AUTH_ENABLE_SIGNUP`                        | no       | `false` | Set to `true` to allow self-registration                                                                            |
-| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | no       | –       | Enables the GitHub button when both are set                                                                         |
-| `AUTH_ENABLE_ORGANIZATIONS`                 | no       | `false` | Enables organizations; requires a working mail transport                                                            |
-| `AUTH_ALLOW_ORGANIZATION_CREATION`          | no       | `false` | Whether any signed-in user may create an organization                                                               |
-| `NUXT_PUBLIC_SITE_URL`                      | no       | –       | Base URL override for a custom domain or deterministic OAuth callbacks; auto-detected from the request otherwise    |
+| Variable                                            | Required | Default | Purpose                                                                                                                              |
+| --------------------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `NUXT_BETTER_AUTH_SECRET`                           | yes      | –       | Session signing secret. Required under this name in production; `BETTER_AUTH_SECRET` is a development-only fallback                  |
+| `DATABASE_URL`                                      | yes      | –       | Postgres connection string; the pre-split `AUTH_DATABASE_URL` is still read when this is unset                                       |
+| `AUTH_ENABLE_SIGNUP`                                | no       | `false` | Set to `true` to allow self-registration                                                                                             |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`         | no       | –       | Enables the GitHub button when both are set                                                                                          |
+| `AUTH_ENABLE_ORGANIZATIONS`                         | no       | `false` | Enables organizations; requires a working mail transport                                                                             |
+| `AUTH_ALLOW_ORGANIZATION_CREATION`                  | no       | `false` | Whether any signed-in user may create an organization                                                                                |
+| `AUTH_ENABLE_DEVICE_AUTHORIZATION`                  | no       | `false` | Set to `true` to let `zero login` obtain a session through the RFC 8628 device flow                                                  |
+| `OAUTH_PROXY_PRODUCTION_URL` / `OAUTH_PROXY_SECRET` | no       | –       | Routes a preview or local origin's OAuth round trip through production; both required, and the secret must match across environments |
+| `NUXT_PUBLIC_SITE_URL`                              | no       | –       | Base URL override for a custom domain or deterministic OAuth callbacks; auto-detected from the request otherwise                     |
+
+### Hosted infrastructure
+
+Cloud-managed deployments only. `@better-auth/infra`'s `sentinel()` and `dash()` plugins are registered only when all three are set; a self-hosted install leaves them empty and gets neither.
+
+| Variable              | Required | Default | Purpose                                                                                   |
+| --------------------- | -------- | ------- | ----------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_API_URL` | no       | –       | Dash API origin                                                                           |
+| `BETTER_AUTH_KV_URL`  | no       | –       | KV service origin; also what the browser-side sentinel client identifies visitors against |
+| `BETTER_AUTH_API_KEY` | no       | –       | Project API key                                                                           |
+
+::: warning Third-party data flow
+Setting these opts the deployment into a service outside it. `sentinel()` reports sign-in and sign-up attempts for scoring, `dash()` mounts the administration API the hosted console drives (including endpoints that ban, delete, and export accounts), and the browser-side sentinel client fingerprints every visitor and identifies them against `BETTER_AUTH_KV_URL`. That last one is why the client plugin is loaded only when these variables are configured.
+:::
 
 ::: warning Build-time capture
-The sign-in methods the login page offers are derived at build time from the same policy variables the server reads at runtime. Whenever you change `AUTH_ENABLE_SIGNUP` or the GitHub OAuth credentials, rebuild the app, or the login page will keep advertising the old capabilities (the server still enforces its own policy either way).
+The sign-in methods the login page offers are derived at build time from the same policy variables the server reads at runtime. Whenever you change `AUTH_ENABLE_SIGNUP`, the GitHub OAuth credentials, or the `BETTER_AUTH_*` hosted-infrastructure variables, rebuild the app, or the login page will keep advertising the old capabilities (the server still enforces its own policy either way).
 :::
 
 ## Mail

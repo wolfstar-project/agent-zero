@@ -27,6 +27,7 @@
     "@agent-zero/i18n": "workspace:*",
     "@agent-zero/mail": "workspace:*",
     "@agent-zero/shared": "workspace:*",
+    "@better-auth/infra": "^0.4.0",
     "@octopi-ai/better-enrollment": "^0.4.0",
     "@onmax/nuxt-better-auth": "^0.1.2",
     "@orpc/client": "2.0.0-beta.26",

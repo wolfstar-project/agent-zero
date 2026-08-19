@@ -1,4 +1,5 @@
 import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
+import { dash, sentinel } from '@better-auth/infra';
 import { betterEnrollment } from '@octopi-ai/better-enrollment';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
@@ -17,9 +18,15 @@ import {
   authConfigFromEnvironment,
   DEVICE_VERIFICATION_PATH,
   githubCredentialsFromEnvironment,
+  infraFromEnvironment,
   oauthProxyFromEnvironment,
 } from './config.js';
-import type { AuthConfig, GithubOauthCredentials, OauthProxyConfig } from './config.js';
+import type {
+  AuthConfig,
+  GithubOauthCredentials,
+  InfraConfig,
+  OauthProxyConfig,
+} from './config.js';
 
 /**
  * Error code an organization invitation is refused with when the deployment cannot deliver it.
@@ -92,6 +99,12 @@ export interface AuthDatabaseOptions {
    * deployment's own origin and the plugin would decline to proxy anyway.
    */
   readonly oauthProxy?: OauthProxyConfig;
+  /**
+   * Credentials for Better Auth's hosted infrastructure, present only on the cloud-managed
+   * deployment. Absent everywhere else, which is what keeps `dash` and `sentinel` unregistered on
+   * a self-hosted install rather than registered and failing.
+   */
+  readonly infra?: InfraConfig;
   /**
    * Dashboard origin invitation links point at, so a recipient lands on the UI, not the API.
    * Required when Better Enrollment invitations are enabled.
@@ -219,6 +232,24 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
         secret: options.oauthProxy.secret,
       }),
     );
+  }
+
+  // Better Auth's hosted infrastructure, registered only on the cloud-managed deployment. Both
+  // plugins take the same connection settings, and both reach a service outside this deployment:
+  // `sentinel` scores authentication attempts (credential stuffing, impossible travel, proof of
+  // work) and `dash` reports analytics and mounts the administration API the hosted console
+  // drives. `infraFromEnvironment` withholds the credentials unless all three are configured, so
+  // a self-hosted install registers neither rather than registering endpoints that fail on their
+  // first call — and, more to the point, never reports its authentication events to a third party
+  // its operator did not sign up for.
+  if (options.infra) {
+    const connection = {
+      apiUrl: options.infra.apiUrl,
+      kvUrl: options.infra.kvUrl,
+      apiKey: options.infra.apiKey,
+    };
+    plugins.push(sentinel(connection));
+    plugins.push(dash(connection));
   }
 
   // The RFC 8628 device flow, which is how the `zero` CLI signs in: it prints a short code, the
@@ -442,11 +473,13 @@ export function authDatabaseOptionsFromEnvironment(
 ): AuthDatabaseOptions {
   const github = githubCredentialsFromEnvironment(environment);
   const oauthProxy = oauthProxyFromEnvironment(environment);
+  const infra = infraFromEnvironment(environment);
   return {
     databaseUrl: databaseUrlFromEnvironment(environment),
     config: authConfigFromEnvironment(environment),
     ...(github ? { github } : {}),
     ...(oauthProxy ? { oauthProxy } : {}),
+    ...(infra ? { infra } : {}),
   };
 }
 

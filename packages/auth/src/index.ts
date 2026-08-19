@@ -20,6 +20,7 @@ export {
   DEVICE_CODE_POLLING_INTERVAL_SECONDS,
   DEVICE_VERIFICATION_PATH,
   githubCredentialsFromEnvironment,
+  infraFromEnvironment,
   INVITATION_EXPIRES_IN_SECONDS,
   INVITE_EXPIRES_IN_SECONDS,
   MAXIMUM_DEVICE_SESSIONS,
@@ -30,5 +31,6 @@ export {
   USER_ROLES,
   type AuthConfig,
   type GithubOauthCredentials,
+  type InfraConfig,
   type OauthProxyConfig,
 } from './config.js';

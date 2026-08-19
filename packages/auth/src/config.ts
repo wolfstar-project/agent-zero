@@ -69,6 +69,15 @@ export interface AuthConfig {
   readonly enablePasswordLogin: boolean;
   /** Whether the GitHub OAuth button is offered. */
   readonly enableGithubOauth: boolean;
+  /**
+   * Whether Better Auth's hosted infrastructure is wired up.
+   *
+   * True only on the cloud-managed deployment, because it is derived from credentials only that
+   * deployment holds. Published to the browser so the dashboard's auth client can decide whether
+   * to load the matching client plugins — the sentinel one identifies the visitor against a
+   * third-party KV service, which must not happen on a self-hosted install.
+   */
+  readonly enableInfra: boolean;
   /** Whether organizations, memberships and invitations are exposed at all. */
   readonly enableOrganizations: boolean;
   /**
@@ -122,6 +131,9 @@ export const defaultAuthConfig: AuthConfig = {
   enableSignup: false,
   enablePasswordLogin: true,
   enableGithubOauth: false,
+  // Off until the hosted credentials exist, which is what keeps a self-hosted deployment from
+  // reporting its authentication events to a service its operator never signed up for.
+  enableInfra: false,
   // Organizations stay off until an operator asks for them: enabling them changes what every
   // authenticated request is scoped to, which is not something a deployment should acquire by
   // upgrading.
@@ -168,6 +180,41 @@ export function githubCredentialsFromEnvironment(
   const clientSecret = environment.GITHUB_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) return undefined;
   return { clientId, clientSecret };
+}
+
+/**
+ * Credentials for Better Auth's hosted infrastructure (`@better-auth/infra`).
+ *
+ * All three are required together: the `dash` and `sentinel` plugins call an API and a KV service
+ * that are provisioned per project, so a partially configured deployment would register endpoints
+ * that fail on their first request rather than staying closed.
+ */
+export interface InfraConfig {
+  /** Dash API origin. */
+  readonly apiUrl: string;
+  /** KV service origin, which is also what the browser-side sentinel client identifies against. */
+  readonly kvUrl: string;
+  /** Project API key. Never logged, never echoed into an error message. */
+  readonly apiKey: string;
+}
+
+/**
+ * Read the hosted-infrastructure credentials from the environment.
+ *
+ * Returns `undefined` unless all three are present, which is what confines this capability to the
+ * cloud-managed deployment: a self-hosted operator has no project on Better Auth's service, so the
+ * variables are absent and neither plugin is registered. That matters beyond a missing feature —
+ * `sentinel` reports authentication events to a third party, and `dash` mounts a privileged
+ * administration surface, so both have to stay off unless a deployment deliberately opted in.
+ */
+export function infraFromEnvironment(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): InfraConfig | undefined {
+  const apiUrl = environment.BETTER_AUTH_API_URL?.trim();
+  const kvUrl = environment.BETTER_AUTH_KV_URL?.trim();
+  const apiKey = environment.BETTER_AUTH_API_KEY?.trim();
+  if (!apiUrl || !kvUrl || !apiKey) return undefined;
+  return { apiUrl, kvUrl, apiKey };
 }
 
 /**
@@ -222,6 +269,7 @@ export function authConfigFromEnvironment(
     enableInvitations: environment.AUTH_ENABLE_INVITATIONS === 'true',
     enableDeviceAuthorization: environment.AUTH_ENABLE_DEVICE_AUTHORIZATION === 'true',
     enableGithubOauth: githubCredentialsFromEnvironment(environment) !== undefined,
+    enableInfra: infraFromEnvironment(environment) !== undefined,
     enableOrganizations,
     // Gated on the feature itself, so a deployment that never turned organizations on cannot
     // advertise creation through a stale variable.
