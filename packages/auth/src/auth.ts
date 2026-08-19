@@ -242,6 +242,23 @@ function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
   // a self-hosted install registers neither rather than registering endpoints that fail on their
   // first call — and, more to the point, never reports its authentication events to a third party
   // its operator did not sign up for.
+  //
+  // What `dash` costs, stated plainly because it is not obvious from the call: it mounts ~79
+  // endpoints under `/api/auth/dash/**`, including `execute-adapter`, `impersonate-user`,
+  // `delete-many-users`, and `export-users`. All but two are guarded by a JWT the hosted service
+  // signs, verified against its JWKS with a five-minute maximum age, whose `apiKeyHash` claim must
+  // additionally match a hash of this deployment's own `apiKey` — two independent factors, so
+  // controlling the API origin alone does not admit a caller.
+  //
+  // The two exceptions are `accept-invitation` and `complete-invitation`, which cannot carry that
+  // guard because the invitee holds no API key; they are authorized by an invitation token
+  // validated against the hosted API instead. Both create a user with `emailVerified: true`,
+  // optionally a credential account, and a session — through the internal adapter, so they bypass
+  // `emailAndPassword.disableSignUp` and the Better Enrollment flow this package gates behind
+  // `enableInvitations`. Enabling `dash` therefore delegates account creation to whoever can mint
+  // an invitation in the hosted console, regardless of `enableSignup`. That is a deliberate
+  // property of the cloud-managed deployment, not an oversight: it is why these credentials are
+  // the one thing that turns this on, and why a self-hosted install must never carry them.
   if (options.infra) {
     const connection = {
       apiUrl: options.infra.apiUrl,

@@ -96,7 +96,15 @@ Cloud-managed deployments only. `@better-auth/infra`'s `sentinel()` and `dash()`
 | `BETTER_AUTH_API_KEY` | no       | –       | Project API key                                                                           |
 
 ::: warning Third-party data flow
-Setting these opts the deployment into a service outside it. `sentinel()` reports sign-in and sign-up attempts for scoring, `dash()` mounts the administration API the hosted console drives (including endpoints that ban, delete, and export accounts), and the browser-side sentinel client fingerprints every visitor and identifies them against `BETTER_AUTH_KV_URL`. That last one is why the client plugin is loaded only when these variables are configured.
+Setting these opts the deployment into a service outside it. `sentinel()` reports sign-in and sign-up attempts for scoring, and the browser-side sentinel client fingerprints every visitor and identifies them against `BETTER_AUTH_KV_URL` — which is why that client plugin is loaded only when these variables are configured.
+
+`dash()` mounts roughly 79 endpoints under `/api/auth/dash/**`, including `execute-adapter`, `impersonate-user`, `delete-many-users`, and `export-users`. All but two require a JWT signed by the hosted service, verified against its JWKS with a five-minute maximum age, whose `apiKeyHash` claim must also match a hash of `BETTER_AUTH_API_KEY` — so controlling the API origin alone does not admit a caller.
+:::
+
+::: danger Account creation bypasses your sign-up policy
+`dash()`'s `accept-invitation` and `complete-invitation` endpoints cannot carry that JWT guard, because the invitee holds no API key. They are authorized by an invitation token validated against the hosted API, and they create a user with `emailVerified: true`, optionally a password account, and a session — through the internal adapter, so they bypass both `AUTH_ENABLE_SIGNUP` and the invitation flow gated by `AUTH_ENABLE_INVITATIONS`.
+
+In other words: enabling `dash()` delegates account creation in your database to whoever can mint an invitation in the hosted console. Treat access to that console as equivalent to `AUTH_ENABLE_SIGNUP=true`.
 :::
 
 ::: warning Build-time capture
