@@ -200,6 +200,83 @@ describe('createAuth with organizations', () => {
     dashboardUrl: completeEnvironment.AUTH_DASHBOARD_ORIGIN,
   };
 
+  it('always registers the route-free session and sign-in-hint plugins', () => {
+    const ids = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    }).plugins.map((plugin) => plugin.id);
+
+    expect(ids).toContain('multi-session');
+    expect(ids).toContain('last-login-method');
+  });
+
+  it('withholds the device flow until an operator grants it', () => {
+    const off = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const on = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableDeviceAuthorization: true },
+    });
+
+    expect(off.plugins.map((plugin) => plugin.id)).not.toContain('device-authorization');
+    expect(on.plugins.map((plugin) => plugin.id)).toContain('device-authorization');
+  });
+
+  it('pairs the device flow with bearer, so the token it mints can actually be presented', () => {
+    // Without `bearer`, `/device/token` returns a session token that `getSession` cannot read
+    // back: it looks for the session cookie, so the CLI would store a credential no request
+    // could carry. The two are one capability and have to move together.
+    const off = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const on = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableDeviceAuthorization: true },
+    });
+
+    expect(off.plugins.map((plugin) => plugin.id)).not.toContain('bearer');
+    expect(on.plugins.map((plugin) => plugin.id)).toContain('bearer');
+  });
+
+  it('registers the hosted infrastructure only for the cloud-managed deployment', () => {
+    const selfHosted = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const cloud = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: { ...defaultAuthConfig, enableInfra: true },
+      infra: {
+        apiUrl: 'https://dash.example.test',
+        kvUrl: 'https://kv.example.test',
+        apiKey: 'project-key',
+      },
+    });
+
+    expect(selfHosted.plugins.map((plugin) => plugin.id)).not.toContain('sentinel');
+    expect(selfHosted.plugins.map((plugin) => plugin.id)).not.toContain('dash');
+    expect(cloud.plugins.map((plugin) => plugin.id)).toContain('sentinel');
+    expect(cloud.plugins.map((plugin) => plugin.id)).toContain('dash');
+  });
+
+  it('registers the OAuth proxy only for a deployment that configured both halves', () => {
+    const without = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+    });
+    const configured = authBetterAuthOptions({
+      databaseUrl: completeEnvironment.DATABASE_URL,
+      config: defaultAuthConfig,
+      oauthProxy: { productionUrl: 'https://app.example.test', secret: 'shared-secret' },
+    });
+
+    expect(without.plugins.map((plugin) => plugin.id)).not.toContain('oauth-proxy');
+    expect(configured.plugins.map((plugin) => plugin.id)).toContain('oauth-proxy');
+  });
+
   it('registers organizations without delivery or a dashboard origin', () => {
     const options = authBetterAuthOptions({
       databaseUrl: completeEnvironment.DATABASE_URL,

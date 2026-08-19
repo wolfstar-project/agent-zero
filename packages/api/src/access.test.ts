@@ -5,6 +5,7 @@ import {
   authenticate,
   controlPlaneOriginsFromEnvironment,
   mayTargetRepository,
+  sessionPrincipal,
   type ControlPlaneAccess,
 } from './access.js';
 
@@ -16,7 +17,10 @@ const UNKNOWN_PRINCIPAL_ERROR = /unknown principal/;
 function access(overrides: Partial<ControlPlaneAccess> = {}): ControlPlaneAccess {
   return {
     principals: new Map([
-      ['token-value', { name: 'release-manager', modes: ['observe', 'suggest'] as const }],
+      [
+        'token-value',
+        { name: 'release-manager', kind: 'token' as const, modes: ['observe', 'suggest'] as const },
+      ],
     ]),
     repositories: ['/srv/checkout'],
     ...overrides,
@@ -91,6 +95,7 @@ describe('authenticate', () => {
   it('resolves the principal for a valid bearer token', () => {
     expect(authenticate('Bearer token-value', access())).toEqual({
       name: 'release-manager',
+      kind: 'token',
       modes: ['observe', 'suggest'],
     });
   });
@@ -136,5 +141,23 @@ describe('mayTargetRepository', () => {
   it('fails closed without a policy or with an empty allow-list', () => {
     expect(mayTargetRepository('/srv/checkout', undefined)).toBe(false);
     expect(mayTargetRepository('/srv/checkout', access({ repositories: [] }))).toBe(false);
+  });
+});
+
+describe('sessionPrincipal', () => {
+  it('grants an administrator every execution mode', () => {
+    expect(sessionPrincipal('ops@example.test', true)).toEqual({
+      name: 'ops@example.test',
+      kind: 'session',
+      modes: ['observe', 'suggest', 'fix', 'autonomous'],
+    });
+  });
+
+  it('holds every other signed-in user to the non-writable modes', () => {
+    expect(sessionPrincipal('dev@example.test', false)).toEqual({
+      name: 'dev@example.test',
+      kind: 'session',
+      modes: ['observe', 'suggest'],
+    });
   });
 });

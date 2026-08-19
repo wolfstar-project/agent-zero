@@ -19,7 +19,6 @@ description: Use when changing apps/dashboard server routes, oRPC contracts, han
   - `api/v1/[...].ts` mounts the same `rpcRouter` over `OpenAPIHandler` (REST + docs at `/api/v1/docs`).
   - `auth.config.ts` (at the `server/` root) configures `@onmax/nuxt-better-auth`, which mounts
     `/api/auth/**` itself — there is no hand-written auth route file.
-  - `api/dashboard.get.ts` serves the aggregate dashboard view.
   Each route file exports its handler directly (`export default defineEventHandler(...)`), with no
   intermediate `const route` binding, so the file's one public shape is the one Nitro scans for.
   `server/**/*.ts` relies on Nitro's auto-imports: h3 helpers (`defineEventHandler`, `toWebRequest`,

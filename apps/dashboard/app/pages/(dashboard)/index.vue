@@ -58,8 +58,16 @@
 </template>
 
 <script setup lang="ts">
+import { useQuery } from '@tanstack/vue-query';
 import type { DashboardOverview } from '~~/modules/dashboard/types/dashboard';
 
+/**
+ * What the page renders before the first response arrives, and after a failed one.
+ *
+ * The components below take a populated shape rather than a nullable one, so the empty overview is
+ * a real value instead of a `v-if` around the whole page: an operator whose control plane is
+ * unreachable still gets the shell and the zero counters, not a blank screen.
+ */
 const emptyOverview = (): DashboardOverview => ({
   tasks: [],
   active: 0,
@@ -69,7 +77,22 @@ const emptyOverview = (): DashboardOverview => ({
   costUsd: 0,
 });
 
-const overview = ref<DashboardOverview>(emptyOverview());
+/**
+ * The aggregate read model, fetched through the typed oRPC client.
+ *
+ * `useQuery` rather than `useSuspenseQuery`, so the server render does not block on the control
+ * plane: the first paint is the shell with zero counters and the data arrives after hydration.
+ * That is the deliberate trade — a slow or unreachable control plane must not hold up the whole
+ * document — and it is why `emptyOverview()` above is a real value rather than a nullable one.
+ *
+ * `$orpcQuery` is provided by `app/plugins/orpc.client.ts`; its `orpc.server.ts` twin exists for
+ * the same key during SSR, and matters for anything that *does* fetch server-side, since it is the
+ * half that forwards the request's cookie.
+ */
+const { $orpcQuery } = useNuxtApp();
+const { data, refetch } = useQuery($orpcQuery.dashboard.overview.queryOptions());
+
+const overview = computed<DashboardOverview>(() => data.value ?? emptyOverview());
 const selectedId = ref<string>();
 const now = ref(new Date());
 
@@ -98,9 +121,9 @@ onBeforeUnmount(() => {
   if (clockTimer) clearInterval(clockTimer);
 });
 
+/** Refetches rather than clearing: the button says refresh, and it used to only blank the page. */
 function refreshDashboard(): void {
-  overview.value = emptyOverview();
-  selectedId.value = undefined;
   now.value = new Date();
+  void refetch();
 }
 </script>
