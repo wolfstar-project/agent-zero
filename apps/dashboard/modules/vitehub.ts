@@ -22,7 +22,7 @@ export default defineNuxtModule({
       // `vite-hub/nuxt`'s duck-typed `NuxtLike` parameter type doesn't structurally match the
       // real (generically-hookable) `Nuxt` type from `@nuxt/kit`, even though a real `Nuxt`
       // instance satisfies it at runtime — confirmed by `nuxt build` generating `.vitehub/**` and
-      // `/api/dashboard` resolving a working `fs-lite` KV driver end to end.
+      // `dashboard.overview` resolving a working `fs-lite` KV driver end to end.
       // oxlint-disable-next-line no-unsafe-type-assertion -- verified-safe cast, see comment above
       nuxt as unknown as Parameters<typeof viteHubNuxtModule>[1],
     );
