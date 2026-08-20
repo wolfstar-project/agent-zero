@@ -1,9 +1,12 @@
 import { createRouterClient } from '@orpc/server';
+import { createRequestLogger } from 'evlog';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Principal } from '../access.js';
 import type { AuditEntryInput, AuditRecorder } from '../audit.js';
 import { MemoryTaskStore, type StoredTask } from '../control-plane.js';
+import type { BetterAuthSessionApi } from './auth.js';
+import { requestLoggerStorage } from './logging.js';
 import { rpcRouter } from './router.js';
 
 const TIMESTAMP = '2026-08-09T10:00:00.000Z';
@@ -18,6 +21,8 @@ let audited: AuditEntryInput[];
 
 interface ClientOptions {
   principal?: Principal;
+  auth?: BetterAuthSessionApi;
+  reqHeaders?: Headers;
   allowRepository?: boolean;
 }
 
@@ -34,6 +39,8 @@ function client(options: ClientOptions = {}) {
     context: {
       store,
       ...(options.principal ? { principal: options.principal } : {}),
+      ...(options.auth ? { auth: options.auth } : {}),
+      ...(options.reqHeaders ? { reqHeaders: options.reqHeaders } : {}),
       mayTargetRepository: () => options.allowRepository ?? false,
       audit: recorder,
     },
@@ -51,11 +58,39 @@ function unaudited(options: ClientOptions = {}) {
   });
 }
 
+/**
+ * Opens the request logger store the router's `authenticated` middleware reads through
+ * `useLogger()`.
+ *
+ * A transport opens it through `EvlogHandlerPlugin`; a `createRouterClient` call has no transport,
+ * so it opens one itself rather than the middleware silently tolerating an absent logger — that
+ * tolerance is what would let the plugin be dropped from a handler without anything failing.
+ */
+function instrumented<T>(run: () => Promise<T>): Promise<T> {
+  return requestLoggerStorage ? requestLoggerStorage.run(createRequestLogger(), run) : run();
+}
+
 function operator() {
   return client({
-    principal: { name: 'release-manager', modes: ['observe', 'suggest', 'fix', 'autonomous'] },
+    principal: {
+      name: 'release-manager',
+      kind: 'token',
+      modes: ['observe', 'suggest', 'fix', 'autonomous'],
+    },
     allowRepository: true,
   });
+}
+
+/** A Better Auth instance stubbed down to the one endpoint the integration calls. */
+function betterAuth(user: { email: string; role: string } | null): BetterAuthSessionApi {
+  return {
+    api: {
+      getSession: () =>
+        Promise.resolve(
+          user === null ? null : { session: { id: 'sess_1' }, user: { id: 'usr_1', ...user } },
+        ),
+    },
+  };
 }
 
 function awaiting(id: string): StoredTask {
@@ -90,45 +125,65 @@ describe('rpc router', () => {
     await expect(client().tasks.get({ id: 'az_1' })).resolves.toMatchObject({ id: 'az_1' });
   });
 
+  it('aggregates the dashboard overview from the same store', async () => {
+    await store.save(awaiting('az_1'));
+    await expect(client().dashboard.overview()).resolves.toMatchObject({
+      tasks: [{ id: 'az_1' }],
+      active: 0,
+      queued: 0,
+      awaitingApproval: 1,
+    });
+  });
+
   it('resolves an unknown task as absent rather than fabricating one', async () => {
     await expect(client().tasks.get({ id: 'az_missing' })).resolves.toBeUndefined();
   });
 
   it('rejects an unknown mode at the procedure boundary', async () => {
     await expect(
-      // @ts-expect-error the schema is the contract under test
-      operator().tasks.create({ repository: '.', feedback: 'x', mode: 'yolo' }),
+      instrumented(() =>
+        // @ts-expect-error the schema is the contract under test
+        operator().tasks.create({ repository: '.', feedback: 'x', mode: 'yolo' }),
+      ),
     ).rejects.toThrow(VALIDATION_ERROR);
   });
 
   it('rejects an unauthenticated task submission before any work is created', async () => {
     await expect(
-      client().tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+      instrumented(() =>
+        client().tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+      ),
     ).rejects.toThrow(UNAUTHORIZED_ERROR);
     await expect(store.list()).resolves.toEqual([]);
   });
 
   it('refuses task creation for a repository outside the allow-list', async () => {
     await expect(
-      client({ principal: { name: 'release-manager', modes: ['autonomous'] } }).tasks.create({
-        repository: '/etc',
-        feedback: 'x',
-        mode: 'autonomous',
-      }),
+      instrumented(() =>
+        client({
+          principal: { name: 'release-manager', kind: 'token', modes: ['autonomous'] },
+        }).tasks.create({
+          repository: '/etc',
+          feedback: 'x',
+          mode: 'autonomous',
+        }),
+      ),
     ).rejects.toThrow(FORBIDDEN_ERROR);
     await expect(store.list()).resolves.toEqual([]);
   });
 
   it('refuses an execution mode outside the principal grant', async () => {
     const readOnly = client({
-      principal: { name: 'ci', modes: ['observe', 'suggest'] },
+      principal: { name: 'ci', kind: 'token', modes: ['observe', 'suggest'] },
       allowRepository: true,
     });
     await expect(
-      readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'fix' }),
+      instrumented(() => readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'fix' })),
     ).rejects.toThrow(MODE_ERROR);
     await expect(
-      readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+      instrumented(() =>
+        readOnly.tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+      ),
     ).rejects.toThrow(MODE_ERROR);
     await expect(store.list()).resolves.toEqual([]);
   });
@@ -136,7 +191,7 @@ describe('rpc router', () => {
   it('rejects an unauthenticated approval decision', async () => {
     await store.save(awaiting('az_1'));
     await expect(
-      client().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      instrumented(() => client().approvals.decide({ taskId: 'az_1', decision: 'approved' })),
     ).rejects.toThrow(UNAUTHORIZED_ERROR);
     await expect(store.get('az_1')).resolves.toMatchObject({ status: 'needs-human' });
   });
@@ -144,38 +199,75 @@ describe('rpc router', () => {
   it('records an approval attributed to the authenticated principal', async () => {
     await store.save(awaiting('az_1'));
     await expect(
-      operator().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      instrumented(() => operator().approvals.decide({ taskId: 'az_1', decision: 'approved' })),
     ).resolves.toMatchObject({ approval: { decision: 'approved', actor: 'release-manager' } });
   });
 
   it('ignores a wire-supplied actor in favour of the principal identity', async () => {
     await store.save(awaiting('az_1'));
     await expect(
-      operator().approvals.decide({
-        taskId: 'az_1',
-        decision: 'approved',
-        // @ts-expect-error the schema no longer accepts an actor from the wire
-        actor: 'impostor',
-      }),
+      instrumented(() =>
+        operator().approvals.decide({
+          taskId: 'az_1',
+          decision: 'approved',
+          // @ts-expect-error the schema no longer accepts an actor from the wire
+          actor: 'impostor',
+        }),
+      ),
     ).resolves.toMatchObject({ approval: { actor: 'release-manager' } });
   });
 
   it('refuses an approval for a task that is not awaiting review', async () => {
     await store.save({ ...awaiting('az_1'), status: 'completed' });
     await expect(
-      operator().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      instrumented(() => operator().approvals.decide({ taskId: 'az_1', decision: 'approved' })),
     ).rejects.toThrow(APPROVAL_ERROR);
+  });
+
+  it('authenticates a dashboard session when no operator token was presented', async () => {
+    await store.save(awaiting('az_1'));
+    const session = client({
+      auth: betterAuth({ email: 'ops@example.test', role: 'admin' }),
+      reqHeaders: new Headers(),
+      allowRepository: true,
+    });
+    await expect(
+      instrumented(() => session.approvals.decide({ taskId: 'az_1', decision: 'approved' })),
+    ).resolves.toMatchObject({ approval: { actor: 'ops@example.test' } });
+  });
+
+  it('holds a non-administrator session to the non-writable execution modes', async () => {
+    const session = client({
+      auth: betterAuth({ email: 'dev@example.test', role: 'user' }),
+      reqHeaders: new Headers(),
+      allowRepository: true,
+    });
+    await expect(
+      instrumented(() => session.tasks.create({ repository: '.', feedback: 'x', mode: 'fix' })),
+    ).rejects.toThrow(MODE_ERROR);
+    await expect(store.list()).resolves.toEqual([]);
+  });
+
+  it('rejects a request whose session lookup finds nobody', async () => {
+    const anonymous = client({ auth: betterAuth(null), reqHeaders: new Headers() });
+    await expect(
+      instrumented(() =>
+        anonymous.tasks.create({ repository: '.', feedback: 'x', mode: 'observe' }),
+      ),
+    ).rejects.toThrow(UNAUTHORIZED_ERROR);
   });
 });
 
 describe('rpc audit trail', () => {
   it('records a repository refusal against the principal that attempted it', async () => {
     await expect(
-      client({ principal: { name: 'ci', modes: ['autonomous'] } }).tasks.create({
-        repository: '/etc',
-        feedback: 'x',
-        mode: 'autonomous',
-      }),
+      instrumented(() =>
+        client({ principal: { name: 'ci', kind: 'token', modes: ['autonomous'] } }).tasks.create({
+          repository: '/etc',
+          feedback: 'x',
+          mode: 'autonomous',
+        }),
+      ),
     ).rejects.toThrow(FORBIDDEN_ERROR);
 
     expect(audited).toEqual([
@@ -190,10 +282,12 @@ describe('rpc audit trail', () => {
 
   it('records a mode refusal with the mode that was not granted', async () => {
     await expect(
-      client({
-        principal: { name: 'ci', modes: ['observe'] },
-        allowRepository: true,
-      }).tasks.create({ repository: '.', feedback: 'x', mode: 'fix' }),
+      instrumented(() =>
+        client({
+          principal: { name: 'ci', kind: 'token', modes: ['observe'] },
+          allowRepository: true,
+        }).tasks.create({ repository: '.', feedback: 'x', mode: 'fix' }),
+      ),
     ).rejects.toThrow(MODE_ERROR);
 
     expect(audited).toEqual([
@@ -209,12 +303,14 @@ describe('rpc audit trail', () => {
   it('records an approval decision against the principal, never a wire-supplied actor', async () => {
     await store.save(awaiting('az_1'));
 
-    await operator().approvals.decide({
-      taskId: 'az_1',
-      decision: 'approved',
-      // @ts-expect-error the schema no longer accepts an actor from the wire
-      actor: 'impostor',
-    });
+    await instrumented(() =>
+      operator().approvals.decide({
+        taskId: 'az_1',
+        decision: 'approved',
+        // @ts-expect-error the schema no longer accepts an actor from the wire
+        actor: 'impostor',
+      }),
+    );
 
     expect(audited).toEqual([
       {
@@ -231,7 +327,7 @@ describe('rpc audit trail', () => {
     await store.save({ ...awaiting('az_1'), status: 'completed' });
 
     await expect(
-      operator().approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      instrumented(() => operator().approvals.decide({ taskId: 'az_1', decision: 'approved' })),
     ).rejects.toThrow(APPROVAL_ERROR);
     expect(audited).toEqual([]);
   });
@@ -240,10 +336,12 @@ describe('rpc audit trail', () => {
     await store.save(awaiting('az_1'));
 
     await expect(
-      unaudited({
-        principal: { name: 'release-manager', modes: ['autonomous'] },
-        allowRepository: true,
-      }).approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      instrumented(() =>
+        unaudited({
+          principal: { name: 'release-manager', kind: 'token', modes: ['autonomous'] },
+          allowRepository: true,
+        }).approvals.decide({ taskId: 'az_1', decision: 'approved' }),
+      ),
     ).resolves.toMatchObject({ approval: { actor: 'release-manager' } });
   });
 });

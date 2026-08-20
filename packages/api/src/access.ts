@@ -3,9 +3,20 @@ import { resolve } from 'node:path';
 
 import type { RunMode } from '@agent-zero/shared';
 
+/**
+ * How a principal proved its identity.
+ *
+ * Recorded on every authenticated request so an audit log can tell a machine caller presenting a
+ * static operator token from a human signed into the dashboard: the two are granted different
+ * execution modes and revoked through entirely different channels.
+ */
+export type PrincipalKind = 'token' | 'session';
+
 /** An authenticated control-plane caller. Mutations record this identity, never a wire-supplied one. */
 export interface Principal {
   name: string;
+  /** How the caller authenticated. */
+  kind: PrincipalKind;
   /** Execution modes this principal may request from `tasks.create`. */
   modes: readonly RunMode[];
 }
@@ -35,6 +46,9 @@ const RUN_MODES: ReadonlySet<string> = new Set([
 
 /** Granted when a principal has no explicit mode entry; neither mode can produce a writable runner. */
 const DEFAULT_MODES: readonly RunMode[] = ['observe', 'suggest'];
+
+/** Every execution mode, including the two that produce a writable runner. */
+const ADMIN_MODES: readonly RunMode[] = ['observe', 'suggest', 'fix', 'autonomous'];
 
 function isRunMode(value: string): value is RunMode {
   return RUN_MODES.has(value);
@@ -67,7 +81,7 @@ export function accessFromEnvironment(
     if (name === '' || token === '')
       throw new Error('AGENT_ZERO_CONTROL_PLANE_TOKENS entries must be name:token pairs');
     names.add(name);
-    principals.set(token, { name, modes: grants.get(name) ?? DEFAULT_MODES });
+    principals.set(token, { name, kind: 'token', modes: grants.get(name) ?? DEFAULT_MODES });
   }
   if (principals.size === 0) return undefined;
   for (const name of grants.keys())
@@ -142,6 +156,20 @@ export function authenticate(
       return principal;
   }
   return undefined;
+}
+
+/**
+ * Build the principal for a caller who authenticated with a dashboard session rather than a token.
+ *
+ * Session identities come from the authentication adapter, not from this package's static token
+ * policy, so the composition root resolves the session and calls this to translate it into the
+ * same {@link Principal} every procedure already reasons about. Only an app-wide administrator may
+ * request the two writable modes; every other signed-in user is held to the same non-writable
+ * {@link DEFAULT_MODES} an ungranted token gets. Repository targeting is a separate grant either
+ * way — see {@link mayTargetRepository}.
+ */
+export function sessionPrincipal(name: string, isAdmin: boolean): Principal {
+  return { name, kind: 'session', modes: isAdmin ? ADMIN_MODES : DEFAULT_MODES };
 }
 
 /** Whether task creation may target this repository path. Fails closed without a policy. */

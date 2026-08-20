@@ -5,7 +5,7 @@ import process from 'node:process';
 // Read from `@agent-zero/auth/config` rather than restated here, so the build-time label below and
 // the runtime enforcement in `server/auth.config.ts` cannot drift. That subpath carries policy
 // only, with none of the database dependencies `authBetterAuthOptions` needs.
-import { authConfigFromEnvironment } from '@agent-zero/auth/config';
+import { authConfigFromEnvironment, infraFromEnvironment } from '@agent-zero/auth/config';
 import { defaultLocale, i18nLocalesFor, localeCookieName } from '@agent-zero/i18n';
 import { defineNuxtConfig } from 'nuxt/config';
 
@@ -18,6 +18,12 @@ import { viteHubPresetFromEnvironment, viteHubVercelEntryAlias } from './config/
 // config enforces its own policy regardless, so a stale build can only mislabel a page, never open
 // a sign-in method the server rejects.
 const authPolicy = authConfigFromEnvironment();
+
+// Only the KV origin is read out of the hosted-infrastructure settings, and only so the browser
+// can be told where to identify. The API key sitting next to it in `infraFromEnvironment()` is
+// never touched here: appConfig is published to the client, so anything read into it leaves the
+// server.
+const infraKvUrl = infraFromEnvironment()?.kvUrl ?? '';
 
 // ViteHub's deployment preset is a build-time decision that also pins Nitro's own preset, so the
 // deployment target has to be resolved here rather than detected later: `node` emits the
@@ -156,6 +162,17 @@ export default defineNuxtConfig({
       enableSignup: authPolicy.enableSignup,
       enableGithubOauth: authPolicy.enableGithubOauth,
       enableOrganizations: authPolicy.enableOrganizations,
+      // Read by `app/auth.config.ts` to decide whether to load `sentinelClient()`. Unlike the
+      // three above, this one is not a label: the sentinel client identifies every visitor
+      // against Better Auth's KV service from their browser, so publishing it wrongly would send
+      // a self-hosted deployment's visitors to a third party. appConfig having no env override
+      // channel is what makes `BETTER_AUTH_*` the single source for both halves.
+      enableInfra: authPolicy.enableInfra,
+      // The project's own ingestion endpoint. Without it `sentinelClient()` falls back to Better
+      // Auth's shared global one, which its own startup warning calls out as not recommended.
+      // Not a secret — the visitor's browser posts to it directly — unlike the API key it is
+      // provisioned alongside, which stays server-side.
+      infraKvUrl,
     },
   },
 
@@ -212,6 +229,11 @@ export default defineNuxtConfig({
     '/login': { auth: { only: 'guest' } },
     '/signin': { auth: { only: 'guest' } },
     '/organizations': { appLayout: 'default', auth: { only: 'user' } },
+    // Approving a device request mints a session for a client that never sees this browser, so the
+    // approval has to be attributable: a signed-out visitor is sent to sign in and back rather
+    // than being shown the form. The auth layout, not the shell, because the visitor arriving here
+    // typed a code off a terminal and has no business in the navigation.
+    '/device': { auth: { only: 'user' } },
     // Reached from an invitation email, so the visitor is frequently signed out at that moment:
     // requiring a session sends them through /login and back, rather than rejecting the link.
     '/organizations/accept-invitation/**': { appLayout: 'default', auth: { only: 'user' } },

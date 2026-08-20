@@ -8,7 +8,7 @@ import { EvlogHandlerPlugin } from '@orpc/evlog';
 import { OpenAPIGenerator } from '@orpc/openapi';
 import { OpenAPIHandler } from '@orpc/openapi/fetch';
 import { OpenAPIReferenceHandlerPlugin } from '@orpc/openapi/plugins';
-import { CORSPlugin } from '@orpc/server/plugins';
+import { CORSHandlerPlugin } from '@orpc/server/plugins';
 import { ZodToJsonSchemaConverter } from '@orpc/zod';
 
 const generator = new OpenAPIGenerator({ converters: [new ZodToJsonSchemaConverter()] });
@@ -36,7 +36,7 @@ const openApiSpec = generator.generate(rpcRouter, {
  */
 const handler = new OpenAPIHandler(rpcRouter, {
   plugins: [
-    new CORSPlugin({ origin: controlPlaneOriginsFromEnvironment() }),
+    new CORSHandlerPlugin({ origin: controlPlaneOriginsFromEnvironment() }),
     new EvlogHandlerPlugin({ storage: requestLoggerStorage }),
     new OpenAPIReferenceHandlerPlugin({
       docsPath: '/docs',

@@ -88,6 +88,7 @@ describe('schema', () => {
   it('exposes every model the Better Auth adapter resolves', () => {
     expect(Object.keys(schema).toSorted()).toEqual([
       'account',
+      'deviceCode',
       'invitation',
       'invite',
       'inviteUse',

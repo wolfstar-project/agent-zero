@@ -1,14 +1,33 @@
 import { createDatabase, databaseUrlFromEnvironment, schema } from '@agent-zero/database';
+import { dash, sentinel } from '@better-auth/infra';
 import { betterEnrollment } from '@octopi-ai/better-enrollment';
 import { betterAuth } from 'better-auth';
 import type { BetterAuthOptions, BetterAuthPlugin } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
-import { organization } from 'better-auth/plugins';
+import {
+  bearer,
+  deviceAuthorization,
+  lastLoginMethod,
+  multiSession,
+  oAuthProxy,
+  organization,
+} from 'better-auth/plugins';
 import type { OrganizationOptions } from 'better-auth/plugins';
 
-import { authConfigFromEnvironment, githubCredentialsFromEnvironment } from './config.js';
-import type { AuthConfig, GithubOauthCredentials } from './config.js';
+import {
+  authConfigFromEnvironment,
+  DEVICE_VERIFICATION_PATH,
+  githubCredentialsFromEnvironment,
+  infraFromEnvironment,
+  oauthProxyFromEnvironment,
+} from './config.js';
+import type {
+  AuthConfig,
+  GithubOauthCredentials,
+  InfraConfig,
+  OauthProxyConfig,
+} from './config.js';
 
 /**
  * Error code an organization invitation is refused with when the deployment cannot deliver it.
@@ -73,6 +92,20 @@ export interface AuthDatabaseOptions {
   readonly databaseUrl: string;
   readonly config: AuthConfig;
   readonly github?: GithubOauthCredentials;
+  /**
+   * Routes this deployment's OAuth round trip through a production origin.
+   *
+   * Present only on preview and local deployments, which cannot register their own ephemeral
+   * callback URL with the provider. Absent in production, where `productionUrl` would equal the
+   * deployment's own origin and the plugin would decline to proxy anyway.
+   */
+  readonly oauthProxy?: OauthProxyConfig;
+  /**
+   * Credentials for Better Auth's hosted infrastructure, present only on the cloud-managed
+   * deployment. Absent everywhere else, which is what keeps `dash` and `sentinel` unregistered on
+   * a self-hosted install rather than registered and failing.
+   */
+  readonly infra?: InfraConfig;
   /**
    * Dashboard origin invitation links point at, so a recipient lands on the UI, not the API.
    * Required when Better Enrollment invitations are enabled.
@@ -174,6 +207,101 @@ export function authBetterAuthOptions(options: AuthDatabaseOptions): Pick<
 function authPlugins(options: AuthDatabaseOptions): BetterAuthPlugin[] {
   const { config, dashboardUrl, sendPrivateInvitationEmail, sendPublicInvitationEmail } = options;
   const plugins: BetterAuthPlugin[] = [];
+
+  // Unconditional: it registers no route and mints nothing. It records which method an account
+  // last signed in with, so the sign-in page can lead with it instead of presenting a returning
+  // operator with an undifferentiated list. `storeInDatabase` mirrors the value onto
+  // `user.lastLoginMethod` (see `@agent-zero/database`'s `auth.ts`) so the hint survives a new
+  // browser; the cookie the plugin also writes only ever covers the one it was set in.
+  plugins.push(lastLoginMethod({ storeInDatabase: true }));
+
+  // Also unconditional, and also route-free in the sense that matters: every endpoint it adds
+  // requires an existing session, so it widens no way *into* the deployment. An operations
+  // console is routinely driven from a personal account and a shared break-glass one, and
+  // without this the second sign-in silently evicts the first.
+  plugins.push(multiSession({ maximumSessions: config.maximumDeviceSessions }));
+
+  // Only on the deployments that need it — a preview or local origin the OAuth provider has no
+  // callback registered for. `oauthProxyFromEnvironment` withholds the settings unless both the
+  // production origin and the shared secret are configured, and the plugin itself declines to
+  // proxy when `productionURL` matches this deployment's own `baseURL`, so production carries it
+  // inertly rather than being a separate build.
+  if (options.oauthProxy) {
+    plugins.push(
+      oAuthProxy({
+        productionURL: options.oauthProxy.productionUrl,
+        secret: options.oauthProxy.secret,
+      }),
+    );
+  }
+
+  // Better Auth's hosted infrastructure, registered only on the cloud-managed deployment. Both
+  // plugins take the same connection settings, and both reach a service outside this deployment:
+  // `sentinel` scores authentication attempts (credential stuffing, impossible travel, proof of
+  // work) and `dash` reports analytics and mounts the administration API the hosted console
+  // drives. `infraFromEnvironment` withholds the credentials unless all three are configured, so
+  // a self-hosted install registers neither rather than registering endpoints that fail on their
+  // first call — and, more to the point, never reports its authentication events to a third party
+  // its operator did not sign up for.
+  //
+  // What `dash` costs, stated plainly because it is not obvious from the call: it mounts ~79
+  // endpoints under `/api/auth/dash/**`, including `execute-adapter`, `impersonate-user`,
+  // `delete-many-users`, and `export-users`. All but two are guarded by a JWT the hosted service
+  // signs, verified against its JWKS with a five-minute maximum age, whose `apiKeyHash` claim must
+  // additionally match a hash of this deployment's own `apiKey` — two independent factors, so
+  // controlling the API origin alone does not admit a caller.
+  //
+  // The two exceptions are `accept-invitation` and `complete-invitation`, which cannot carry that
+  // guard because the invitee holds no API key; they are authorized by an invitation token
+  // validated against the hosted API instead. Both create a user with `emailVerified: true`,
+  // optionally a credential account, and a session — through the internal adapter, so they bypass
+  // `emailAndPassword.disableSignUp` and the Better Enrollment flow this package gates behind
+  // `enableInvitations`. Enabling `dash` therefore delegates account creation to whoever can mint
+  // an invitation in the hosted console, regardless of `enableSignup`. That is a deliberate
+  // property of the cloud-managed deployment, not an oversight: it is why these credentials are
+  // the one thing that turns this on, and why a self-hosted install must never carry them.
+  if (options.infra) {
+    const connection = {
+      apiUrl: options.infra.apiUrl,
+      kvUrl: options.infra.kvUrl,
+      apiKey: options.infra.apiKey,
+    };
+    plugins.push(sentinel(connection));
+    plugins.push(dash(connection));
+  }
+
+  // The RFC 8628 device flow, which is how the `zero` CLI signs in: it prints a short code, the
+  // operator types it into `/device` in a browser they are already signed into, and the CLI polls
+  // until a session token comes back. Gated because completing the flow mints a full session for
+  // a client that never sees the browser.
+  if (config.enableDeviceAuthorization) {
+    // Registered with the device flow rather than separately, because it is the half that makes
+    // the flow's output usable: `/device/token` returns a session token, but `getSession` reads
+    // the session *cookie*, so without this the CLI would hold a credential no request could
+    // present. `bearer` converts `Authorization: Bearer <session-token>` into that cookie before
+    // the session is resolved.
+    //
+    // It shares the header with the control plane's own operator tokens, which is safe because
+    // `apps/dashboard`'s `buildRpcContext` resolves those first by constant-time comparison and
+    // only falls through to a session lookup when none matched.
+    //
+    // The cost is that a leaked session token becomes replayable as a header, not only as a
+    // cookie. That is inherent to letting a browserless client hold a session at all, which is
+    // exactly what this flag grants, so the two are gated together rather than independently.
+    plugins.push(bearer());
+    plugins.push(
+      deviceAuthorization({
+        // A path, not an absolute URL: Better Auth resolves it against the deployment's own
+        // `baseURL`, which is what lets one CLI serve a cloud-managed origin and a self-hosted one
+        // without either being named here.
+        verificationUri: DEVICE_VERIFICATION_PATH,
+        // The plugin parses these as duration strings rather than seconds, so the policy's own
+        // numbers are formatted rather than restated.
+        expiresIn: `${config.deviceCodeExpiresInSeconds}s`,
+        interval: `${config.deviceCodePollingIntervalSeconds}s`,
+      }),
+    );
+  }
 
   if (config.enableOrganizations) {
     plugins.push(
@@ -376,10 +504,14 @@ export function authDatabaseOptionsFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): AuthDatabaseOptions {
   const github = githubCredentialsFromEnvironment(environment);
+  const oauthProxy = oauthProxyFromEnvironment(environment);
+  const infra = infraFromEnvironment(environment);
   return {
     databaseUrl: databaseUrlFromEnvironment(environment),
     config: authConfigFromEnvironment(environment),
     ...(github ? { github } : {}),
+    ...(oauthProxy ? { oauthProxy } : {}),
+    ...(infra ? { infra } : {}),
   };
 }
 

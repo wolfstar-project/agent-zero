@@ -27,6 +27,15 @@ export const user = pgTable(
      * app-wide.
      */
     role: text('role'),
+    /**
+     * The authentication method this account most recently signed in with (`email`, `github`, …).
+     *
+     * Written by Better Auth's last-login-method plugin, which also mirrors the value into a
+     * non-essential cookie. The column is the durable copy: the cookie is per-browser, so without
+     * it a returning user on a new device is offered no hint about how they signed up. Nullable
+     * because every account predates its first sign-in under this plugin.
+     */
+    lastLoginMethod: text('last_login_method'),
     ...timestampColumns,
   },
   (table) => [uniqueIndex('user_email_unique').on(table.email)],
