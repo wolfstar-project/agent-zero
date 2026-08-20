@@ -377,6 +377,29 @@ describe('rpc audit trail', () => {
     ]);
   });
 
+  it('records a session caller as a user, never as a machine principal', async () => {
+    await store.save(awaiting('az_1'));
+    const session = client({
+      auth: betterAuth({ email: 'ops@example.test', role: 'admin' }),
+      reqHeaders: new Headers(),
+      allowRepository: true,
+    });
+
+    await instrumented(() => session.approvals.decide({ taskId: 'az_1', decision: 'approved' }));
+
+    // A person and an operator token are revoked through different channels, so a trail that
+    // labelled both `principal` could not tell a reader which one to go turn off.
+    expect(audited).toEqual([
+      {
+        actor: { kind: 'user', name: 'ops@example.test' },
+        action: 'approval.decided',
+        outcome: 'success',
+        subject: { type: 'task', id: 'az_1' },
+        metadata: { decision: 'approved', repository: 'acme/app' },
+      },
+    ]);
+  });
+
   it('serves callers that keep no audit trail at all', async () => {
     await store.save(awaiting('az_1'));
 

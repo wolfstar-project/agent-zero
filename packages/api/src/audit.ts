@@ -8,10 +8,10 @@ import { requestLoggerStorage } from './orpc/logging.js';
 /**
  * Who performed an audited action.
  *
- * `principal` is an operator token presented by a machine caller; `user` is reserved for the
- * session-authenticated dashboard user, which only becomes distinguishable once the Better Auth
- * session reaches the router. Keeping both in the contract now means the reader never has to
- * guess whether an unlabelled actor was a human or a token.
+ * `principal` is an operator token presented by a machine caller; `user` is the
+ * session-authenticated dashboard user. The router derives which one from the authenticated
+ * principal's own kind, so a reader never has to guess whether an actor was a human or a token —
+ * they are revoked through different channels, and the trail has to say which one to go turn off.
  */
 export type AuditActorKind = 'principal' | 'user' | 'webhook' | 'system';
 

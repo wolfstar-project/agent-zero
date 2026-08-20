@@ -192,9 +192,16 @@ export const rpcRouter = {
   },
 };
 
-/** The audited identity of an authenticated caller; never the name the request asked to use. */
+/**
+ * The audited identity of an authenticated caller; never the name the request asked to use.
+ *
+ * The two authentication sources stay distinguishable in the trail: a dashboard session is a
+ * person, an operator token is a machine, and they are revoked through different channels. A
+ * record that called both `principal` would leave a reader unable to tell which one to go turn
+ * off — the same reason `AuditActorKind` carries `user` at all.
+ */
 function principalActor(principal: Principal): AuditActor {
-  return { kind: 'principal', name: principal.name };
+  return { kind: principal.kind === 'session' ? 'user' : 'principal', name: principal.name };
 }
 
 export type RpcRouter = typeof rpcRouter;
