@@ -1,6 +1,6 @@
 import type { AuditEvent } from '@agent-zero/api';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import AuditTable from '~~/modules/audit/components/Table.vue';
 
 const RECORDED: AuditEvent[] = [
@@ -59,5 +59,39 @@ describe('AuditTable', () => {
     // Retrying cannot grant a role, so the button that implies it would is absent.
     expect(wrapper.find('button').exists()).toBe(false);
     expect(wrapper.text()).toContain('admin role');
+  });
+  it('reorders the trail when a column header is used', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { events: RECORDED } });
+
+    // Second header is Actor; ascending puts `ci` above `release-manager`.
+    await wrapper.findAll('thead button')[1]?.trigger('click');
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')[0]?.text()).toContain('ci');
+    });
+    expect(wrapper.findAll('thead th')[1]?.attributes('aria-sort')).toBe('ascending');
+  });
+
+  it('narrows the trail to what the filter matches', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { events: RECORDED } });
+
+    await wrapper.get('input[type="search"]').setValue('release-manager');
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    });
+    expect(wrapper.text()).toContain('task.created');
+  });
+
+  it('says so when the filter matches nothing, rather than looking empty', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { events: RECORDED } });
+
+    await wrapper.get('input[type="search"]').setValue('nothing-matches-this');
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('No rows match this filter.');
+    });
+    // The empty-trail copy would be a lie here: the trail has entries, the filter hides them.
+    expect(wrapper.text()).not.toContain('No actions recorded yet');
   });
 });

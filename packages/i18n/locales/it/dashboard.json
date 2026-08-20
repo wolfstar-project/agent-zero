@@ -32,7 +32,7 @@
     },
     "queue": {
       "title": "Coda task",
-      "order": "Più recenti prima",
+      "caption": "Task noti al piano di controllo.",
       "columns": {
         "id": "ID",
         "repository": "Repository",
@@ -73,8 +73,7 @@
       },
       "table": {
         "title": "Azioni registrate",
-        "order": "Più recenti prima",
-        "caption": "Azioni registrate dal piano di controllo, dalle più recenti.",
+        "caption": "Azioni registrate dal piano di controllo.",
         "columns": {
           "time": "Data e ora",
           "actor": "Autore",
@@ -99,6 +98,19 @@
         "generic": "Il registro di audit non è momentaneamente disponibile. Riprova tra poco.",
         "retry": "Riprova"
       }
+    },
+    "shortcuts": {
+      "title": "Scorciatoie da tastiera",
+      "hint": "Le scorciatoie sono ignorate mentre scrivi in un campo.",
+      "control": "Vai al piano di controllo",
+      "audit": "Vai al registro di audit",
+      "sidebar": "Comprimi o espandi la barra laterale",
+      "help": "Mostra questo elenco",
+      "refresh": "Aggiorna la vista corrente",
+      "filter": "Attiva il filtro della tabella",
+      "next": "Seleziona il task successivo",
+      "previous": "Seleziona il task precedente",
+      "more": "Carica voci di audit meno recenti"
     }
   }
 }

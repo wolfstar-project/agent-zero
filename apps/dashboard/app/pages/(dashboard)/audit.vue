@@ -27,7 +27,7 @@
   </header>
 
   <div class="p-3 sm:p-4 md:p-5">
-    <AuditTable :events="events" :pending="pending" :error="error" @retry="refresh" />
+    <AuditTable ref="auditTable" :events="events" :pending="pending" :error="error" @retry="refresh" />
 
     <div v-if="nextCursor" class="mt-4 flex justify-center">
       <button class="btn-subtle gap-2 px-3" type="button" :disabled="pending" @click="loadMore">
@@ -39,9 +39,31 @@
 </template>
 
 <script setup lang="ts">
+import { useHotkeys } from '@tanstack/vue-hotkeys';
+
 const { events, nextCursor, pending, error, loadMore, refresh } = useAuditLogs();
 
 // Client-side only: the endpoint reads the session cookie, and this page is not first-paint
 // content. See `useAuditLogs` for the full reasoning.
 onMounted(refresh);
+
+// Typed structurally rather than with `InstanceType`: the component is globally registered by the
+// audit module, so there is no import here to take a type from.
+const auditTable = useTemplateRef<{ focusFilter: () => void }>('auditTable');
+
+// The sheet under `?` lists these; keep the two in step when either changes.
+useHotkeys([
+  { hotkey: 'R', callback: () => void refresh(), options: { enabled: () => !pending.value } },
+  {
+    hotkey: 'M',
+    callback: () => void loadMore(),
+    options: { enabled: () => Boolean(nextCursor.value) && !pending.value },
+  },
+  {
+    hotkey: '/',
+    callback: () => auditTable.value?.focusFilter(),
+    // Otherwise the slash lands in the field it just focused.
+    options: { preventDefault: true },
+  },
+]);
 </script>

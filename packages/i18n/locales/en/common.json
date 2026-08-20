@@ -8,7 +8,14 @@
       "subtitle": "Dashboard"
     },
     "actions": {
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "close": "Close"
+    },
+    "table": {
+      "filterLabel": "Filter rows",
+      "filterPlaceholder": "Filter…",
+      "noMatches": "No rows match this filter.",
+      "sortBy": "Sort by {column}"
     },
     "theme": {
       "switchToLight": "Switch to light mode",

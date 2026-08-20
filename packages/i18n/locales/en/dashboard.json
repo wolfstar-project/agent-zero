@@ -32,7 +32,7 @@
     },
     "queue": {
       "title": "Task queue",
-      "order": "Newest first",
+      "caption": "Tasks known to the control plane.",
       "columns": {
         "id": "ID",
         "repository": "Repository",
@@ -73,8 +73,7 @@
       },
       "table": {
         "title": "Recorded actions",
-        "order": "Newest first",
-        "caption": "Actions recorded by the control plane, newest first.",
+        "caption": "Actions recorded by the control plane.",
         "columns": {
           "time": "Time",
           "actor": "Actor",
@@ -99,6 +98,19 @@
         "generic": "The audit log is temporarily unavailable. Try again in a moment.",
         "retry": "Try again"
       }
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "hint": "Shortcuts are ignored while you are typing in a field.",
+      "control": "Go to the control plane",
+      "audit": "Go to the audit log",
+      "sidebar": "Collapse or expand the sidebar",
+      "help": "Show this list",
+      "refresh": "Refresh the current view",
+      "filter": "Focus the table filter",
+      "next": "Select the next task",
+      "previous": "Select the previous task",
+      "more": "Load older audit entries"
     }
   }
 }
