@@ -73,9 +73,10 @@
       },
       "table": {
         "title": "Recorded actions",
-        "caption": "Actions recorded by the control plane.",
+        "caption": "Actions recorded by the control plane and by authentication.",
         "columns": {
           "time": "Time",
+          "source": "Source",
           "actor": "Actor",
           "action": "Action",
           "subject": "Subject",
@@ -84,7 +85,11 @@
         "loading": "Loading the audit log…",
         "loadMore": "Load older entries",
         "emptyTitle": "No actions recorded yet",
-        "emptyBody": "Task submissions and approval decisions appear here as they are made."
+        "emptyBody": "Task submissions, approval decisions, and sign-ins appear here as they are made."
+      },
+      "source": {
+        "controlPlane": "Control plane",
+        "authentication": "Authentication"
       },
       "outcome": {
         "success": "success",
@@ -97,6 +102,10 @@
         "unauthorized": "Your session has expired. Sign in again to read the audit log.",
         "generic": "The audit log is temporarily unavailable. Try again in a moment.",
         "retry": "Try again"
+      },
+      "authNotice": {
+        "forbidden": "Authentication events are not listed: reading them requires owning or administering the organizations this account belongs to.",
+        "generic": "Authentication events are temporarily unavailable; the control-plane trail is complete."
       }
     },
     "shortcuts": {

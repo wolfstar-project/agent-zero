@@ -45,14 +45,14 @@
     </div>
 
     <div
-      v-else-if="events.length === 0 && pending"
+      v-else-if="rows.length === 0 && pending"
       class="min-h-52 grid place-items-center px-5 py-10"
     >
       <p class="m-0 mono text-muted">{{ $t('dashboard.audit.table.loading') }}</p>
     </div>
 
     <div
-      v-else-if="events.length === 0"
+      v-else-if="rows.length === 0"
       class="min-h-52 grid place-items-center px-5 py-10 text-center"
     >
       <div>
@@ -67,7 +67,7 @@
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="w-full min-w-160 border-collapse text-start">
+      <table class="w-full min-w-180 border-collapse text-start">
         <caption class="sr-only">
           {{
             $t('dashboard.audit.table.caption')
@@ -102,32 +102,39 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="rows.length === 0">
+          <tr v-if="tableRows.length === 0">
             <td class="px-3.5 py-10 text-center text-xs text-muted" :colspan="headers.length">
               {{ $t('common.table.noMatches') }}
             </td>
           </tr>
-          <tr v-for="row in rows" :key="row.id" class="border-b border-line/70 last:border-b-0">
+          <tr
+            v-for="row in tableRows"
+            :key="row.original.id"
+            class="border-b border-line/70 last:border-b-0"
+          >
             <td class="px-3.5 py-3 font-mono text-3xs text-muted">
               {{ new Date(row.original.occurredAt).toLocaleString(locale) }}
             </td>
+            <td class="px-3.5 py-3"><AuditSourceBadge :source="row.original.source" /></td>
             <td class="px-3.5 py-3">
-              <p class="m-0 text-xs font-650">{{ row.original.actor.name }}</p>
-              <p class="m-0 mt-1 font-mono text-3xs text-muted">{{ row.original.actor.kind }}</p>
+              <p class="m-0 text-xs font-650">{{ row.original.actorName }}</p>
+              <p class="m-0 mt-1 font-mono text-3xs text-muted">{{ row.original.actorKind }}</p>
             </td>
             <td class="px-3.5 py-3">
               <p class="m-0 font-mono text-xs text-link">{{ row.original.action }}</p>
-              <p
-                v-if="details(row.original)"
-                class="m-0 mt-1 max-w-72 truncate text-3xs text-muted"
-              >
-                {{ details(row.original) }}
+              <p v-if="row.original.details" class="m-0 mt-1 max-w-72 truncate text-3xs text-muted">
+                {{ row.original.details }}
               </p>
             </td>
             <td class="px-3.5 py-3 font-mono text-3xs text-muted">
-              {{ subjectLabel(row.original) || '—' }}
+              {{ row.original.subject || '—' }}
             </td>
-            <td class="px-3.5 py-3"><AuditOutcomeBadge :outcome="row.original.outcome" /></td>
+            <td class="px-3.5 py-3">
+              <AuditOutcomeBadge v-if="row.original.outcome" :outcome="row.original.outcome" />
+              <!-- The hosted authentication trail records no outcome; an em dash says so without
+                   claiming the action succeeded. -->
+              <span v-else class="font-mono text-3xs text-muted">—</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -136,7 +143,6 @@
 </template>
 
 <script setup lang="ts">
-import type { AuditEvent } from '@agent-zero/api';
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -150,9 +156,10 @@ import {
 } from '@tanstack/vue-table';
 
 import type { AuditLogError } from '../composables/useAuditLogs';
+import type { AuditRow } from '../types/audit';
 
 const props = defineProps<{
-  events: AuditEvent[];
+  rows: AuditRow[];
   pending?: boolean;
   error?: AuditLogError | null;
 }>();
@@ -171,7 +178,8 @@ const ERROR_MESSAGE_KEYS: Readonly<Record<AuditLogError, string>> = {
 // literally somewhere for the i18n tooling to see them.
 const COLUMN_LABEL_KEYS: Readonly<Record<string, string>> = {
   occurredAt: 'dashboard.audit.table.columns.time',
-  actor: 'dashboard.audit.table.columns.actor',
+  source: 'dashboard.audit.table.columns.source',
+  actorName: 'dashboard.audit.table.columns.actor',
   action: 'dashboard.audit.table.columns.action',
   subject: 'dashboard.audit.table.columns.subject',
   outcome: 'dashboard.audit.table.columns.outcome',
@@ -197,17 +205,6 @@ const errorMessageKey = computed(() =>
   props.error ? ERROR_MESSAGE_KEYS[props.error] : ERROR_MESSAGE_KEYS.generic,
 );
 
-/** Metadata rendered as one line; the durable record keeps the structure. */
-function details(entry: AuditEvent): string {
-  return Object.entries(entry.metadata ?? {})
-    .map(([key, value]) => `${key}=${value}`)
-    .join(' · ');
-}
-
-function subjectLabel(entry: AuditEvent): string {
-  return entry.subject ? `${entry.subject.type}:${entry.subject.id}` : '';
-}
-
 // Registered explicitly: v9 ships no row models by default, and a feature that is not listed here
 // leaves its state atoms undefined rather than silently doing nothing.
 const features = tableFeatures({
@@ -225,34 +222,36 @@ const features = tableFeatures({
 // box can match across every field the reader can see, which v9 has no global filter for.
 const columns = [
   { id: 'occurredAt', accessorKey: 'occurredAt', sortFn: 'text' as const },
-  { id: 'actor', accessorFn: (entry: AuditEvent) => entry.actor.name, sortFn: 'text' as const },
+  { id: 'source', accessorKey: 'source', sortFn: 'text' as const },
+  { id: 'actorName', accessorKey: 'actorName', sortFn: 'text' as const },
   { id: 'action', accessorKey: 'action', sortFn: 'text' as const },
-  { id: 'subject', accessorFn: subjectLabel, sortFn: 'text' as const },
+  { id: 'subject', accessorKey: 'subject', sortFn: 'text' as const },
   { id: 'outcome', accessorKey: 'outcome', sortFn: 'text' as const },
   {
     id: 'search',
-    accessorFn: (entry: AuditEvent) =>
+    accessorFn: (row: AuditRow) =>
       [
-        entry.actor.name,
-        entry.actor.kind,
-        entry.action,
-        subjectLabel(entry),
-        entry.outcome,
-        details(entry),
+        row.actorName,
+        row.actorKind,
+        row.action,
+        row.subject,
+        row.source,
+        row.outcome ?? '',
+        row.details,
       ].join(' '),
     filterFn: 'includesString' as const,
     enableSorting: false,
   },
 ];
 
-const data = computed(() => props.events);
+const data = computed(() => props.rows);
 
 const table = useTable({
   features,
   columns,
   data,
-  // The endpoint already pages newest-first; stating it here keeps that true once the reader has
-  // sorted by another column and sorted back.
+  // Both trails page newest-first; stating it here keeps that true once the reader has sorted by
+  // another column and sorted back.
   initialState: {
     sorting: [{ id: 'occurredAt', desc: true }],
     columnVisibility: { search: false },
@@ -260,8 +259,8 @@ const table = useTable({
 });
 
 const headers = computed(() => table.getHeaderGroups()[0]?.headers ?? []);
-const rows = computed(() => table.getRowModel().rows);
-const visibleCount = computed(() => rows.value.length);
+const tableRows = computed(() => table.getRowModel().rows);
+const visibleCount = computed(() => tableRows.value.length);
 
 const query = ref('');
 watch(query, (value) => {

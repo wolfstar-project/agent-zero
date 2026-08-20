@@ -232,6 +232,9 @@
                     "time": {
                       "type": "string"
                     },
+                    "source": {
+                      "type": "string"
+                    },
                     "actor": {
                       "type": "string"
                     },
@@ -257,6 +260,18 @@
                   "type": "string"
                 },
                 "emptyBody": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "controlPlane": {
+                  "type": "string"
+                },
+                "authentication": {
                   "type": "string"
                 }
               },
@@ -293,6 +308,18 @@
                   "type": "string"
                 },
                 "retry": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "authNotice": {
+              "type": "object",
+              "properties": {
+                "forbidden": {
+                  "type": "string"
+                },
+                "generic": {
                   "type": "string"
                 }
               },

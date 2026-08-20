@@ -73,9 +73,10 @@
       },
       "table": {
         "title": "Azioni registrate",
-        "caption": "Azioni registrate dal piano di controllo.",
+        "caption": "Azioni registrate dal piano di controllo e dall’autenticazione.",
         "columns": {
           "time": "Data e ora",
+          "source": "Sorgente",
           "actor": "Autore",
           "action": "Azione",
           "subject": "Oggetto",
@@ -84,7 +85,11 @@
         "loading": "Caricamento del registro di audit…",
         "loadMore": "Carica voci meno recenti",
         "emptyTitle": "Nessuna azione registrata",
-        "emptyBody": "Gli invii di task e le decisioni di approvazione compariranno qui man mano che avvengono."
+        "emptyBody": "Invii di task, decisioni di approvazione e accessi compariranno qui man mano che avvengono."
+      },
+      "source": {
+        "controlPlane": "Piano di controllo",
+        "authentication": "Autenticazione"
       },
       "outcome": {
         "success": "riuscita",
@@ -97,6 +102,10 @@
         "unauthorized": "La sessione è scaduta. Accedi di nuovo per leggere il registro di audit.",
         "generic": "Il registro di audit non è momentaneamente disponibile. Riprova tra poco.",
         "retry": "Riprova"
+      },
+      "authNotice": {
+        "forbidden": "Gli eventi di autenticazione non sono elencati: per leggerli occorre essere proprietario o amministratore delle organizzazioni a cui appartiene questo account.",
+        "generic": "Gli eventi di autenticazione non sono momentaneamente disponibili; il registro del piano di controllo è completo."
       }
     },
     "shortcuts": {
