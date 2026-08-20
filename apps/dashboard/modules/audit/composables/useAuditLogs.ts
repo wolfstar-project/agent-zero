@@ -37,9 +37,14 @@ export function useAuditLogs(pageSize = 25) {
     } catch (caught) {
       error.value = classify(caught);
       // A failed page leaves what was already read in place: losing the reader's position is a
-      // worse answer to a transient failure than showing a stale list beside the error.
-      if (!cursor) events.value = [];
-      nextCursor.value = null;
+      // worse answer to a transient failure than showing a stale list beside the error. The
+      // cursor survives with it, so a retry re-requests the page that failed through `loadMore`
+      // instead of falling back to a cursorless `refresh()` that would replace every page the
+      // reader has already scrolled through.
+      if (!cursor) {
+        events.value = [];
+        nextCursor.value = null;
+      }
     } finally {
       pending.value = false;
     }

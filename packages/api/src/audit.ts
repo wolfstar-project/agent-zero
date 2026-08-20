@@ -102,7 +102,20 @@ export class PersistentAuditLogStore implements AuditLogStore {
   ) {}
 
   async append(event: AuditEvent): Promise<void> {
-    await this.storage.setItem(auditStorageKey(event), sanitizeEvent(event, this.secrets));
+    const key = auditStorageKey(event);
+    const value = sanitizeEvent(event, this.secrets);
+    // Append-only is enforced at the write, not just assumed from the key shape. A driver with a
+    // conditional create makes it atomic; one without gets the read-then-write claim, which is
+    // racy in principle but bounded in practice — a collision needs the same minted id inside the
+    // same millisecond, which is a repeated UUID. Either way an existing record stands: the first
+    // write of a key is the one the trail keeps.
+    if (this.storage.setItemIfAbsent) {
+      await this.storage.setItemIfAbsent(key, value);
+      return;
+    }
+    const existing = await this.storage.getItem(key);
+    if (existing !== null && existing !== undefined) return;
+    await this.storage.setItem(key, value);
   }
 
   async list(options: AuditLogQuery = {}): Promise<AuditLogPage> {
@@ -129,6 +142,10 @@ export class MemoryAuditLogStore implements AuditLogStore {
   readonly records: AuditEvent[] = [];
 
   async append(event: AuditEvent): Promise<void> {
+    // Same append-only rule as the persistent store, so a test that passes against this adapter
+    // says something about the one production runs.
+    const key = auditStorageKey(event);
+    if (this.records.some((existing) => auditStorageKey(existing) === key)) return;
     this.records.push(structuredClone(event));
   }
 
@@ -189,7 +206,14 @@ export function createAuditRecorder(options: AuditRecorderOptions): AuditRecorde
         await options.store.append(event);
       } catch (error) {
         requestLoggerStorage?.getStore()?.set({ auditWriteError: String(error) });
-        options.onError?.(error);
+        // The observer is a courtesy, not a second chance to fail: a throwing `onError` would
+        // reject this call and turn an already-committed mutation into an error response, which
+        // is the exact outcome failing open exists to prevent.
+        try {
+          options.onError?.(error);
+        } catch {
+          requestLoggerStorage?.getStore()?.set({ auditErrorHandlerFailed: true });
+        }
       }
     },
   };
@@ -213,18 +237,49 @@ function sanitizeEvent(event: AuditEvent, secrets: readonly string[]): AuditEven
   return value;
 }
 
+const ACTOR_KINDS = new Set<string>(['principal', 'user', 'webhook', 'system']);
+const OUTCOMES = new Set<string>(['success', 'denied', 'failure']);
+
+/**
+ * The full shape, not just the field names.
+ *
+ * `list` returns whatever survives this predicate as an {@link AuditEvent}, so a check that only
+ * asks whether `outcome` is a string would hand a reader an `outcome` no renderer has a branch
+ * for. The unions and the optional objects are validated exactly, and `metadata` is held to the
+ * flat string map its contract promises — a nested value there is also one redaction never
+ * reached.
+ */
 function isAuditEvent(value: unknown): value is AuditEvent {
   if (!isRecord(value)) return false;
-  const actor = value.actor;
   return (
     typeof value.id === 'string' &&
     typeof value.occurredAt === 'string' &&
     typeof value.action === 'string' &&
     typeof value.outcome === 'string' &&
-    isRecord(actor) &&
-    typeof actor.kind === 'string' &&
-    typeof actor.name === 'string'
+    OUTCOMES.has(value.outcome) &&
+    isAuditActor(value.actor) &&
+    isAuditSubject(value.subject) &&
+    isAuditMetadata(value.metadata)
   );
+}
+
+function isAuditActor(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.kind === 'string' &&
+    ACTOR_KINDS.has(value.kind) &&
+    typeof value.name === 'string'
+  );
+}
+
+function isAuditSubject(value: unknown): boolean {
+  if (value === undefined) return true;
+  return isRecord(value) && typeof value.type === 'string' && typeof value.id === 'string';
+}
+
+function isAuditMetadata(value: unknown): boolean {
+  if (value === undefined) return true;
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

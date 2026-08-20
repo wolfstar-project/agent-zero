@@ -1,3 +1,4 @@
+import { redactSecrets } from '@agent-zero/shared';
 // `openapi(meta)` builds the same metadata plugin `.route()` sugars over (see
 // `@orpc/openapi/extensions/route`), but as a real import a bundler can't tree-shake away. The
 // prototype-patching `.route()` extension depends on a bare side-effect import surviving whatever
@@ -127,7 +128,26 @@ export const rpcRouter = {
             message: `Execution mode '${input.mode}' is not granted to this principal`,
           });
         }
-        const task = await createTask(input, context.store);
+        // A run that throws has still been persisted by `createTask` before it scheduled
+        // anything, so returning here without a record would leave a durable task nobody
+        // authorised in the trail. The failure is audited under the attempted action, since no
+        // task id is in hand to point at once the call rejected.
+        let task: Awaited<ReturnType<typeof createTask>>;
+        try {
+          task = await createTask(input, context.store);
+        } catch (error) {
+          await context.audit?.record({
+            actor,
+            action: 'task.create',
+            outcome: 'failure',
+            metadata: {
+              repository: input.repository,
+              mode: input.mode,
+              reason: redactSecrets(error instanceof Error ? error.message : String(error)),
+            },
+          });
+          throw error;
+        }
         await context.audit?.record({
           actor,
           action: 'task.created',

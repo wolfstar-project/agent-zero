@@ -15,6 +15,7 @@ const APPROVAL_ERROR = /awaiting human review/i;
 const UNAUTHORIZED_ERROR = /authentication required/i;
 const FORBIDDEN_ERROR = /not allow-listed/i;
 const MODE_ERROR = /not granted/i;
+const STORAGE_ERROR = /storage unavailable/i;
 
 let store: MemoryTaskStore;
 let audited: AuditEntryInput[];
@@ -41,6 +42,28 @@ function client(options: ClientOptions = {}) {
       ...(options.principal ? { principal: options.principal } : {}),
       ...(options.auth ? { auth: options.auth } : {}),
       ...(options.reqHeaders ? { reqHeaders: options.reqHeaders } : {}),
+      mayTargetRepository: () => options.allowRepository ?? false,
+      audit: recorder,
+    },
+  });
+}
+
+/**
+ * A client whose task store refuses to persist, so `tasks.create` rejects deterministically.
+ *
+ * The interesting failure is a run that dies after the record is durable, but reaching it here
+ * would mean running a real agent against a checkout. This fails on the same call for the same
+ * reason from the router's point of view — `createTask` rejected — which is the branch under test.
+ */
+function failingStoreClient(options: ClientOptions = {}) {
+  return createRouterClient(rpcRouter, {
+    context: {
+      store: {
+        get: () => Promise.resolve(undefined),
+        list: () => Promise.resolve([]),
+        save: () => Promise.reject(new Error('storage unavailable')),
+      },
+      ...(options.principal ? { principal: options.principal } : {}),
       mayTargetRepository: () => options.allowRepository ?? false,
       audit: recorder,
     },
@@ -330,6 +353,28 @@ describe('rpc audit trail', () => {
       instrumented(() => operator().approvals.decide({ taskId: 'az_1', decision: 'approved' })),
     ).rejects.toThrow(APPROVAL_ERROR);
     expect(audited).toEqual([]);
+  });
+
+  it('records a creation that failed after the request was authorised', async () => {
+    await expect(
+      instrumented(() =>
+        failingStoreClient({
+          principal: { name: 'release-manager', kind: 'token', modes: ['autonomous'] },
+          allowRepository: true,
+        }).tasks.create({ repository: '.', feedback: 'x', mode: 'autonomous' }),
+      ),
+    ).rejects.toThrow(STORAGE_ERROR);
+
+    // Without this the trail would show the request being authorised and then nothing at all,
+    // which reads as a task that was never attempted rather than one that broke.
+    expect(audited).toEqual([
+      {
+        actor: { kind: 'principal', name: 'release-manager' },
+        action: 'task.create',
+        outcome: 'failure',
+        metadata: { repository: '.', mode: 'autonomous', reason: 'storage unavailable' },
+      },
+    ]);
   });
 
   it('serves callers that keep no audit trail at all', async () => {

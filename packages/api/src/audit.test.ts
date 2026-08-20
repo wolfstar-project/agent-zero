@@ -24,6 +24,15 @@ class RecordingStorage implements KeyValueStorage {
   }
 }
 
+/** A driver that does expose a conditional create, like the KV-backed one in `storage.ts`. */
+class ConditionalStorage extends RecordingStorage {
+  async setItemIfAbsent(key: string, value: unknown): Promise<boolean> {
+    if (this.values.has(key)) return false;
+    this.values.set(key, value);
+    return true;
+  }
+}
+
 function event(id: string, occurredAt: string, overrides: Partial<AuditEvent> = {}): AuditEvent {
   return {
     id,
@@ -89,6 +98,18 @@ describe.each([
     });
   });
 
+  it('keeps the first record written under a key, never the later one', async () => {
+    const store: AuditLogStore = create();
+    await store.append(event('audit_1', FIRST, { action: 'task.created' }));
+
+    // Same id and instant, so the key repeats: a replayed delivery, or a caller minting its own
+    // identifiers. An audit trail that lets the second write win is not append-only.
+    await store.append(event('audit_1', FIRST, { action: 'task.deleted' }));
+
+    const page = await store.list();
+    expect(page.events).toEqual([event('audit_1', FIRST, { action: 'task.created' })]);
+  });
+
   it('keeps records minted in the same millisecond distinct', async () => {
     const store: AuditLogStore = create();
     await store.append(event('audit_1', FIRST));
@@ -125,6 +146,48 @@ describe('audit persistence', () => {
     await expect(store.append(malformed)).rejects.toThrow(
       'Refusing to persist an invalid audit record',
     );
+  });
+
+  it('claims the key through the conditional create when the driver has one', async () => {
+    const storage = new ConditionalStorage();
+    const store = new PersistentAuditLogStore(storage);
+    await store.append(event('audit_1', FIRST, { action: 'task.created' }));
+
+    await store.append(event('audit_1', FIRST, { action: 'task.deleted' }));
+
+    // Asserted through the driver rather than through `list`, so the atomic path is what is
+    // covered here and not the read-then-write fallback the shared suite already exercises.
+    expect(storage.values.get(`audit:${FIRST}:audit_1`)).toMatchObject({ action: 'task.created' });
+  });
+
+  it.each([
+    ['an outcome outside the union', { outcome: 'approved' }],
+    ['an actor kind outside the union', { actor: { kind: 'admin', name: 'root' } }],
+    ['a subject missing its id', { subject: { type: 'task' } }],
+    ['metadata that is not a flat string map', { metadata: { nested: { deep: 'value' } } }],
+  ])('refuses to persist %s', async (_name, overrides) => {
+    const store = new PersistentAuditLogStore(new RecordingStorage());
+    // oxlint-disable-next-line no-unsafe-type-assertion -- deliberately invalid input under test
+    const malformed = event('audit_1', FIRST, overrides as Partial<AuditEvent>);
+
+    await expect(store.append(malformed)).rejects.toThrow(
+      'Refusing to persist an invalid audit record',
+    );
+  });
+
+  it('ignores a stored record whose union values drifted out of contract', async () => {
+    const storage = new RecordingStorage();
+    // Written straight past `append`, the way a replay or an older writer would have left it.
+    await storage.setItem(`audit:${SECOND}:audit_2`, {
+      ...event('audit_2', SECOND),
+      outcome: 'approved',
+    });
+    const store = new PersistentAuditLogStore(storage);
+    await store.append(event('audit_1', FIRST));
+
+    const page = await store.list();
+
+    expect(page.events.map((entry) => entry.id)).toEqual(['audit_1']);
   });
 
   it('ignores foreign records sharing the audit prefix', async () => {
@@ -175,5 +238,25 @@ describe('audit recorder', () => {
     // work that actually happened.
     await expect(recorder.record(entry)).resolves.toBeUndefined();
     expect(String(failures[0])).toContain('storage unavailable');
+  });
+
+  it('still resolves when the failure observer itself throws', async () => {
+    const recorder = createAuditRecorder({
+      store: {
+        async append(): Promise<void> {
+          throw new Error('storage unavailable');
+        },
+        async list() {
+          return { events: [], nextCursor: null };
+        },
+      },
+      onError: () => {
+        throw new Error('reporter unavailable');
+      },
+    });
+
+    // Failing open has to survive a broken observer too, or the reporting path becomes the way a
+    // committed mutation gets reported as failed.
+    await expect(recorder.record(entry)).resolves.toBeUndefined();
   });
 });
