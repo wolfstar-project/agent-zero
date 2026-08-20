@@ -66,9 +66,12 @@ export async function sendEmail<Id extends MailTemplateId>(
   mailer: MailerOptions = {},
 ): Promise<void> {
   const template = mailTemplates[options.templateId];
+  // Every context is a flat record of strings; the per-template types exist to stop a caller
+  // passing the wrong one, which `SendEmailOptions` has already done by here.
+  const context: Readonly<Record<string, string>> = options.context;
   const variantKey = mailTemplateVariantKey(
     mailTemplateConditionalFields(options.templateId),
-    options.context,
+    context,
   );
   const variant = compiled[options.templateId][variantKey];
   if (!variant) {
@@ -79,7 +82,6 @@ export async function sendEmail<Id extends MailTemplateId>(
     );
   }
 
-  const context = options.context as Readonly<Record<string, string>>;
   const provider = mailer.provider ?? mailProviderFromEnvironment();
 
   await provider({

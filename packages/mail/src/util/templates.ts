@@ -44,8 +44,8 @@ export interface MailTemplateContext {
 
 export type MailTemplateId = keyof MailTemplateContext;
 
-/** Context keys of one template, as the compiler and the sender both address them: by name. */
-export type MailTemplateField<Id extends MailTemplateId> = keyof MailTemplateContext[Id] & string;
+/** Context keys of one template, as the registry below spells them out. */
+type MailTemplateField<Id extends MailTemplateId> = keyof MailTemplateContext[Id] & string;
 
 /**
  * How a template uses one of its context fields.
@@ -58,7 +58,7 @@ export type MailTemplateField<Id extends MailTemplateId> = keyof MailTemplateCon
  * marking a field `conditional` that the template only prints doubles the compiled output for
  * nothing.
  */
-export type MailTemplateFieldUse = 'interpolated' | 'conditional';
+type MailTemplateFieldUse = 'interpolated' | 'conditional';
 
 interface MailTemplateDefinition<Id extends MailTemplateId> {
   /** Path relative to this package's `emails/` directory. */
@@ -113,29 +113,33 @@ export const mailTemplates: {
   },
 };
 
-/** Every template, in registry order. */
-// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `Object.keys` widens to
-// `string[]`; the mapped type above is what guarantees these keys are exactly the template ids.
-export const mailTemplateIds = Object.keys(mailTemplates) as readonly MailTemplateId[];
+/**
+ * Every template, in registry order.
+ *
+ * Listed rather than derived, because `Object.keys` cannot report the key type the registry's
+ * mapped type guarantees, and asserting it back would be the one place a typo could hide.
+ * `compiled.test.ts` holds this list to the registry.
+ */
+export const mailTemplateIds = [
+  'privateInvitation',
+  'publicInvitation',
+  'emailVerification',
+  'passwordReset',
+] as const satisfies readonly MailTemplateId[];
 
 /**
  * Every field one template's context carries, in the order it declares them.
  *
  * That order is what names a variant, so the compiler and the sender both read it from here
- * rather than sorting or re-deriving it.
+ * rather than sorting or re-deriving it. Field names are plain strings here: the registry's
+ * mapped type is what ties them to the context, and both callers address a context by name.
  */
-export function mailTemplateFields<Id extends MailTemplateId>(
-  id: Id,
-): readonly MailTemplateField<Id>[] {
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- as above: `fields` is a mapped
-  // type over exactly this template's context keys, which `Object.keys` cannot express.
-  return Object.keys(mailTemplates[id].fields) as readonly MailTemplateField<Id>[];
+export function mailTemplateFields(id: MailTemplateId): readonly string[] {
+  return Object.keys(mailTemplates[id].fields);
 }
 
 /** The subset of {@link mailTemplateFields} the template branches on rather than only printing. */
-export function mailTemplateConditionalFields<Id extends MailTemplateId>(
-  id: Id,
-): readonly MailTemplateField<Id>[] {
-  const { fields } = mailTemplates[id];
+export function mailTemplateConditionalFields(id: MailTemplateId): readonly string[] {
+  const fields: Readonly<Record<string, MailTemplateFieldUse>> = mailTemplates[id].fields;
   return mailTemplateFields(id).filter((field) => fields[field] === 'conditional');
 }

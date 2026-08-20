@@ -12,7 +12,7 @@
  * rather than being restated on each side.
  */
 
-import type { MailTemplateContext, MailTemplateField, MailTemplateId } from './templates.js';
+import type { MailTemplateId } from './templates.js';
 
 /** One rendered variant: the message as a mail client sees it, and its plaintext alternative. */
 export interface CompiledMailTemplate {
@@ -73,9 +73,9 @@ export function escapeMailHtml(value: string): string {
  * Names the variant a context selects: the fields it fills, in the order the template declares
  * them, joined with `+`. An empty string names the variant where none of them are filled.
  */
-export function mailTemplateVariantKey<Id extends MailTemplateId>(
-  conditionalFields: readonly MailTemplateField<Id>[],
-  context: MailTemplateContext[Id],
+export function mailTemplateVariantKey(
+  conditionalFields: readonly string[],
+  context: Readonly<Record<string, string>>,
 ): string {
   // Plain truthiness, because that is what the template's own `v-if` tested before the markup was
   // compiled: a value this treats as filled has to be one the rendered variant printed.

@@ -12,17 +12,12 @@ import { fileURLToPath } from 'node:url';
 
 import { render } from '@maizzle/framework';
 
-import {
-  mailTemplatePlaceholder,
-  type CompiledMailTemplate,
-  type CompiledMailTemplates,
-} from '../src/util/compiled.ts';
+import { mailTemplatePlaceholder, type CompiledMailTemplate } from '../src/util/compiled.ts';
 import {
   mailTemplateConditionalFields,
   mailTemplateFields,
   mailTemplateIds,
   mailTemplates,
-  type MailTemplateField,
   type MailTemplateId,
 } from '../src/util/templates.ts';
 
@@ -37,13 +32,13 @@ const compiledArtifactPath = fileURLToPath(
  * that are filled — the empty subset first, in declaration order — so each rendered variant is
  * named the way `mailTemplateVariantKey` names the context that selects it.
  */
-function fieldSubsets<Id extends MailTemplateId>(
-  fields: readonly MailTemplateField<Id>[],
-): readonly (readonly MailTemplateField<Id>[])[] {
-  return fields.reduce<(readonly MailTemplateField<Id>[])[]>(
-    (subsets, field) => [...subsets, ...subsets.map((subset) => [...subset, field])],
-    [[]],
-  );
+function fieldSubsets(fields: readonly string[]): readonly (readonly string[])[] {
+  const subsets: (readonly string[])[] = [[]];
+  for (const field of fields) {
+    const grown = subsets.map((subset) => [...subset, field]);
+    subsets.push(...grown);
+  }
+  return subsets;
 }
 
 /**
@@ -53,15 +48,15 @@ function fieldSubsets<Id extends MailTemplateId>(
  * takes the same branch a real value would, and it survives Vue's escaping, Maizzle's CSS
  * inlining and its plaintext conversion intact, so the sender can substitute into either output.
  */
-async function renderVariant<Id extends MailTemplateId>(
-  id: Id,
-  filled: readonly MailTemplateField<Id>[],
+async function renderVariant(
+  id: MailTemplateId,
+  filled: readonly string[],
 ): Promise<CompiledMailTemplate> {
-  const { file, fields } = mailTemplates[id];
+  const { file } = mailTemplates[id];
+  const conditional = new Set(mailTemplateConditionalFields(id));
   const context = Object.fromEntries(
-    Object.keys(fields).map((field) => {
-      const conditional = fields[field as MailTemplateField<Id>] === 'conditional';
-      const empty = conditional && !filled.includes(field as MailTemplateField<Id>);
+    mailTemplateFields(id).map((field) => {
+      const empty = conditional.has(field) && !filled.includes(field);
       return [field, empty ? '' : mailTemplatePlaceholder(field)];
     }),
   );
@@ -74,11 +69,20 @@ async function renderVariant<Id extends MailTemplateId>(
   return { html, text: plaintext ?? '' };
 }
 
-/** Renders every variant of every template, in registry order. */
-export async function compileMailTemplates(): Promise<CompiledMailTemplates> {
+/**
+ * Renders every variant of every template, in registry order.
+ *
+ * Returned as a plain record rather than as {@link CompiledMailTemplates}: it is built key by
+ * key, and claiming the narrower type would mean asserting the very completeness the artifact is
+ * written to prove. `mail.ts` reads the checked-in JSON under the narrow type; the test compares
+ * the two.
+ */
+export async function compileMailTemplates(): Promise<
+  Record<string, Record<string, CompiledMailTemplate>>
+> {
   const compiled: Record<string, Record<string, CompiledMailTemplate>> = {};
 
-  for (const id of templateIds) {
+  for (const id of mailTemplateIds) {
     const conditionalFields = mailTemplateConditionalFields(id);
     const variants: Record<string, CompiledMailTemplate> = {};
 
@@ -91,13 +95,13 @@ export async function compileMailTemplates(): Promise<CompiledMailTemplates> {
     compiled[id] = variants;
   }
 
-  return compiled as CompiledMailTemplates;
+  return compiled;
 }
 
 if (import.meta.main) {
   const compiled = await compileMailTemplates();
   await writeFile(compiledArtifactPath, `${JSON.stringify(compiled, undefined, 2)}\n`, 'utf8');
   process.stdout.write(
-    `Compiled ${templateIds.length} mail templates to ${compiledArtifactPath}\n`,
+    `Compiled ${mailTemplateIds.length} mail templates to ${compiledArtifactPath}\n`,
   );
 }

@@ -7,6 +7,7 @@ import { compileMailTemplates } from '../../scripts/compile-templates.ts';
 import { sendEmail } from '../mail.js';
 import type { OutgoingMail } from '../provider/types.js';
 import compiledTemplates from './compiled-templates.json' with { type: 'json' };
+import { mailTemplateIds, mailTemplates } from './templates.js';
 
 const emailsDirectory = fileURLToPath(new URL('../../emails/', import.meta.url));
 
@@ -31,6 +32,12 @@ function recordingProvider() {
  * none of this.
  */
 describe('compiled mail templates', () => {
+  it('are listed in the same order as the registry declares them', () => {
+    // `mailTemplateIds` is written out by hand so nothing has to assert `Object.keys` back into
+    // the id type; this is what keeps the two from drifting.
+    expect([...mailTemplateIds]).toEqual(Object.keys(mailTemplates));
+  });
+
   it('match what the templates render today', async () => {
     // Fails when a template under emails/ changed without `aube run mail:compile` being run.
     await expect(compileMailTemplates()).resolves.toEqual(compiledTemplates);
