@@ -61,7 +61,6 @@
 <script setup lang="ts">
 import { useHotkeys } from '@tanstack/vue-hotkeys';
 import { useQuery } from '@tanstack/vue-query';
-
 import type { DashboardOverview } from '~~/modules/dashboard/types/dashboard';
 
 /**

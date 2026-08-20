@@ -44,11 +44,17 @@
       </div>
     </div>
 
-    <div v-else-if="events.length === 0 && pending" class="min-h-52 grid place-items-center px-5 py-10">
+    <div
+      v-else-if="events.length === 0 && pending"
+      class="min-h-52 grid place-items-center px-5 py-10"
+    >
       <p class="m-0 mono text-muted">{{ $t('dashboard.audit.table.loading') }}</p>
     </div>
 
-    <div v-else-if="events.length === 0" class="min-h-52 grid place-items-center px-5 py-10 text-center">
+    <div
+      v-else-if="events.length === 0"
+      class="min-h-52 grid place-items-center px-5 py-10 text-center"
+    >
       <div>
         <div class="mx-auto h-9 w-9 grid place-items-center border border-line bg-raised">
           <Icon aria-hidden="true" class="h-4 w-4 text-muted" name="lucide:scroll-text" />
@@ -79,7 +85,9 @@
               <button
                 class="focus-ring flex items-center gap-1.5 text-inherit uppercase tracking-inherit"
                 type="button"
-                :aria-label="$t('common.table.sortBy', { column: $t(columnLabelKey(header.column.id)) })"
+                :aria-label="
+                  $t('common.table.sortBy', { column: $t(columnLabelKey(header.column.id)) })
+                "
                 @click="header.column.getToggleSortingHandler()?.($event)"
               >
                 {{ $t(columnLabelKey(header.column.id)) }}
@@ -99,11 +107,7 @@
               {{ $t('common.table.noMatches') }}
             </td>
           </tr>
-          <tr
-            v-for="row in rows"
-            :key="row.id"
-            class="border-b border-line/70 last:border-b-0"
-          >
+          <tr v-for="row in rows" :key="row.id" class="border-b border-line/70 last:border-b-0">
             <td class="px-3.5 py-3 font-mono text-3xs text-muted">
               {{ new Date(row.original.occurredAt).toLocaleString(locale) }}
             </td>
@@ -249,7 +253,10 @@ const table = useTable({
   data,
   // The endpoint already pages newest-first; stating it here keeps that true once the reader has
   // sorted by another column and sorted back.
-  initialState: { sorting: [{ id: 'occurredAt', desc: true }], columnVisibility: { search: false } },
+  initialState: {
+    sorting: [{ id: 'occurredAt', desc: true }],
+    columnVisibility: { search: false },
+  },
 });
 
 const headers = computed(() => table.getHeaderGroups()[0]?.headers ?? []);

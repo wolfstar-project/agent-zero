@@ -115,7 +115,6 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/vue-table';
-
 import type { DashboardTask } from '~~/modules/dashboard/types/dashboard';
 
 const props = defineProps<{ tasks: DashboardTask[]; selectedId?: string }>();

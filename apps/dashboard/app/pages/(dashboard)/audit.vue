@@ -27,7 +27,13 @@
   </header>
 
   <div class="p-3 sm:p-4 md:p-5">
-    <AuditTable ref="auditTable" :events="events" :pending="pending" :error="error" @retry="refresh" />
+    <AuditTable
+      ref="auditTable"
+      :events="events"
+      :pending="pending"
+      :error="error"
+      @retry="refresh"
+    />
 
     <div v-if="nextCursor" class="mt-4 flex justify-center">
       <button class="btn-subtle gap-2 px-3" type="button" :disabled="pending" @click="loadMore">
