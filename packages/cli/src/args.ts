@@ -3,14 +3,18 @@ import { parse } from '@bomb.sh/args';
 export interface CliArguments {
   command: string;
   feedback?: string;
+  /** Deployment origin `login` and `logout` act on. Absent means "resolve it from the environment". */
+  url?: string;
   proactive: boolean;
   help: boolean;
   json: boolean;
   version: boolean;
 }
 
-const knownOptions = new Set(['_', 'feedback', 'help', 'json', 'proactive', 'version']);
+const knownOptions = new Set(['_', 'feedback', 'help', 'json', 'proactive', 'url', 'version']);
 const agentCommands = new Set(['review', 'fix', 'run']);
+/** The two commands that talk to a deployment rather than to a checkout. */
+const sessionCommands = new Set(['login', 'logout']);
 
 export function parseCliArguments(argv: string[]): CliArguments {
   const parsed = parse(argv, {
@@ -25,7 +29,7 @@ export function parseCliArguments(argv: string[]): CliArguments {
       proactive: false,
       version: false,
     },
-    string: ['feedback'],
+    string: ['feedback', 'url'],
   });
 
   const unknownOption = Object.keys(parsed).find((option) => !knownOptions.has(option));
@@ -49,9 +53,14 @@ export function parseCliArguments(argv: string[]): CliArguments {
     throw new Error('--json is only valid with doctor, review, fix, or run');
   }
 
+  const url = parsed.url?.trim() || undefined;
+  if (url !== undefined && !sessionCommands.has(command))
+    throw new Error('--url is only valid with login or logout');
+
   return {
     command,
     ...(feedback === undefined ? {} : { feedback }),
+    ...(url === undefined ? {} : { url }),
     proactive: parsed.proactive,
     help: parsed.help,
     json: parsed.json,

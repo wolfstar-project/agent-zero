@@ -113,6 +113,8 @@ The root `.env` configures the CLI. Each app loads its own file: the dashboard u
 zero init                   create .agent-zero.yml
 zero --version              print the injected CLI version
 zero doctor [--json]        inspect the local environment
+zero login [--url X]        sign this machine in through the device flow
+zero logout [--url X]       forget a stored session
 zero review (--feedback X | --proactive)  inspect without editing
 zero fix (--feedback X | --proactive)     validate, edit, and verify (policy permitting)
 zero run (--feedback X | --proactive)     run using the configured mode
@@ -120,18 +122,19 @@ zero run (--feedback X | --proactive)     run using the configured mode
 
 The CLI parses arguments with [`@bomb.sh/args`](https://github.com/bomb-sh/args) and renders with [`@clack/prompts`](https://github.com/bombshell-dev/clack). Use `--proactive` to inspect the working-tree diff without reviewer feedback. When neither trigger is provided in a terminal, it asks for the task interactively; use `--feedback` or `--proactive` with `--json` for scripts and CI.
 
+`zero login` runs the [RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628) device flow: it prints a short code, you approve it at the deployment's `/device` page in a browser you are already signed into, and the CLI stores the resulting session token in `$XDG_CONFIG_HOME/agent-zero/credentials.json` (owner-readable only). The same command serves a cloud-managed deployment and a self-hosted one — pick which with `--url`, or set `AGENT_ZERO_URL`; without either it targets `http://localhost:3000`. Tokens are kept per origin, so signing into one deployment never evicts another, and `zero logout` without `--url` forgets all of them. The deployment must have `AUTH_ENABLE_DEVICE_AUTHORIZATION=true`; it is off by default. That flag also registers Better Auth's `bearer` plugin, which is what lets the stored token be presented as `Authorization: Bearer <token>` — without it the flow would mint a session that only a cookie could carry. `zero doctor` lists which deployments have a stored session and whether it has expired, never the token itself.
+
 ---
 
 ## Dashboard
 
 `aube run dev` starts the single deployable app on `http://localhost:3000` (override with `PORT`). It is the only adapter that composes a runner for hosted work, and the same Nuxt app serves the UI, the control plane, and authentication from one origin:
 
-| Surface              | Purpose                                                                                               |
-| -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `/rpc/**`            | Typed oRPC router: `health`, `tasks.list/get/create`, `approvals.decide`                              |
-| `/api/v1/**`         | The same router over OpenAPI/REST; interactive docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
-| `/api/auth/**`       | The Better Auth handler (mounted by `@onmax/nuxt-better-auth` from `server/auth.config.ts`)           |
-| `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters                             |
+| Surface        | Purpose                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------- |
+| `/rpc/**`      | Typed oRPC router: `health`, `dashboard.overview`, `tasks.list/get/create`, `approvals.decide`        |
+| `/api/v1/**`   | The same router over OpenAPI/REST; interactive docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
+| `/api/auth/**` | The Better Auth handler (mounted by `@onmax/nuxt-better-auth` from `server/auth.config.ts`)           |
 
 `/rpc/**` and `/api/v1/**` are the same `rpcRouter` from [`packages/api`](./packages/api) served over two wire protocols, so authorization behaves identically either way. Reads are open for the dashboard; mutations (`tasks.create`, `approvals.decide`) fail closed. `AGENT_ZERO_CONTROL_PLANE_TOKENS` holds comma-separated `name:token` bearer credentials, and `AGENT_ZERO_CONTROL_PLANE_REPOSITORIES` allow-lists the repository paths `tasks.create` may target; without them every mutation is rejected. `AGENT_ZERO_CONTROL_PLANE_MODES` holds comma-separated `name:mode|mode` grants for the execution modes each principal may request; without a grant a principal may only request the non-writable `observe` and `suggest` modes, so `fix` and `autonomous` require an explicit operator grant. The approval actor is the authenticated principal's name, never a wire-supplied value. This bearer-token scheme authorizes the control-plane API and is independent of the Better Auth session that protects the dashboard UI.
 

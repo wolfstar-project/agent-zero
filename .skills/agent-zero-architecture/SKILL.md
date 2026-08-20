@@ -53,10 +53,9 @@ Keep dependency direction explicit while changing the monorepo.
   `auth`. Holds no HTTP host of its own.
 - `apps/dashboard`: the single deployable app and composition root. A Nuxt app that constructs a
   runner and, from its `server/` directory, serves `packages/api`'s router over `/rpc/**` (RPC) and
-  `/api/v1/**` (OpenAPI), plus `GET /api/dashboard`, and mounts Better Auth in-process at
-  `/api/auth/**` via `server/auth.config.ts` (`@onmax/nuxt-better-auth`, full mode, SSR-aware). The
-  only process that opens the database, and it does so through `packages/database`. See the
-  `orpc-server` skill.
+  `/api/v1/**` (OpenAPI), and mounts Better Auth in-process at `/api/auth/**` via
+  `server/auth.config.ts` (`@onmax/nuxt-better-auth`, full mode, SSR-aware). The only process that
+  opens the database, and it does so through `packages/database`. See the `orpc-server` skill.
 - `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, credentials, session, or runtime-package dependencies, and nothing imports it. Copy lives in `packages/i18n`, not in the app.
 
 ## Workflow

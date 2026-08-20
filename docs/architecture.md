@@ -99,12 +99,11 @@ It differs from the dashboard in exactly one respect. The dashboard renders with
 
 `apps/dashboard` is the composition root and the only entry-point adapter with HTTP capability: a Nuxt app whose `server/` directory hosts
 
-| Route                | Purpose                                                                                                      |
-| -------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `/rpc/**`            | `packages/api`'s router over the typed oRPC RPC transport                                                    |
-| `/api/v1/**`         | The same router over OpenAPI/REST (`OpenAPIHandler`); docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
-| `/api/auth/**`       | The Better Auth handler, mounted by `@onmax/nuxt-better-auth` from `server/auth.config.ts`                   |
-| `GET /api/dashboard` | One aggregate view: task history plus queue, approval, and usage counters                                    |
+| Route          | Purpose                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------ |
+| `/rpc/**`      | `packages/api`'s router over the typed oRPC RPC transport                                                    |
+| `/api/v1/**`   | The same router over OpenAPI/REST (`OpenAPIHandler`); docs at `/api/v1/docs`, spec at `/api/v1/openapi.json` |
+| `/api/auth/**` | The Better Auth handler, mounted by `@onmax/nuxt-better-auth` from `server/auth.config.ts`                   |
 
 `/rpc/**` and `/api/v1/**` serve the exact same `rpcRouter` and therefore the exact same authorization rules; only the wire protocol differs. `.meta(openapi(...))` metadata on each procedure (method, path, tags) exists purely for the OpenAPI transport and has no effect on the RPC transport — it is attached through a real, regularly-imported function rather than the `@orpc/openapi` package's alternative bare side-effect import, because Nitro's production bundler tree-shakes an unused side-effect import away even though the package's own `sideEffects` field marks it as one to keep.
 

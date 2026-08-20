@@ -31,8 +31,10 @@ export {
   authenticate,
   controlPlaneOriginsFromEnvironment,
   mayTargetRepository,
+  sessionPrincipal,
   type ControlPlaneAccess,
   type Principal,
+  type PrincipalKind,
 } from './access.js';
 export {
   MemoryTaskStore,
@@ -53,6 +55,12 @@ export {
   type TaskStore,
 } from './control-plane.js';
 export { dashboardOverview, type DashboardOverview } from './dashboard.js';
-export { requestLoggerStorage } from './orpc/logging.js';
+export {
+  authMiddleware,
+  betterAuthPrincipal,
+  type BetterAuthContext,
+  type BetterAuthSessionApi,
+} from './orpc/auth.js';
+export { requestLoggerStorage, useLogger } from './orpc/logging.js';
 export { rpcRouter, type RpcContext, type RpcRouter } from './orpc/router.js';
 export { FileKeyValueStorage } from './storage.js';

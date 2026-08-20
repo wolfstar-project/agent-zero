@@ -17,6 +17,14 @@ The CLI uses `@bomb.sh/args` for typed parsing and `@clack/prompts` for human-fr
 - Use stable exit codes and avoid parsing human-formatted output in scripts.
 - Obtain the displayed version through the injected shared version marker.
 - CLI commands request runtime behavior through typed APIs; they do not execute repository commands directly.
+- A session obtained by `zero login` is stored per deployment origin in
+  `$XDG_CONFIG_HOME/agent-zero/credentials.json`, owner-readable only (`packages/cli/src/credentials.ts`).
+  Never write a token beside the checkout, never log one, and never key the store by anything but
+  the normalized origin — one workstation is expected to hold a cloud-managed and a self-hosted
+  session at once.
+- The device flow (`packages/cli/src/login.ts`) speaks plain `fetch` against the deployment's
+  `/api/auth/device/**`, not Better Auth's client: the CLI is a terminal adapter and must not pull
+  a server-side authentication library. `fetch` is injectable so the specs never open a socket.
 
 ## Adding a command
 
