@@ -1,9 +1,0 @@
----
-title: Issue-to-PR workflow
----
-
-<!-- Included verbatim from the canonical docs/architecture.md at the
-repository root. Edit it there. The issues.* policy keys are documented in
-/guide/configuration. -->
-
-<!--@include: ../../../../docs/architecture.md#issue-to-pr-->

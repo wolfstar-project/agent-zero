@@ -48,7 +48,7 @@ Agent Zero is an open-source autonomous engineer that finds, fixes, and verifies
 | `packages/i18n`           | `@agent-zero/i18n`           | Locale messages and i18n tooling                                 |
 | `packages/mail`           | `@agent-zero/mail`           | Transactional mail templates                                     |
 | `apps/dashboard`          | `@agent-zero/dashboard`      | The single deployable app and composition root                   |
-| `apps/docs`               | `@agent-zero/docs`           | VitePress documentation site (not deployed with the dashboard)   |
+| `apps/docs`               | `@agent-zero/docs`           | Docus documentation site (not deployed with the dashboard)       |
 | `apps/marketing`          | `@agent-zero/marketing`      | Frontend-only public marketing site                              |
 | `apps/mail-preview`       | `@agent-zero/mail-preview`   | Dev-only Maizzle preview server for `packages/mail`              |
 
@@ -96,6 +96,7 @@ aube run check:repo      # community files and Agent Skills
 aube run db:generate     # generate Drizzle migrations
 aube run db:migrate      # apply migrations to the configured database
 aube run i18n:report     # find missing or dynamic i18n keys
+aube run mail:compile    # re-render the checked-in mail templates
 aube run mail:preview    # start the Maizzle preview server
 aube run skills:list     # show Skilld-managed project skills
 aube run skills:install  # restore Skilld links for Codex
@@ -104,7 +105,7 @@ aube run clean           # remove build artifacts
 
 ### Package scripts
 
-Every runtime package exposes `build`, `clean`, `lint`, `lint:fix`, `test`, and `typecheck`. `packages/database` adds `db:generate` and `db:migrate`, `packages/i18n` adds the `i18n:*` scripts, and the Nuxt apps add `dev`, `preview`, and browser-test scripts.
+Every runtime package exposes `build`, `clean`, `lint`, `lint:fix`, `test`, and `typecheck`. `packages/database` adds `db:generate` and `db:migrate`, `packages/i18n` adds the `i18n:*` scripts, `packages/mail` adds `mail:compile`, and the Nuxt apps add `dev`, `preview`, and browser-test scripts.
 
 ### Targeting specific packages
 
@@ -133,7 +134,7 @@ Use the smallest relevant check while iterating, then run the complete set befor
 - `packages/database`: the schema, the Drizzle client, and the checked-in migrations. The only package that talks to Postgres. No policy, no HTTP, no runtime imports.
 - `packages/auth`: authentication policy and the Better Auth options factory. Reads the store through `packages/database`. No HTTP server, no runtime imports.
 - `packages/api`: the oRPC router and control-plane operations. The only package that composes the runtime, source-control, models, and config adapters into one API surface. Holds no HTTP host of its own.
-- `apps/docs`: the VitePress documentation site. Not deployed with the dashboard. The canonical architecture and provider references remain in `docs/*.md` (the site includes them verbatim); edit those files, not copies.
+- `apps/docs`: the Docus documentation site. Not deployed with the dashboard. The canonical architecture and provider references remain in `docs/*.md` (the site includes them verbatim); edit those files, not copies.
 - `apps/mail-preview`: dev-only Maizzle preview server for `packages/mail` templates. Not deployed; nothing may import it.
 - `apps/dashboard`: the single deployable app and composition root. A Nuxt app whose `server/` directory hosts `packages/api`'s router over `/rpc/**` (typed RPC) and `/api/v1/**` (OpenAPI/REST, with docs at `/api/v1/docs`), and mounts Better Auth in-process at `/api/auth/**` via `server/auth.config.ts`. The only process that opens the database, and it does so through `packages/database`.
 - `apps/marketing`: frontend-only Nuxt public marketing site. No persistence, no credentials, no session, no runtime-package imports; nothing imports it. Server-rendered and prerendered because it must be crawlable, so the only Nitro routes are the ones `@nuxtjs/seo` generates. Copy lives in `packages/i18n` (`locales/<locale>/marketing.json`), never in the app.

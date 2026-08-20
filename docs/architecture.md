@@ -1,5 +1,5 @@
 <!--
-The #region markers below let the VitePress site (apps/docs) include individual
+The #region markers below let the docs site (apps/docs) include individual
 sections of this file, so the site and this canonical document never diverge.
 Keep them wrapping their sections when editing.
 -->

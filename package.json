@@ -21,6 +21,7 @@
     "lint": "turbo run lint",
     "lint:ci": "aube run format:check && aube run lint && aube run knip",
     "lint:fix": "turbo run lint:fix",
+    "mail:compile": "turbo run mail:compile",
     "mail:preview": "turbo run dev --filter=@agent-zero/mail-preview",
     "prepare": "node .husky/install.mjs && skilld prepare --agent codex",
     "skills:install": "skilld install --agent codex",

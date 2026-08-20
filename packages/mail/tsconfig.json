@@ -1,5 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "dist" },
-  "include": ["src/**/*.ts"]
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    // The template compiler runs directly through Node's type stripping, which resolves relative
+    // imports verbatim, so its specifiers must keep their real .ts extension.
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "src/util/compiled-templates.json"]
 }

@@ -26,9 +26,11 @@
       "entry": ["src/index.ts", "scripts/*.ts", "lunaria.config.ts"],
     },
     "packages/mail": {
-      // maizzle.config.ts is discovered by Maizzle's own `render()` call by filesystem
-      // convention (it walks up from the template path), not imported by anything in src/.
-      "entry": ["src/index.ts", "maizzle.config.ts"],
+      // The template compiler is invoked directly (`node scripts/compile-templates.ts`) from
+      // package.json rather than imported, so it is its own entry point. maizzle.config.ts is
+      // discovered by Maizzle's own `render()` call by filesystem convention (it walks up from
+      // the template path), not imported by anything in src/.
+      "entry": ["src/index.ts", "scripts/*.ts", "maizzle.config.ts"],
       // Resolved by Maizzle's Tailwind integration from the package name, not imported
       // directly: it registers itself as the `@maizzle/tailwindcss` plugin for `css.inline`.
       "ignoreDependencies": ["@maizzle/tailwindcss"],
@@ -46,9 +48,12 @@
       ],
     },
     "apps/docs": {
-      // VitePress discovers its config (and an optional theme) from the
-      // filesystem; nothing imports them.
-      "entry": [".vitepress/config.ts"],
+      // A Docus app: Nuxt discovers the config and app.config from the
+      // filesystem; nothing imports them. The docus layer is referenced only
+      // as the `extends: ['docus']` string in nuxt.config.ts, which knip
+      // cannot trace to the dependency.
+      "entry": ["nuxt.config.ts", "app/app.config.ts"],
+      "ignoreDependencies": ["docus"],
     },
     "apps/dashboard": {
       // Nuxt 4 keeps application code in app/, which knip's Nuxt plugin does

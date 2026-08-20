@@ -1,8 +1,0 @@
----
-title: Model providers
----
-
-<!-- The canonical reference lives at docs/model-providers.md in the
-repository so coding agents and the site read the same source. Edit it there. -->
-
-<!--@include: ../../../docs/model-providers.md-->

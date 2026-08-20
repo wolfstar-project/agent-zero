@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vitepress build",
-    "clean": "rm -rf .vitepress/dist .vitepress/cache",
-    "dev": "vitepress dev",
-    "preview": "vitepress preview"
+    "build": "nuxt build",
+    "clean": "nuxt cleanup",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
   },
-  "devDependencies": {
-    "vitepress": "^1.6.4"
+  "dependencies": {
+    "docus": "^5.12.3",
+    "nuxt": "^4.5.2"
   }
 }
