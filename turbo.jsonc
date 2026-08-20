@@ -14,7 +14,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo", ".vitepress/dist/**"],
+      "outputs": ["dist/**", ".output/**", "*.tsbuildinfo"],
     },
     "@agent-zero/dashboard#build": {
       "dependsOn": ["^build"],
@@ -50,9 +50,11 @@
     },
     "@agent-zero/docs#build": {
       "dependsOn": ["^build"],
-      "env": ["DOCS_BASE"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".vitepress/dist/**"],
+      // The canonical architecture and provider references are pulled in from the
+      // repository-root docs/ directory by the @include hook in nuxt.config.ts.
+      "env": ["NUXT_APP_BASE_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "../../docs/*.md"],
+      "outputs": [".output/**"],
     },
     "typecheck": {
       "dependsOn": ["^build"],
