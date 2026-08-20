@@ -98,8 +98,7 @@
 body {
   background:
     linear-gradient(var(--az-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--az-grid) 1px, transparent 1px),
-    var(--ui-bg);
+    linear-gradient(90deg, var(--az-grid) 1px, transparent 1px), var(--ui-bg);
   background-size:
     32px 32px,
     32px 32px,
