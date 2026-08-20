@@ -11,7 +11,7 @@
       <p class="m-0 mt-4 text-xs text-muted">
         {{ signedIn ? $t('auth.invite.acceptedSignedIn') : $t('auth.invite.accepted') }}
       </p>
-      <NuxtLink class="btn-subtle mt-4 w-full" :to="signedIn ? '/' : loginPath">
+      <NuxtLink class="btn-subtle mt-4 w-full" :to="signedIn ? '/' : '/login'">
         {{ signedIn ? $t('auth.invite.continue') : $t('auth.invite.signIn') }}
       </NuxtLink>
     </template>
@@ -92,7 +92,7 @@
       <p class="m-0 mt-4 text-xs text-ink" role="alert">
         {{ stage === 'missingToken' ? $t('auth.invite.missingToken') : invalidMessage }}
       </p>
-      <NuxtLink class="btn-subtle mt-4 w-full" :to="loginPath">
+      <NuxtLink class="btn-subtle mt-4 w-full" to="/login">
         {{ $t('auth.invite.signIn') }}
       </NuxtLink>
     </template>
@@ -101,7 +101,6 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { loginPath } from '~~/config/app';
 
 /**
  * The single redemption page every invitation link points at.
@@ -130,7 +129,7 @@ const i18n = useI18n();
  */
 const authRuntimeConfig = useRuntimeConfig().public.auth;
 const signInLink = computed(() => ({
-  path: loginPath,
+  path: '/login',
   query: { [authRuntimeConfig?.redirectQueryKey ?? 'redirect']: route.fullPath },
 }));
 
