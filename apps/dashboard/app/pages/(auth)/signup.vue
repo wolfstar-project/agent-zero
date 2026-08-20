@@ -68,8 +68,9 @@
  * Registration lives on its own route rather than behind a toggle on the sign-in page, so the two
  * flows have distinct URLs to link to, bookmark, and gate.
  *
- * `enableSignup` only decides what this page offers. The server rejects sign-up regardless, so the
- * closed state below is presentation, not enforcement.
+ * `enableSignup` only decides what this page offers. The server enforces the same policy on its own
+ * from the same environment, independent of this page, so the closed state below is presentation,
+ * not the actual gate.
  */
 definePageMeta({ layout: 'auth' });
 
