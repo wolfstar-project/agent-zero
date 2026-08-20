@@ -96,6 +96,7 @@ aube run check:repo      # community files and Agent Skills
 aube run db:generate     # generate Drizzle migrations
 aube run db:migrate      # apply migrations to the configured database
 aube run i18n:report     # find missing or dynamic i18n keys
+aube run mail:compile    # re-render the checked-in mail templates
 aube run mail:preview    # start the Maizzle preview server
 aube run skills:list     # show Skilld-managed project skills
 aube run skills:install  # restore Skilld links for Codex
@@ -104,7 +105,7 @@ aube run clean           # remove build artifacts
 
 ### Package scripts
 
-Every runtime package exposes `build`, `clean`, `lint`, `lint:fix`, `test`, and `typecheck`. `packages/database` adds `db:generate` and `db:migrate`, `packages/i18n` adds the `i18n:*` scripts, and the Nuxt apps add `dev`, `preview`, and browser-test scripts.
+Every runtime package exposes `build`, `clean`, `lint`, `lint:fix`, `test`, and `typecheck`. `packages/database` adds `db:generate` and `db:migrate`, `packages/i18n` adds the `i18n:*` scripts, `packages/mail` adds `mail:compile`, and the Nuxt apps add `dev`, `preview`, and browser-test scripts.
 
 ### Targeting specific packages
 
