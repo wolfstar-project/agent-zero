@@ -58,12 +58,20 @@ export function useAppShortcuts(): void {
   const collapsed = useSidebarCollapsed();
   const dialogOpen = useShortcutsDialog();
 
+  // Gated on the sheet being closed: it is a modal overlay, and without the guard `g a`/`g c`
+  // would still navigate and `b` would still move the sidebar out from under it while the reader
+  // is looking at the sheet instead of the page it would obscure.
+  const notWhileDialogOpen = { enabled: () => !dialogOpen.value };
+
   // Vim-style prefixes: `g` then the page's initial. A sequence rather than a bare letter because
   // single letters are the scarce namespace, and navigation is the least frequent action here.
-  useHotkeySequences([
-    { sequence: ['G', 'C'], callback: () => void router.push('/') },
-    { sequence: ['G', 'A'], callback: () => void router.push('/audit') },
-  ]);
+  useHotkeySequences(
+    [
+      { sequence: ['G', 'C'], callback: () => void router.push('/') },
+      { sequence: ['G', 'A'], callback: () => void router.push('/audit') },
+    ],
+    notWhileDialogOpen,
+  );
 
   useHotkeys([
     {
@@ -71,10 +79,12 @@ export function useAppShortcuts(): void {
       callback: () => {
         collapsed.value = !collapsed.value;
       },
+      options: notWhileDialogOpen,
     },
     {
       // Object form because the `Hotkey` string union does not enumerate Shift with punctuation;
-      // `?` is Shift+/ on the layouts this dashboard targets.
+      // `?` is Shift+/ on the layouts this dashboard targets. Left ungated, unlike the bindings
+      // above: it is also how the sheet closes, so disabling it while open would trap the reader.
       hotkey: { key: '/', shift: true },
       callback: () => {
         dialogOpen.value = !dialogOpen.value;

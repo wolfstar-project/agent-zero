@@ -10,6 +10,7 @@
       role="dialog"
       aria-modal="true"
       :aria-label="$t('dashboard.shortcuts.title')"
+      @keydown.tab="trapFocus"
     >
       <div class="section-title">
         <h2 class="m-0 text-xs font-750 tracking-[0.12em] uppercase">
@@ -57,11 +58,37 @@ import { formatForDisplay, useHotkey } from '@tanstack/vue-hotkeys';
 
 import { APP_SHORTCUTS, useShortcutsDialog } from '../../composables/useAppShortcuts';
 
+const FOCUSABLE_SELECTOR =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 const open = useShortcutsDialog();
+const panel = useTemplateRef<HTMLDivElement>('panel');
 const closeButton = useTemplateRef<HTMLButtonElement>('closeButton');
+
+/** Who to hand focus back to once the sheet closes; captured just before focus moves into it. */
+let opener: HTMLElement | null = null;
 
 function close(): void {
   open.value = false;
+}
+
+/**
+ * Keeps Tab cycling inside the sheet instead of reaching whatever `aria-modal` says it covers.
+ * Queried live rather than fixed to the close button, so a future second focusable row stays
+ * trapped correctly without this needing to change.
+ */
+function trapFocus(event: KeyboardEvent): void {
+  const focusable = [...(panel.value?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [])];
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 // `ignoreInputs: false` so Escape still closes the sheet from a focused control inside it; every
@@ -69,10 +96,17 @@ function close(): void {
 useHotkey('Escape', close, { enabled: open, ignoreInputs: false });
 
 // Focus moves into the sheet when it opens, so the close button — and Escape — are reachable
-// without a pointer, and the reader is not left tabbing behind the overlay.
+// without a pointer, and the reader is not left tabbing behind the overlay. It moves back to
+// whatever had focus before the sheet opened when it closes, rather than leaving the reader
+// wherever the (now invisible) close button used to be.
 watch(open, async (isOpen) => {
-  if (!isOpen) return;
-  await nextTick();
-  closeButton.value?.focus();
+  if (isOpen) {
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    await nextTick();
+    closeButton.value?.focus();
+    return;
+  }
+  opener?.focus();
+  opener = null;
 });
 </script>

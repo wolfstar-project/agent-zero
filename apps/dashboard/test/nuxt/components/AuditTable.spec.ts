@@ -85,6 +85,19 @@ describe('AuditTable', () => {
     expect(wrapper.emitted('retry')).toHaveLength(1);
   });
 
+  it('keeps rows on screen when a load-more failure leaves some behind', async () => {
+    // `error` and non-empty `rows` together mean a `loadMore`, not the initial fetch, is what
+    // failed — see `useAuditLogs` for why a cursorless failure clears `rows` itself. Swapping to
+    // the full error card here would hide rows the reader already has for no reason.
+    const wrapper = await mountSuspended(AuditTable, {
+      props: { rows: RECORDED, error: 'generic' as const },
+    });
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(3);
+    expect(wrapper.text()).toContain('release-manager');
+    expect(wrapper.text()).not.toContain('The audit log could not be read');
+  });
+
   it('offers no retry when the refusal is the reader’s own role', async () => {
     const wrapper = await mountSuspended(AuditTable, {
       props: { rows: [], error: 'forbidden' as const },
@@ -105,6 +118,20 @@ describe('AuditTable', () => {
       expect(wrapper.findAll('tbody tr')[0]?.text()).toContain('ci');
     });
     expect(wrapper.findAll('thead th')[2]?.attributes('aria-sort')).toBe('ascending');
+  });
+
+  it('matches the filter against the timestamp the reader sees, not just its raw ISO form', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    // Whatever `toLocaleString` renders for this instant in the test environment's locale — the
+    // exact string is a fixture detail, not something the filter accessor should have to reparse.
+    const rendered = new Date('2026-08-09T10:00:00.000Z').toLocaleString('en');
+    await wrapper.get('input[type="search"]').setValue(rendered);
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    });
+    expect(wrapper.text()).toContain('task.created');
   });
 
   it('narrows the trail to what the filter matches', async () => {

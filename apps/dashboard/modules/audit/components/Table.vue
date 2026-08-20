@@ -23,7 +23,13 @@
       </label>
     </div>
 
-    <div v-if="error" class="min-h-52 grid place-items-center px-5 py-10 text-center">
+    <!-- Only swaps out the table when there is nothing to show: a failed `loadMore` keeps its
+         rows, and `error` and `rows` cannot both be non-empty for any other reason — a failed
+         cursorless refresh clears `rows` itself, see `useAuditLogs`. -->
+    <div
+      v-if="error && rows.length === 0"
+      class="min-h-52 grid place-items-center px-5 py-10 text-center"
+    >
       <div>
         <div class="mx-auto h-9 w-9 grid place-items-center border border-danger/45 bg-danger/8">
           <Icon aria-hidden="true" class="h-4 w-4 text-danger" name="lucide:shield-alert" />
@@ -231,6 +237,8 @@ const columns = [
     id: 'search',
     accessorFn: (row: AuditRow) =>
       [
+        row.occurredAt,
+        new Date(row.occurredAt).toLocaleString(locale.value),
         row.actorName,
         row.actorKind,
         row.action,
