@@ -7,8 +7,8 @@ import { openapi } from '@orpc/openapi';
 import { ORPCError, os } from '@orpc/server';
 import { z } from 'zod';
 
-import type { Principal } from '../access.js';
 import type { TaskStore } from '../control-plane.js';
+import { dashboardOverview } from '../dashboard.js';
 import {
   approvalInput,
   createTask,
@@ -18,27 +18,30 @@ import {
   listTasks,
   taskInput,
 } from '../operations.js';
-import { requestLoggerStorage } from './logging.js';
+import { authMiddleware, type BetterAuthContext } from './auth.js';
+import { useLogger } from './logging.js';
 
-export interface RpcContext {
+export interface RpcContext extends BetterAuthContext {
   store: TaskStore;
-  /** Authenticated caller resolved by the transport; absent for anonymous requests. */
-  principal?: Principal;
   /** Whether `tasks.create` may target this repository. Fails closed when absent. */
   mayTargetRepository?: (repository: string) => boolean;
 }
 
 const procedure = os.$context<RpcContext>();
 
-/** Mutations require an authenticated principal; reads stay open for the dashboard. */
-const authenticated = procedure.use(({ context, next }) => {
-  const principal = context.principal;
-  if (!principal) throw new ORPCError('UNAUTHORIZED', { message: 'Authentication required' });
-  // `getStore()` reads the AsyncLocalStorage directly rather than the throwing `useLogger()`
-  // helper: it is `undefined` outside an active request, which is exactly the case for tests that
-  // call procedures through `createRouterClient` without the transport's `EvlogHandlerPlugin`.
-  requestLoggerStorage?.getStore()?.set({ principal: principal.name });
-  return next({ context: { principal } });
+/**
+ * Mutations require an authenticated principal; reads stay open for the dashboard.
+ *
+ * The identity itself comes from `authMiddleware`, which accepts either a static operator token
+ * the transport pre-resolved or a Better Auth dashboard session. Logging it happens here rather
+ * than in that middleware so the Better Auth integration stays free of this package's request
+ * logger, and so the wide event records how the caller authenticated alongside who they are: the
+ * two sources grant different execution modes and are revoked through different channels, so an
+ * audit trail carrying only the name could not tell them apart.
+ */
+const authenticated = procedure.use(authMiddleware).use(({ context, next }) => {
+  useLogger().set({ principal: context.principal.name, principalKind: context.principal.kind });
+  return next();
 });
 
 export const rpcRouter = {
@@ -52,6 +55,18 @@ export const rpcRouter = {
       }),
     )
     .handler(() => health()),
+  dashboard: {
+    overview: procedure
+      .meta(
+        openapi({
+          method: 'GET',
+          path: '/dashboard',
+          tags: ['Dashboard'],
+          summary: 'Aggregate task history with queue, approval, and usage counters',
+        }),
+      )
+      .handler(async ({ context }) => dashboardOverview(await context.store.list())),
+  },
   tasks: {
     list: procedure
       .meta(

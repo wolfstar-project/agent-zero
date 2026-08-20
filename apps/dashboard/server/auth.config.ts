@@ -2,6 +2,7 @@ import { authBetterAuthOptions, authDatabaseOptionsFromEnvironment } from '@agen
 import { createMailer, mailProviderNameFromEnvironment } from '@agent-zero/mail';
 import { defineServerAuth } from '@onmax/nuxt-better-auth/config';
 import { memoryAdapter } from 'better-auth/adapters/memory';
+import { testUtils } from 'better-auth/plugins';
 
 // This module is the composition root for authentication, so it is where the mail transport is
 // bound and injected. `packages/auth` declares the delivery contract structurally and never
@@ -101,7 +102,14 @@ export default defineServerAuth(
           verification: [],
           invite: [],
           inviteUse: [],
+          deviceCode: [],
         }),
+        // Test-only, and deliberately added here rather than in `packages/auth`: `testUtils`
+        // registers no HTTP route, but it hangs privileged helpers off the auth context that can
+        // mint sessions and delete accounts without credentials. Keeping it inside this branch
+        // means a real deployment's context never carries them, because the branch is only taken
+        // when the store is the throwaway in-memory one.
+        plugins: [...options.plugins, testUtils()],
         // The default rate limiter can't determine a per-client IP in this sandboxed preview
         // server, so it falls back to one shared bucket across every request. A parallel
         // Playwright run's repeated sign-up/sign-in calls exhaust that bucket in a few tests;

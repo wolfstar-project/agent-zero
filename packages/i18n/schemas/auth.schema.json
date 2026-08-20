@@ -118,6 +118,57 @@
           },
           "additionalProperties": false
         },
+        "device": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            },
+            "submit": {
+              "type": "string"
+            },
+            "submitPending": {
+              "type": "string"
+            },
+            "confirmTitle": {
+              "type": "string"
+            },
+            "confirmPrompt": {
+              "type": "string"
+            },
+            "approve": {
+              "type": "string"
+            },
+            "approvePending": {
+              "type": "string"
+            },
+            "deny": {
+              "type": "string"
+            },
+            "denyPending": {
+              "type": "string"
+            },
+            "approved": {
+              "type": "string"
+            },
+            "denied": {
+              "type": "string"
+            },
+            "invalid": {
+              "type": "string"
+            },
+            "missingCode": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "session": {
           "type": "object",
           "properties": {

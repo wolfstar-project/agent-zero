@@ -36,9 +36,28 @@ describe('parseCliArguments', () => {
       '--feedback is only valid',
     );
     expect(() => parseCliArguments(['doctor', '--proactive'])).toThrow('--proactive is only valid');
+    expect(() => parseCliArguments(['doctor', '--url', 'https://zero.test'])).toThrow(
+      '--url is only valid',
+    );
     expect(() => parseCliArguments(['review', '--proactive', '--feedback', 'text'])).toThrow(
       'cannot be combined',
     );
+  });
+
+  it('accepts a deployment origin for the session commands', () => {
+    expect(parseCliArguments(['login', '--url', 'https://zero.test'])).toMatchObject({
+      command: 'login',
+      url: 'https://zero.test',
+    });
+    expect(parseCliArguments(['logout', '--url', 'https://zero.test'])).toMatchObject({
+      command: 'logout',
+      url: 'https://zero.test',
+    });
+  });
+
+  it('leaves the origin unset so login can resolve it from the environment', () => {
+    expect(parseCliArguments(['login']).url).toBeUndefined();
+    expect(parseCliArguments(['login', '--url', '  ']).url).toBeUndefined();
   });
 
   it('supports proactive diff review without reviewer feedback', () => {
