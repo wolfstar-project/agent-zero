@@ -100,7 +100,7 @@
             "title": {
               "type": "string"
             },
-            "order": {
+            "caption": {
               "type": "string"
             },
             "columns": {
@@ -223,9 +223,6 @@
                 "title": {
                   "type": "string"
                 },
-                "order": {
-                  "type": "string"
-                },
                 "caption": {
                   "type": "string"
                 },
@@ -233,6 +230,9 @@
                   "type": "object",
                   "properties": {
                     "time": {
+                      "type": "string"
+                    },
+                    "source": {
                       "type": "string"
                     },
                     "actor": {
@@ -260,6 +260,18 @@
                   "type": "string"
                 },
                 "emptyBody": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "controlPlane": {
+                  "type": "string"
+                },
+                "authentication": {
                   "type": "string"
                 }
               },
@@ -300,6 +312,57 @@
                 }
               },
               "additionalProperties": false
+            },
+            "authNotice": {
+              "type": "object",
+              "properties": {
+                "forbidden": {
+                  "type": "string"
+                },
+                "generic": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "shortcuts": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "hint": {
+              "type": "string"
+            },
+            "control": {
+              "type": "string"
+            },
+            "audit": {
+              "type": "string"
+            },
+            "sidebar": {
+              "type": "string"
+            },
+            "help": {
+              "type": "string"
+            },
+            "refresh": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "previous": {
+              "type": "string"
+            },
+            "more": {
+              "type": "string"
             }
           },
           "additionalProperties": false

@@ -45,6 +45,7 @@
     <section class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div class="min-w-0 space-y-4">
         <TaskTable
+          ref="taskTable"
           :tasks="overview.tasks"
           :selected-id="selectedId"
           @select="selectedId = $event"
@@ -58,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { useHotkeys } from '@tanstack/vue-hotkeys';
 import { useQuery } from '@tanstack/vue-query';
 import type { DashboardOverview } from '~~/modules/dashboard/types/dashboard';
 
@@ -126,4 +128,41 @@ function refreshDashboard(): void {
   now.value = new Date();
   void refetch();
 }
+
+// Typed structurally rather than with `InstanceType`: the component is globally registered by the
+// dashboard module, so there is no import here to take a type from.
+const taskTable = useTemplateRef<{ focusFilter: () => void; orderedIds: string[] }>('taskTable');
+
+/**
+ * Walks the selection through the rows as they are displayed, which is what the table exposes:
+ * sorting and filtering both reorder the queue, so `overview.tasks` is the wrong list to step.
+ */
+function moveSelection(offset: number): void {
+  const ids = taskTable.value?.orderedIds ?? [];
+  if (ids.length === 0) return;
+
+  const current = selectedId.value === undefined ? -1 : ids.indexOf(selectedId.value);
+  // With nothing selected, `j` enters at the top of the queue and `k` at the bottom.
+  const next =
+    current === -1
+      ? offset > 0
+        ? 0
+        : ids.length - 1
+      : Math.min(Math.max(current + offset, 0), ids.length - 1);
+
+  selectedId.value = ids[next];
+}
+
+// The sheet under `?` lists these; keep the two in step when either changes.
+useHotkeys([
+  { hotkey: 'J', callback: () => moveSelection(1) },
+  { hotkey: 'K', callback: () => moveSelection(-1) },
+  { hotkey: 'R', callback: refreshDashboard },
+  {
+    hotkey: '/',
+    callback: () => taskTable.value?.focusFilter(),
+    // Otherwise the slash lands in the field it just focused.
+    options: { preventDefault: true },
+  },
+]);
 </script>

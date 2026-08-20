@@ -32,7 +32,7 @@
     },
     "queue": {
       "title": "Task queue",
-      "order": "Newest first",
+      "caption": "Tasks known to the control plane.",
       "columns": {
         "id": "ID",
         "repository": "Repository",
@@ -73,10 +73,10 @@
       },
       "table": {
         "title": "Recorded actions",
-        "order": "Newest first",
-        "caption": "Actions recorded by the control plane, newest first.",
+        "caption": "Actions recorded by the control plane and by authentication.",
         "columns": {
           "time": "Time",
+          "source": "Source",
           "actor": "Actor",
           "action": "Action",
           "subject": "Subject",
@@ -85,7 +85,11 @@
         "loading": "Loading the audit log…",
         "loadMore": "Load older entries",
         "emptyTitle": "No actions recorded yet",
-        "emptyBody": "Task submissions and approval decisions appear here as they are made."
+        "emptyBody": "Task submissions, approval decisions, and sign-ins appear here as they are made."
+      },
+      "source": {
+        "controlPlane": "Control plane",
+        "authentication": "Authentication"
       },
       "outcome": {
         "success": "success",
@@ -98,7 +102,24 @@
         "unauthorized": "Your session has expired. Sign in again to read the audit log.",
         "generic": "The audit log is temporarily unavailable. Try again in a moment.",
         "retry": "Try again"
+      },
+      "authNotice": {
+        "forbidden": "Authentication events are not listed: reading them requires owning or administering the organizations this account belongs to.",
+        "generic": "Authentication events are temporarily unavailable; the control-plane trail is complete."
       }
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "hint": "Shortcuts are ignored while you are typing in a field.",
+      "control": "Go to the control plane",
+      "audit": "Go to the audit log",
+      "sidebar": "Collapse or expand the sidebar",
+      "help": "Show this list",
+      "refresh": "Refresh the current view",
+      "filter": "Focus the table filter",
+      "next": "Select the next task",
+      "previous": "Select the previous task",
+      "more": "Load older audit entries"
     }
   }
 }

@@ -1,41 +1,75 @@
-import type { AuditEvent } from '@agent-zero/api';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import AuditTable from '~~/modules/audit/components/Table.vue';
+import type { AuditRow } from '~~/modules/audit/types/audit';
 
-const RECORDED: AuditEvent[] = [
+const RECORDED: AuditRow[] = [
   {
-    id: 'audit_1',
+    id: 'control:audit_1',
     occurredAt: '2026-08-09T10:00:00.000Z',
-    actor: { kind: 'principal', name: 'release-manager' },
+    source: 'control-plane',
+    actorName: 'release-manager',
+    actorKind: 'principal',
     action: 'task.created',
+    subject: 'task:az_1',
     outcome: 'success',
-    subject: { type: 'task', id: 'az_1' },
-    metadata: { repository: 'acme/app', mode: 'observe' },
+    details: 'repository=acme/app · mode=observe',
   },
   {
-    id: 'audit_2',
+    id: 'control:audit_2',
     occurredAt: '2026-08-09T09:59:00.000Z',
-    actor: { kind: 'principal', name: 'ci' },
+    source: 'control-plane',
+    actorName: 'ci',
+    actorKind: 'principal',
     action: 'task.create',
+    subject: '',
     outcome: 'denied',
-    metadata: { reason: 'mode-not-granted' },
+    details: 'reason=mode-not-granted',
+  },
+  {
+    id: 'auth:2026-08-09T09:58:00.000Z:sign-in:0',
+    occurredAt: '2026-08-09T09:58:00.000Z',
+    source: 'authentication',
+    actorName: 'sam@example.com',
+    actorKind: 'user',
+    action: 'user.sign_in',
+    subject: '',
+    // No outcome: the hosted trail records none.
+    details: 'IT · Milan',
   },
 ];
 
 describe('AuditTable', () => {
   it('renders one row per recorded action, with actor and outcome', async () => {
-    const wrapper = await mountSuspended(AuditTable, { props: { events: RECORDED } });
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
 
-    expect(wrapper.findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.findAll('tbody tr')).toHaveLength(3);
     expect(wrapper.text()).toContain('release-manager');
     expect(wrapper.text()).toContain('task.created');
     expect(wrapper.text()).toContain('task:az_1');
     expect(wrapper.text()).toContain('denied');
   });
 
+  it('says which trail vouches for each row', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    expect(wrapper.text()).toContain('Control plane');
+    expect(wrapper.text()).toContain('Authentication');
+  });
+
+  it('claims no outcome for a row whose source records none', async () => {
+    const wrapper = await mountSuspended(AuditTable, {
+      props: { rows: [RECORDED[2] as AuditRow] },
+    });
+
+    // The outcome cell is the last one; it must not borrow a verdict the hosted trail never gave.
+    const outcome = wrapper.findAll('tbody tr td').at(-1);
+    expect(outcome?.text()).toBe('—');
+    expect(wrapper.text()).not.toContain('success');
+  });
+
   it('explains an empty trail rather than rendering a bare table', async () => {
-    const wrapper = await mountSuspended(AuditTable, { props: { events: [] } });
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: [] } });
 
     expect(wrapper.find('tbody').exists()).toBe(false);
     expect(wrapper.text()).toContain('No actions recorded yet');
@@ -43,7 +77,7 @@ describe('AuditTable', () => {
 
   it('offers a retry for a failure the reader can do something about', async () => {
     const wrapper = await mountSuspended(AuditTable, {
-      props: { events: [], error: 'generic' as const },
+      props: { rows: [], error: 'generic' as const },
     });
 
     await wrapper.get('button').trigger('click');
@@ -53,11 +87,57 @@ describe('AuditTable', () => {
 
   it('offers no retry when the refusal is the reader’s own role', async () => {
     const wrapper = await mountSuspended(AuditTable, {
-      props: { events: [], error: 'forbidden' as const },
+      props: { rows: [], error: 'forbidden' as const },
     });
 
     // Retrying cannot grant a role, so the button that implies it would is absent.
     expect(wrapper.find('button').exists()).toBe(false);
     expect(wrapper.text()).toContain('admin role');
+  });
+
+  it('reorders the trail when a column header is used', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    // Third header is Actor; ascending puts `ci` first.
+    await wrapper.findAll('thead button')[2]?.trigger('click');
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')[0]?.text()).toContain('ci');
+    });
+    expect(wrapper.findAll('thead th')[2]?.attributes('aria-sort')).toBe('ascending');
+  });
+
+  it('narrows the trail to what the filter matches', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    await wrapper.get('input[type="search"]').setValue('release-manager');
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    });
+    expect(wrapper.text()).toContain('task.created');
+  });
+
+  it('filters across both trails on one box', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    await wrapper.get('input[type="search"]').setValue('sam@example.com');
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('tbody tr')).toHaveLength(1);
+    });
+    expect(wrapper.text()).toContain('user.sign_in');
+  });
+
+  it('says so when the filter matches nothing, rather than looking empty', async () => {
+    const wrapper = await mountSuspended(AuditTable, { props: { rows: RECORDED } });
+
+    await wrapper.get('input[type="search"]').setValue('nothing-matches-this');
+
+    await vi.waitFor(() => {
+      expect(wrapper.text()).toContain('No rows match this filter.');
+    });
+    // The empty-trail copy would be a lie here: the trail has entries, the filter hides them.
+    expect(wrapper.text()).not.toContain('No actions recorded yet');
   });
 });
