@@ -1,3 +1,5 @@
+import { withHttps } from 'ufo';
+
 import type { EnvironmentRecord, EnvType } from './types.js';
 
 /**

@@ -22,18 +22,6 @@ function isUnresolved(value: string): boolean {
 }
 
 /**
- * Normalises a nullable field back to `null` when it is empty.
- *
- * Nuxt rewrites every `null` in `runtimeConfig` to `''` so each key stays overridable through its
- * `NUXT_PUBLIC_*` variable, which means the three nullable fields arrive here as empty strings
- * rather than as the `null` the build published. Without this they would read as resolved, and the
- * run-time pass would decline to fill exactly the fields it exists to fill.
- */
-function nullable(value: string | null): string | null {
-  return value?.trim() ? value : null;
-}
-
-/**
  * Completes build metadata from the environment the bundle is *running* in.
  *
  * This is the fallback for every deployment that is not Vercel. On Vercel the build itself runs
@@ -60,7 +48,7 @@ export function runtimeBuildInfo(
   const branch = isUnresolved(buildInfo.branch)
     ? (metadata.branch ?? unknownRevision)
     : buildInfo.branch;
-  const prNumber = nullable(buildInfo.prNumber) ?? metadata.prNumber;
+  const prNumber = buildInfo.prNumber ?? metadata.prNumber;
 
   const env = runtimeEnvType(
     buildInfo,
@@ -80,8 +68,8 @@ export function runtimeBuildInfo(
     branch,
     env,
     prNumber,
-    previewUrl: nullable(buildInfo.previewUrl) ?? previewUrlFromMetadata(metadata, env),
-    productionUrl: nullable(buildInfo.productionUrl) ?? productionUrlFromMetadata(metadata, env),
+    previewUrl: buildInfo.previewUrl ?? previewUrlFromMetadata(metadata, env),
+    productionUrl: buildInfo.productionUrl ?? productionUrlFromMetadata(metadata, env),
   };
 }
 
