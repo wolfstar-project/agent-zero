@@ -100,7 +100,7 @@
             "title": {
               "type": "string"
             },
-            "order": {
+            "caption": {
               "type": "string"
             },
             "columns": {
@@ -197,6 +197,171 @@
               "type": "string"
             },
             "emptyBody": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "audit": {
+          "type": "object",
+          "properties": {
+            "header": {
+              "type": "object",
+              "properties": {
+                "eyebrow": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "table": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "caption": {
+                  "type": "string"
+                },
+                "columns": {
+                  "type": "object",
+                  "properties": {
+                    "time": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "actor": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "subject": {
+                      "type": "string"
+                    },
+                    "outcome": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "loading": {
+                  "type": "string"
+                },
+                "loadMore": {
+                  "type": "string"
+                },
+                "emptyTitle": {
+                  "type": "string"
+                },
+                "emptyBody": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "controlPlane": {
+                  "type": "string"
+                },
+                "authentication": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "outcome": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "string"
+                },
+                "denied": {
+                  "type": "string"
+                },
+                "failure": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "error": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "forbidden": {
+                  "type": "string"
+                },
+                "unauthorized": {
+                  "type": "string"
+                },
+                "generic": {
+                  "type": "string"
+                },
+                "retry": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "authNotice": {
+              "type": "object",
+              "properties": {
+                "forbidden": {
+                  "type": "string"
+                },
+                "generic": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "shortcuts": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "hint": {
+              "type": "string"
+            },
+            "control": {
+              "type": "string"
+            },
+            "audit": {
+              "type": "string"
+            },
+            "sidebar": {
+              "type": "string"
+            },
+            "help": {
+              "type": "string"
+            },
+            "refresh": {
+              "type": "string"
+            },
+            "filter": {
+              "type": "string"
+            },
+            "next": {
+              "type": "string"
+            },
+            "previous": {
+              "type": "string"
+            },
+            "more": {
               "type": "string"
             }
           },

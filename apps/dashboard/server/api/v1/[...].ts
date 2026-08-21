@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
   try {
     const { matched, response } = await handler.handle(request, {
       prefix: '/api/v1',
-      context: buildRpcContext(request, access, taskStore),
+      context: { ...buildRpcContext(request, access, taskStore), audit: auditRecorder },
     });
     if (matched) return response;
   } catch (error) {

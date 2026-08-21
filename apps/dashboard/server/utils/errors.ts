@@ -40,6 +40,14 @@ export const errors = {
     }),
 
   /**
+   * The caller is signed in, but the session does not carry the role the route requires. Distinct
+   * from the 401 `requireUserSession` raises for an absent session: signing in again would not
+   * help, and saying so is what keeps the reader from retrying the login loop.
+   */
+  forbidden: (reason: string) =>
+    createError({ statusCode: 403, statusMessage: 'Forbidden', message: reason }),
+
+  /**
    * An unexpected failure, redacted before it reaches either the client or Nitro's error log.
    *
    * The original error is deliberately not attached as `cause`: it is the value most likely to

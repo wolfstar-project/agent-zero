@@ -30,6 +30,27 @@
           "properties": {
             "refresh": {
               "type": "string"
+            },
+            "close": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "table": {
+          "type": "object",
+          "properties": {
+            "filterLabel": {
+              "type": "string"
+            },
+            "filterPlaceholder": {
+              "type": "string"
+            },
+            "noMatches": {
+              "type": "string"
+            },
+            "sortBy": {
+              "type": "string"
             }
           },
           "additionalProperties": false
