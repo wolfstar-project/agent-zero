@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertExecutableCommand,
   discoverChecks,
-  packageManagerFromLockfiles,
+  detectPackageManager,
   resolveChecks,
 } from './checks.js';
 
@@ -17,12 +17,23 @@ const packageJson = JSON.stringify({
   },
 });
 
-describe('packageManagerFromLockfiles', () => {
-  it('identifies the pinned manager and defaults to npm', () => {
-    expect(packageManagerFromLockfiles(['pnpm-lock.yaml'])).toBe('pnpm');
-    expect(packageManagerFromLockfiles(['yarn.lock'])).toBe('yarn');
-    expect(packageManagerFromLockfiles(['bun.lock'])).toBe('bun');
-    expect(packageManagerFromLockfiles([])).toBe('npm');
+describe('detectPackageManager', () => {
+  it('prefers the packageManager field over a compatible lockfile', () => {
+    expect(
+      detectPackageManager({
+        packageJson: JSON.stringify({ packageManager: 'aube@1.41.0' }),
+        lockfiles: ['pnpm-lock.yaml'],
+      }),
+    ).toBe('aube');
+  });
+
+  it('falls back through supported lockfiles and then npm', () => {
+    expect(detectPackageManager({ packageJson: null, lockfiles: ['aube-lock.yaml'] })).toBe('aube');
+    expect(detectPackageManager({ packageJson: null, lockfiles: ['pnpm-workspace.yaml'] })).toBe(
+      'pnpm',
+    );
+    expect(detectPackageManager({ packageJson: null, lockfiles: ['deno.lock'] })).toBe('deno');
+    expect(detectPackageManager({ packageJson: null, lockfiles: [] })).toBe('npm');
   });
 });
 
@@ -47,6 +58,24 @@ describe('discoverChecks', () => {
     const alternative = JSON.stringify({ scripts: { 'type-check': 'tsc --noEmit' } });
     expect(discoverChecks({ packageJson: alternative, lockfiles: [] })).toEqual([
       'npm run type-check',
+    ]);
+  });
+
+  it('uses the package manager native run command', () => {
+    const denoPackage = JSON.stringify({
+      packageManager: 'deno@2.4.0',
+      scripts: { test: 'deno test' },
+    });
+    expect(discoverChecks({ packageJson: denoPackage, lockfiles: [] })).toEqual(['deno task test']);
+  });
+
+  it('recognizes the workspace package manager declared by Agent Zero', () => {
+    const aubePackage = JSON.stringify({
+      packageManager: 'aube@1.41.0',
+      scripts: { lint: 'aube run format:check && aube run lint' },
+    });
+    expect(discoverChecks({ packageJson: aubePackage, lockfiles: ['pnpm-lock.yaml'] })).toEqual([
+      'aube run lint',
     ]);
   });
 

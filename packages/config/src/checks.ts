@@ -1,12 +1,14 @@
 import { destr } from 'destr';
 import { anyOf, charIn, createRegExp, digit, letter } from 'magic-regexp';
+import type { AgentName } from 'package-manager-detector';
+import { resolveCommand } from 'package-manager-detector/commands';
 
 /** The repository-native check kinds a verified run is expected to execute. */
 export const checkKinds = ['lint', 'typecheck', 'test', 'build'] as const;
 export type CheckKind = (typeof checkKinds)[number];
 
 /** Package managers Agent Zero can invoke a repository script through. */
-export type PackageManager = 'pnpm' | 'yarn' | 'npm' | 'bun';
+export type PackageManager = AgentName;
 
 /** What the runtime observed about a checkout, used to derive its native check commands. */
 export interface RepositoryProbe {
@@ -25,9 +27,14 @@ const scriptCandidates: Readonly<Record<CheckKind, readonly string[]>> = {
 };
 
 const lockfileManagers: readonly (readonly [string, PackageManager])[] = [
+  ['aube-lock.yaml', 'aube'],
+  ['aube-workspace.yaml', 'aube'],
   ['pnpm-lock.yaml', 'pnpm'],
+  ['pnpm-workspace.yaml', 'pnpm'],
   ['bun.lock', 'bun'],
   ['bun.lockb', 'bun'],
+  ['deno.lock', 'deno'],
+  ['nub.lock', 'nub'],
   ['yarn.lock', 'yarn'],
   ['package-lock.json', 'npm'],
   ['npm-shrinkwrap.json', 'npm'],
@@ -44,7 +51,16 @@ const SAFE_SCRIPT_NAME = createRegExp(
     .at.lineEnd(),
 );
 
-/** Identify the package manager a checkout pins, defaulting to npm. */
+const packageManagers = new Set<string>(['npm', 'yarn', 'pnpm', 'bun', 'deno', 'nub', 'aube']);
+const PACKAGE_MANAGER_RANGE_PREFIX = /^\^/;
+
+/** Identify the package manager a checkout pins, following package-manager-detector's signals. */
+export function detectPackageManager(probe: RepositoryProbe): PackageManager {
+  const manifestManager = packageManagerFromManifest(probe.packageJson);
+  return manifestManager ?? packageManagerFromLockfiles(probe.lockfiles);
+}
+
+/** Identify the package manager from lockfiles alone, defaulting to npm. */
 export function packageManagerFromLockfiles(lockfiles: readonly string[]): PackageManager {
   const present = new Set(lockfiles);
   for (const [lockfile, manager] of lockfileManagers) if (present.has(lockfile)) return manager;
@@ -61,14 +77,14 @@ export function packageManagerFromLockfiles(lockfiles: readonly string[]): Packa
 export function discoverChecks(probe: RepositoryProbe): string[] {
   const scripts = readScripts(probe.packageJson);
   if (scripts.length === 0) return [];
-  const manager = packageManagerFromLockfiles(probe.lockfiles);
+  const manager = detectPackageManager(probe);
   const available = new Set(scripts);
   const commands: string[] = [];
   for (const kind of checkKinds) {
     const script = scriptCandidates[kind].find(
       (candidate) => available.has(candidate) && SAFE_SCRIPT_NAME.test(candidate),
     );
-    if (script) commands.push(`${manager} run ${script}`);
+    if (script) commands.push(runScriptCommand(manager, script));
   }
   return commands;
 }
@@ -101,6 +117,33 @@ function readScripts(packageJson: string | null): string[] {
   return Object.entries(parsed.scripts)
     .filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
     .map(([name]) => name);
+}
+
+function packageManagerFromManifest(packageJson: string | null): PackageManager | undefined {
+  if (!packageJson) return undefined;
+  const parsed: unknown = destr(packageJson);
+  if (!isRecord(parsed)) return undefined;
+
+  const declared =
+    typeof parsed.packageManager === 'string'
+      ? parsed.packageManager
+      : isRecord(parsed.devEngines) &&
+          isRecord(parsed.devEngines.packageManager) &&
+          typeof parsed.devEngines.packageManager.name === 'string'
+        ? parsed.devEngines.packageManager.name
+        : undefined;
+  const name = declared?.replace(PACKAGE_MANAGER_RANGE_PREFIX, '').split('@')[0];
+  return name !== undefined && isPackageManager(name) ? name : undefined;
+}
+
+function runScriptCommand(manager: PackageManager, script: string): string {
+  const resolved = resolveCommand(manager, 'run', [script]);
+  if (!resolved) throw new Error(`Could not resolve run command for ${manager}`);
+  return [resolved.command, ...resolved.args].join(' ');
+}
+
+function isPackageManager(value: string): value is PackageManager {
+  return packageManagers.has(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
