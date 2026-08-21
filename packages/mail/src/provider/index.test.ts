@@ -72,6 +72,10 @@ describe('mailProviderNameFromEnvironment', () => {
     expect(mailProviderNameFromEnvironment({})).toBe('console');
   });
 
+  it('selects Resend when its integration credential is present', () => {
+    expect(mailProviderNameFromEnvironment({ RESEND_API_KEY: 're_integration' })).toBe('resend');
+  });
+
   it('reports the configured transport name', () => {
     expect(mailProviderNameFromEnvironment({ MAIL_PROVIDER: 'smtp' })).toBe('smtp');
   });

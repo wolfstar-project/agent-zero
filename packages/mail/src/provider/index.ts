@@ -46,11 +46,18 @@ function requirePort(
  *
  * Composition roots use this to tell a delivering transport apart from the console default when
  * a feature (such as organization invitations) must not silently log mail instead of sending it.
+ * A Resend credential selects Resend only when no provider was named explicitly, matching hosted
+ * integrations that provision `RESEND_API_KEY` alone without overriding an operator's choice.
  */
 export function mailProviderNameFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
 ): MailProviderName {
-  const configured = environment.MAIL_PROVIDER?.trim() ?? 'console';
+  const configured =
+    environment.MAIL_PROVIDER === undefined
+      ? environment.RESEND_API_KEY?.trim()
+        ? 'resend'
+        : 'console'
+      : environment.MAIL_PROVIDER.trim();
   if (!isProviderName(configured))
     throw new Error(
       `invalid MAIL_PROVIDER: expected one of ${MAIL_PROVIDER_NAMES.join(', ')}, received ${configured}`,
@@ -62,9 +69,9 @@ export function mailProviderNameFromEnvironment(
  * Resolve the configured transport.
  *
  * The single place delivery backends are selected, so callers depend on {@link MailProvider}
- * rather than on any one SDK. Defaults to the console provider: a deployment that has not chosen
- * a transport should log rather than fail to deliver silently, and no error message here echoes a
- * credential.
+ * rather than on any one SDK. Defaults to the console provider when no provider or Resend
+ * credential is present: a deployment that has not chosen a transport should log rather than fail
+ * to deliver silently, and no error message here echoes a credential.
  */
 export function mailProviderFromEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
