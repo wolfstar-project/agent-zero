@@ -31,6 +31,32 @@
         "NUXT_PUBLIC_SITE_URL",
         "NITRO_PRESET",
         "VITEHUB_HOSTING",
+        // Read by packages/build-env to resolve what the build is (version, commit, branch,
+        // deploy channel). Declared so strict env mode does not hide them from `nuxt build`, and
+        // so the resolved metadata is part of the cache key: a bundle that reports the wrong
+        // commit is worse than one that is rebuilt. Whatever a target leaves unset is completed
+        // at boot by the module's server pass instead.
+        "VERCEL",
+        "VERCEL_ENV",
+        "VERCEL_GIT_*",
+        "VERCEL_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+        "NUXT_ENV_VERCEL_*",
+        "NETLIFY",
+        "CONTEXT",
+        "BRANCH",
+        "HEAD",
+        "COMMIT_REF",
+        "REVIEW_ID",
+        "DEPLOY_PRIME_URL",
+        "DEPLOY_URL",
+        "URL",
+        "CF_PAGES*",
+        "GITHUB_ACTIONS",
+        "GITHUB_REF",
+        "GITHUB_REF_NAME",
+        "GITHUB_SHA",
+        "AGENT_ZERO_BUILD_*",
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       // `.vercel/output/**` is where the `vercel` preset writes instead of `.output/`; both are
@@ -44,7 +70,37 @@
       // NITRO_PRESET is declared so the deployment target is explicit and part of the cache key.
       // Nitro does auto-detect a host from the platform variables Turborepo passes through, but
       // those are not hashed, so a cached self-hosted build could otherwise be restored into one.
-      "env": ["MARKETING_SITE_URL", "MARKETING_DASHBOARD_URL", "NITRO_PRESET"],
+      "env": [
+        "MARKETING_SITE_URL",
+        "MARKETING_DASHBOARD_URL",
+        "NITRO_PRESET",
+        // Read by packages/build-env to resolve what the build is (version, commit, branch,
+        // deploy channel). Declared so strict env mode does not hide them from `nuxt build`, and
+        // so the resolved metadata is part of the cache key: a bundle that reports the wrong
+        // commit is worse than one that is rebuilt. Whatever a target leaves unset is completed
+        // at boot by the module's server pass instead.
+        "VERCEL",
+        "VERCEL_ENV",
+        "VERCEL_GIT_*",
+        "VERCEL_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+        "NUXT_ENV_VERCEL_*",
+        "NETLIFY",
+        "CONTEXT",
+        "BRANCH",
+        "HEAD",
+        "COMMIT_REF",
+        "REVIEW_ID",
+        "DEPLOY_PRIME_URL",
+        "DEPLOY_URL",
+        "URL",
+        "CF_PAGES*",
+        "GITHUB_ACTIONS",
+        "GITHUB_REF",
+        "GITHUB_REF_NAME",
+        "GITHUB_SHA",
+        "AGENT_ZERO_BUILD_*",
+      ],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".output/**", ".vercel/output/**"],
     },
