@@ -76,12 +76,21 @@ export async function resolveBuildInfo(options: ResolveBuildInfoOptions): Promis
  * The version of the package being built, read from its own manifest.
  *
  * Read rather than imported so the value comes from the app's `package.json` at the path the build
- * is running in, not from this package's own manifest bundled at compile time.
+ * is running in, not from this package's own manifest bundled at compile time. Read directly rather
+ * than through `pkg-types`, whose `readPackageJSON` ascends to the nearest manifest: in a workspace
+ * that resolves a missing app manifest to the repository root's, reporting its version as the app's
+ * — the exact drift between two version sources this package exists to remove.
  */
 export async function packageVersion(rootDirectory: string): Promise<string> {
   try {
-    const manifest = await readPackageJSON(rootDirectory);
-    return typeof manifest.version === 'string' && manifest.version ? manifest.version : '0.0.0';
+    const manifest: unknown = JSON.parse(
+      await readFile(join(rootDirectory, 'package.json'), 'utf8'),
+    );
+    const version =
+      typeof manifest === 'object' && manifest !== null && 'version' in manifest
+        ? manifest.version
+        : undefined;
+    return typeof version === 'string' && version ? version : '0.0.0';
   } catch {
     return '0.0.0';
   }

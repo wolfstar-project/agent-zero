@@ -100,6 +100,10 @@
 </template>
 
 <script setup lang="ts">
+// Used as a value by the `<component :is>` above, not as a tag, so auto-import does not
+// cover it: the nav renders a link where an item has a route and a plain button otherwise.
+import { NuxtLink } from '#components';
+
 const collapsed = useSidebarCollapsed();
 const route = useRoute();
 
