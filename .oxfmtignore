@@ -7,3 +7,4 @@ pnpm-lock.yaml
 .agents/skills/**
 .claude/skills/**
 .skills/**
+tools/oxlint/anti-slop/**

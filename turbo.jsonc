@@ -6,6 +6,7 @@
     "tooling/oxc/packages.oxlintrc.json",
     "tooling/oxc/apps.oxlintrc.json",
     "tooling/oxc/.oxfmtrc.json",
+    "tools/oxlint/anti-slop/**",
     ".oxfmtignore",
     "scripts/tsdown.config.ts",
     "vitest.config.ts",

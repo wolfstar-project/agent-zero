@@ -30,6 +30,9 @@ importers:
       '@nuxt/schema':
         specifier: ^3
         version: 4.5.2
+      '@oxlint/plugins':
+        specifier: ^1.74.0
+        version: 1.79.0
       '@redstardev/unplugin-version-injector':
         specifier: 0.0.2
         version: 0.0.2(@nuxt/kit@4.5.2)(@nuxt/schema@4.5.2)(esbuild@0.28.2)(vite@8.2.1(@types/node@26.2.0)(@vitejs/devtools@0.4.12)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.50.0)(tsx@4.23.12)(yaml@2.9.0))(webpack@5.109.2)
@@ -6147,6 +6150,10 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@oxlint/plugins@1.79.0':
+    resolution: {integrity: sha512-S0uyoxakDINJ4DPgqxGlEEvrdSMeQb7Z2lKVjxoY2gwsbZbfg2Xr8Klfeo5ZeraHmmdBCELFUHkSe6KEmBpMvg==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@parcel/watcher-wasm@2.6.0':
     resolution: {integrity: sha512-dtjbDxKSDPQ8AmA+pS4OFaHE1FKrjtGpLGBxw85uKFkRorjNbvDM/aFPgqosu40wprbp1xw2ZSxIKqghCUHe2w==}
@@ -21834,6 +21841,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.78.0':
     optional: true
+
+  '@oxlint/plugins@1.79.0': {}
 
   '@parcel/watcher-wasm@2.6.0':
     dependencies:
