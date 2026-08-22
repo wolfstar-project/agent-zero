@@ -29,7 +29,7 @@ describe('BuildEnvironment', () => {
     const commit = wrapper.get('a[href*="/commit/"]');
 
     expect(commit.attributes('target')).toBe('_blank');
-    expect(commit.attributes('rel')).toContain('noopener');
+    expect(commit.attributes('rel')).toContain('noreferrer');
     expect(commit.attributes('aria-label')).toContain('0000000');
   });
 });
@@ -39,7 +39,6 @@ describe('BuildEnvironment on a release', () => {
   const release = {
     version: '1.2.3',
     commit: '1234567890abcdef1234567890abcdef12345678',
-    shortCommit: '1234567',
     branch: 'main',
     env: 'release',
     time: 0,
@@ -60,7 +59,7 @@ describe('BuildEnvironment on a release', () => {
 
   it('hides the commit link for a build that resolved no commit', async () => {
     const wrapper = await mountSuspended(BuildEnvironment, {
-      props: { buildInfo: { ...release, commit: 'unknown', shortCommit: 'unknown' } },
+      props: { buildInfo: { ...release, commit: null } },
     });
 
     expect(wrapper.find('a[href*="/commit/"]').exists()).toBe(false);

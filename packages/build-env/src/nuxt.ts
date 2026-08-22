@@ -98,7 +98,7 @@ function buildInfoComposable(options: BuildEnvModuleOptions): string {
 
   return `import process from 'node:process';
 
-import { runtimeBuildInfo } from '@agent-zero/build-env';
+import { normalizeBuildInfo, runtimeBuildInfo } from '@agent-zero/build-env';
 import { useRuntimeConfig, useState } from '#imports';
 
 const runtimeFallback = ${JSON.stringify(Boolean(options.runtimeFallback))};
@@ -114,7 +114,12 @@ export function useBuildInfo() {
   // payload, so the client hydrates the same answer instead of falling back to the build's own.
   return useState('agent-zero:build-info', () => {
     const buildInfo = useRuntimeConfig().public.buildInfo;
-    if (!import.meta.server || !runtimeFallback) return buildInfo;
+    if (!import.meta.server || !runtimeFallback) {
+      // Nuxt still serialises this build's own \`null\` fields as \`''\` even when nothing here
+      // completes them further, so every consumer sees the same two states \`BuildInfo\` declares
+      // (resolved or \`null\`) rather than a third, empty-string one.
+      return normalizeBuildInfo(buildInfo);
+    }
     serverResolved ??= runtimeBuildInfo(buildInfo, process.env, resolveOptions);
     return serverResolved;
   }).value;

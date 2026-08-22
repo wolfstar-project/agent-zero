@@ -1,4 +1,5 @@
-import { readPackageJSON } from 'pkg-types';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import {
   deploymentMetadataFromEnvironment,

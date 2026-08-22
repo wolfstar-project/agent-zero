@@ -15,7 +15,6 @@ describe('useBuildInfo', () => {
     expect(useBuildInfo()).toStrictEqual({
       version: '0.0.0',
       commit: '0000000000000000000000000000000000000000',
-      shortCommit: '0000000',
       branch: 'test',
       env: 'dev',
       time: 0,

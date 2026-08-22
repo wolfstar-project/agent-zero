@@ -17,6 +17,25 @@ export function shortenCommit(commit: string | null): string | null {
 }
 
 /**
+ * Turns a blank string back into `null`.
+ *
+ * Nuxt serialises a `null` default in `runtimeConfig.public` as `''`, so every key stays
+ * overridable through its own `NUXT_PUBLIC_*` variable — but that means an unresolved field
+ * arrives here as an empty string, not the `null` the build published. Without this, `??` would
+ * treat that empty string as already resolved and never complete it.
+ */
+export function normalizeBuildInfo(buildInfo: BuildInfo): BuildInfo {
+  return {
+    ...buildInfo,
+    commit: buildInfo.commit || null,
+    branch: buildInfo.branch || null,
+    prNumber: buildInfo.prNumber || null,
+    previewUrl: buildInfo.previewUrl || null,
+    productionUrl: buildInfo.productionUrl || null,
+  };
+}
+
+/**
  * Completes build metadata from the environment the bundle is *running* in.
  *
  * This is the fallback for every deployment that is not Vercel. On Vercel the build itself runs
@@ -35,31 +54,38 @@ export function runtimeBuildInfo(
   environment: EnvironmentRecord,
   options: { readonly defaultBranch?: string } = {},
 ): BuildInfo {
+  const normalized = normalizeBuildInfo(buildInfo);
   const metadata = deploymentMetadataFromEnvironment(environment, options.defaultBranch);
 
-  const commit = buildInfo.commit ?? metadata.commit;
-  const branch = buildInfo.branch ?? metadata.branch;
+  const commit = normalized.commit ?? metadata.commit;
+  const branch = normalized.branch ?? metadata.branch;
   // A host that explicitly reports production for the process running right now overrides
   // whatever pull-request number was baked in at build time: an image built for review app #42
   // and later promoted to production is not still preview #42.
   const prNumber =
-    metadata.context === 'production' ? null : (buildInfo.prNumber ?? metadata.prNumber);
+    metadata.context === 'production' ? null : (normalized.prNumber ?? metadata.prNumber);
 
   const env = runtimeEnvType(
-    buildInfo,
+    normalized,
     environment,
     { ...metadata, branch, prNumber },
     options.defaultBranch,
   );
+  const previewUrl = normalized.previewUrl ?? previewUrlFromMetadata(metadata, env);
+  const productionUrl = normalized.productionUrl ?? productionUrlFromMetadata(metadata, env);
 
   return {
-    ...buildInfo,
+    ...normalized,
     commit,
     branch,
     env,
     prNumber,
-    previewUrl: buildInfo.previewUrl ?? previewUrlFromMetadata(metadata, env),
-    productionUrl: buildInfo.productionUrl ?? productionUrlFromMetadata(metadata, env),
+    // Gated by the *final* env rather than merely filled in when missing: a build classified
+    // `preview` and later reclassified `release` at runtime must stop serving its stale preview
+    // URL, and a build classified `release` and later demoted to `preview` must stop serving its
+    // stale production one — either survives an ordinary "fill if absent" merge.
+    previewUrl: env === 'release' ? null : previewUrl,
+    productionUrl: env === 'release' ? productionUrl : null,
   };
 }
 

@@ -5,7 +5,7 @@
  * reads an environment record and nothing else — no filesystem, no subprocess, no `@nuxt/kit`. The
  * build-time half, which reads the checkout and the app manifest, lives behind `./nuxt`.
  */
-export { runtimeBuildInfo, shortenCommit } from './build-info.js';
+export { normalizeBuildInfo, runtimeBuildInfo, shortenCommit } from './build-info.js';
 export {
   type DeploymentMetadata,
   deploymentMetadataFromEnvironment,

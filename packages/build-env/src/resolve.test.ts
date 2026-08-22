@@ -42,7 +42,6 @@ describe('resolveBuildInfo', () => {
     ).resolves.toStrictEqual({
       version: '1.2.3',
       commit: '1234567890abcdef',
-      shortCommit: '1234567',
       branch: 'main',
       env: 'release',
       time: 1_700_000_000_000,
@@ -52,7 +51,7 @@ describe('resolveBuildInfo', () => {
     });
   });
 
-  it('publishes sentinels for what it could not resolve, rather than guessing', async () => {
+  it('leaves what it could not resolve as null, rather than guessing', async () => {
     await expect(
       resolveBuildInfo({
         rootDirectory,
@@ -64,8 +63,7 @@ describe('resolveBuildInfo', () => {
       }),
     ).resolves.toMatchObject({
       branch: 'main',
-      commit: unknownRevision,
-      shortCommit: unknownRevision,
+      commit: null,
       env: 'release',
     });
   });

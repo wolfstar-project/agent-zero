@@ -136,6 +136,12 @@ describe('deploymentMetadataFromEnvironment', () => {
     ).toMatchObject({ provider: 'self-hosted', productionUrl: 'https://agent-zero.example.com' });
   });
 
+  it('preserves an explicit http scheme rather than upgrading a deliberately TLS-less deploy', () => {
+    expect(
+      deploymentMetadataFromEnvironment({ AGENT_ZERO_BUILD_URL: 'http://internal.example.com' }),
+    ).toMatchObject({ deployUrl: 'http://internal.example.com' });
+  });
+
   it('treats a variable that is set but blank as absent, so it never wins precedence', () => {
     expect(deploymentMetadataFromEnvironment({ AGENT_ZERO_BUILD_COMMIT: '   ' })).toMatchObject({
       provider: 'none',

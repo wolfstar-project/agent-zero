@@ -1,4 +1,4 @@
-import { withHttps } from 'ufo';
+import { hasProtocol, withHttps } from 'ufo';
 
 import type { EnvironmentRecord, EnvType } from './types.js';
 
@@ -52,12 +52,14 @@ function readFirst(environment: EnvironmentRecord, ...names: readonly string[]):
  * Vercel's `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` omit the scheme, unlike Netlify's
  * `URL`, so every reader normalises through here rather than each one remembering which is which.
  *
- * `ufo`'s `withHttps` rather than a scheme regex of our own: it is already in the tree (Nuxt, h3,
- * and vue-router all depend on it), and it leaves a protocol-relative `//host` alone, which a bare
- * `/^https?:\/\//` test would not — that value would get a second scheme prefixed onto it.
+ * An existing scheme is kept exactly as given — including a deliberate `http://` on
+ * `AGENT_ZERO_BUILD_URL` for an internal, TLS-less self-hosted deploy — and only a value with none
+ * gets `https://` added, via `ufo`'s `withHttps` rather than a scheme regex of our own (it is
+ * already in the tree: Nuxt, h3, and vue-router all depend on it).
  */
 function toUrl(value: string | null): string | null {
-  return value ? withHttps(value) : null;
+  if (!value) return null;
+  return hasProtocol(value) ? value : withHttps(value);
 }
 
 /** What a provider needs from the caller to classify its own deploy. */

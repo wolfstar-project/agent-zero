@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { runtimeBuildInfo, shortenCommit } from './build-info.js';
+import { normalizeBuildInfo, runtimeBuildInfo, shortenCommit } from './build-info.js';
 import type { BuildInfo } from './types.js';
 
 /** What a build that resolved nothing publishes: every revision field is `null`. */
@@ -122,5 +122,81 @@ describe('runtimeBuildInfo', () => {
 
   it('keeps a build-time pull-request number when the host reports no production context', () => {
     expect(runtimeBuildInfo({ ...resolvedBuild, prNumber: '42' }, {}).prNumber).toBe('42');
+  });
+
+  it('treats the empty strings Nuxt serialises null runtime-config values as, as unresolved', () => {
+    // A build published through `runtimeConfig.public` sees its own `null` fields arrive as `''`,
+    // not `null`, so the run-time pass must normalize them back before completing anything.
+    expect(
+      runtimeBuildInfo(
+        {
+          ...resolvedBuild,
+          commit: '',
+          branch: '',
+          prNumber: '',
+          previewUrl: '',
+          productionUrl: '',
+        },
+        {
+          AGENT_ZERO_BUILD_COMMIT: 'fedcba0987654321',
+          AGENT_ZERO_BUILD_BRANCH: 'feat/env',
+          AGENT_ZERO_BUILD_PR_NUMBER: '7',
+          AGENT_ZERO_BUILD_ENV: 'preview',
+          AGENT_ZERO_BUILD_URL: 'preview.example.com',
+        },
+      ),
+    ).toMatchObject({
+      commit: 'fedcba0987654321',
+      branch: 'feat/env',
+      prNumber: '7',
+      previewUrl: 'https://preview.example.com',
+    });
+  });
+
+  it('clears a stale preview URL once the host reclassifies the deploy as release', () => {
+    expect(
+      runtimeBuildInfo(
+        { ...resolvedBuild, env: 'preview', previewUrl: 'https://old-preview.example.com' },
+        { AGENT_ZERO_BUILD_ENV: 'release' },
+      ),
+    ).toMatchObject({ env: 'release', previewUrl: null });
+  });
+
+  it('clears a stale production URL once the host reclassifies the deploy as preview', () => {
+    expect(
+      runtimeBuildInfo(
+        {
+          ...resolvedBuild,
+          env: 'release',
+          productionUrl: 'https://agent-zero.example.com',
+        },
+        { AGENT_ZERO_BUILD_ENV: 'preview' },
+      ),
+    ).toMatchObject({ env: 'preview', productionUrl: null });
+  });
+});
+
+describe('normalizeBuildInfo', () => {
+  it('turns every blank nullable field back into null', () => {
+    expect(
+      normalizeBuildInfo({
+        ...resolvedBuild,
+        commit: '',
+        branch: '',
+        prNumber: '',
+        previewUrl: '',
+        productionUrl: '',
+      }),
+    ).toMatchObject({
+      commit: null,
+      branch: null,
+      prNumber: null,
+      previewUrl: null,
+      productionUrl: null,
+    });
+  });
+
+  it('leaves a resolved build untouched', () => {
+    expect(normalizeBuildInfo(resolvedBuild)).toStrictEqual(resolvedBuild);
   });
 });
