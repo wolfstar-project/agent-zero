@@ -8,11 +8,10 @@
 export { runtimeBuildInfo, shortenCommit } from './build-info.js';
 export {
   type DeploymentMetadata,
-  defaultBranchName,
   deploymentMetadataFromEnvironment,
   envTypeFromMetadata,
   envTypeOverrideFromEnvironment,
   previewUrlFromMetadata,
   productionUrlFromMetadata,
 } from './environment.js';
-export { type BuildInfo, type EnvironmentRecord, type EnvType, unknownRevision } from './types.js';
+export type { BuildInfo, EnvironmentRecord, EnvType } from './types.js';

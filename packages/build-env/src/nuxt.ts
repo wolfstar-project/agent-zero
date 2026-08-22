@@ -28,7 +28,6 @@ export interface BuildEnvModuleOptions {
 const testBuildInfo: BuildInfo = {
   version: '0.0.0',
   commit: '0000000000000000000000000000000000000000',
-  shortCommit: '0000000',
   branch: 'test',
   env: 'dev',
   time: 0,
@@ -40,12 +39,16 @@ const testBuildInfo: BuildInfo = {
 /**
  * Publishes what this build is, under `runtimeConfig.public.buildInfo`.
  *
- * `runtimeConfig.public` rather than `appConfig`, which is the opposite of the choice the dashboard
- * makes for its auth policy — and for the opposite reason. Auth policy must not be overridable at
- * run time, because a public runtime key would let a deployment advertise a sign-in method its
- * server rejects. Build metadata is the one thing a non-Vercel build *cannot* discover about
- * itself, so it has to stay overridable: the same `NUXT_PUBLIC_BUILD_INFO_*` channel that would be
- * a hazard for policy is the delivery mechanism here, alongside the server-side pass below.
+ * `runtimeConfig.public` rather than `appConfig`: the npmx.dev and wolfstar.rocks modules this
+ * package's shape is modelled on both use `appConfig` for the same data, but only because every
+ * build of theirs runs on a host (Vercel, Netlify) that already has full git metadata *at build
+ * time* — appConfig is a pure build-time constant, identical in the client and server bundles,
+ * with no channel to change after the fact. Agent Zero also ships a self-hosted bundle and can run
+ * behind hosts that only expose that metadata once the *server* starts, so this needs a value that
+ * can still be completed after the build without the client and server ending up with two
+ * different answers — which is what `runtimeConfig.public` plus the `useState`-backed composable
+ * below gives: the server-completed answer is serialised into the SSR payload the client hydrates
+ * from, rather than the client silently reverting to the build's uncompleted one.
  */
 export default defineNuxtModule<BuildEnvModuleOptions>({
   meta: {
@@ -67,15 +70,11 @@ export default defineNuxtModule<BuildEnvModuleOptions>({
               : { defaultBranch: options.defaultBranch }),
           });
 
-    // Every key is declared, including the ones that resolved to a sentinel: Nuxt only applies a
+    // Every key is declared, including the ones that resolved to `null`: Nuxt only applies a
     // `NUXT_PUBLIC_*` override to a key the build declared, so an omitted field could not be
     // supplied by the deployment that needs to supply it.
     nuxt.options.runtimeConfig.public.buildInfo = buildInfo;
 
-    // The composable, not a Nitro plugin: Nitro deep-freezes its runtime config before the first
-    // request, so nothing may write the completed metadata back into it. Resolving inside
-    // `useState` instead keeps the answer server-side, serialises it into the SSR payload, and
-    // leaves the client hydrating the same values the server rendered.
     const composable = addTemplate({
       filename: 'agent-zero-build-env.mjs',
       write: true,
@@ -93,27 +92,31 @@ export default defineNuxtModule<BuildEnvModuleOptions>({
  * client bundle never carries the fallback, or the `process.env` read behind it.
  */
 function buildInfoComposable(options: BuildEnvModuleOptions): string {
-  const resolveOptions =
-    options.defaultBranch === undefined
-      ? '{}'
-      : JSON.stringify({ defaultBranch: options.defaultBranch });
-  // Both branches go through `runtimeBuildInfo`, and the client's is handed an empty environment
-  // rather than skipped: Nuxt rewrites the `null` fields of `runtimeConfig` to empty strings, and
-  // that pass is also what normalises them back, so a client-only render reports the same shape a
-  // server-rendered one does.
-  const resolve = options.runtimeFallback
-    ? `import.meta.server ? runtimeBuildInfo(buildInfo, process.env, ${resolveOptions}) : runtimeBuildInfo(buildInfo, {}, ${resolveOptions})`
-    : `runtimeBuildInfo(buildInfo, {}, ${resolveOptions})`;
+  const resolveOptions = JSON.stringify(
+    options.defaultBranch === undefined ? {} : { defaultBranch: options.defaultBranch },
+  );
 
-  return `${options.runtimeFallback ? "import process from 'node:process';\n\n" : ''}import { runtimeBuildInfo } from '@agent-zero/build-env';
+  return `import process from 'node:process';
+
+import { runtimeBuildInfo } from '@agent-zero/build-env';
 import { useRuntimeConfig, useState } from '#imports';
 
+const runtimeFallback = ${JSON.stringify(Boolean(options.runtimeFallback))};
+const resolveOptions = ${resolveOptions};
+
+// Memoised across requests within one server process, rather than recomputed per request or per
+// prerendered route: the answer is a pure function of \`process.env\`, which does not change while
+// the process runs.
+let serverResolved;
+
 export function useBuildInfo() {
-  // Keyed state rather than a plain call: the value is resolved once on the server and travels to
-  // the browser in the payload, so a component that renders it cannot hydrate to a different one.
+  // Keyed state rather than a plain call: the server-completed value is serialised into the SSR
+  // payload, so the client hydrates the same answer instead of falling back to the build's own.
   return useState('agent-zero:build-info', () => {
     const buildInfo = useRuntimeConfig().public.buildInfo;
-    return ${resolve};
+    if (!import.meta.server || !runtimeFallback) return buildInfo;
+    serverResolved ??= runtimeBuildInfo(buildInfo, process.env, resolveOptions);
+    return serverResolved;
   }).value;
 }
 `;

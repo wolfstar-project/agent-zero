@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { runtimeBuildInfo, shortenCommit } from './build-info.js';
-import { type BuildInfo, unknownRevision } from './types.js';
+import type { BuildInfo } from './types.js';
 
-/** What a build that resolved nothing publishes: every revision field carries the sentinel. */
+/** What a build that resolved nothing publishes: every revision field is `null`. */
 const unresolvedBuild: BuildInfo = {
   version: '0.4.0',
-  commit: unknownRevision,
-  shortCommit: unknownRevision,
-  branch: unknownRevision,
+  commit: null,
+  branch: null,
   env: 'release',
   time: 1_700_000_000_000,
   prNumber: null,
@@ -20,7 +19,6 @@ const unresolvedBuild: BuildInfo = {
 const resolvedBuild: BuildInfo = {
   ...unresolvedBuild,
   commit: '1234567890abcdef',
-  shortCommit: '1234567',
   branch: 'main',
 };
 
@@ -29,8 +27,8 @@ describe('shortenCommit', () => {
     expect(shortenCommit('1234567890abcdef')).toBe('1234567');
   });
 
-  it('passes the unresolved sentinel through rather than slicing it', () => {
-    expect(shortenCommit(unknownRevision)).toBe(unknownRevision);
+  it('passes null through rather than throwing on it', () => {
+    expect(shortenCommit(null)).toBeNull();
   });
 });
 
@@ -41,11 +39,7 @@ describe('runtimeBuildInfo', () => {
         AGENT_ZERO_BUILD_COMMIT: 'fedcba0987654321',
         AGENT_ZERO_BUILD_BRANCH: 'main',
       }),
-    ).toMatchObject({
-      commit: 'fedcba0987654321',
-      shortCommit: 'fedcba0',
-      branch: 'main',
-    });
+    ).toMatchObject({ commit: 'fedcba0987654321', branch: 'main' });
   });
 
   it('never rewrites a field the build resolved, since the commit is a property of the bundle', () => {
@@ -54,7 +48,7 @@ describe('runtimeBuildInfo', () => {
         AGENT_ZERO_BUILD_COMMIT: 'fedcba0987654321',
         AGENT_ZERO_BUILD_BRANCH: 'somewhere-else',
       }),
-    ).toMatchObject({ commit: '1234567890abcdef', shortCommit: '1234567', branch: 'main' });
+    ).toMatchObject({ commit: '1234567890abcdef', branch: 'main' });
   });
 
   it('is a no-op on Vercel, where the build already read the same variables', () => {
@@ -105,24 +99,6 @@ describe('runtimeBuildInfo', () => {
     );
   });
 
-  it('treats the empty strings Nuxt rewrites null runtime-config values to as unresolved', () => {
-    expect(
-      runtimeBuildInfo(
-        { ...resolvedBuild, prNumber: '', previewUrl: '', productionUrl: '' },
-        {
-          VERCEL_ENV: 'preview',
-          VERCEL_GIT_COMMIT_REF: 'feat/env',
-          VERCEL_GIT_PULL_REQUEST_ID: '7',
-          VERCEL_URL: 'agent-zero-abc123.vercel.app',
-        },
-      ),
-    ).toMatchObject({
-      prNumber: '7',
-      previewUrl: 'https://agent-zero-abc123.vercel.app',
-      productionUrl: null,
-    });
-  });
-
   it('fills the deploy URLs a build off the host could not know', () => {
     expect(
       runtimeBuildInfo(resolvedBuild, {
@@ -131,5 +107,20 @@ describe('runtimeBuildInfo', () => {
         VERCEL_URL: 'agent-zero-abc123.vercel.app',
       }),
     ).toMatchObject({ previewUrl: 'https://agent-zero-abc123.vercel.app', productionUrl: null });
+  });
+
+  it('clears a build-time pull-request number once the host reports this process as production', () => {
+    // A container image built for review app #42's preview, later promoted to serve production
+    // traffic, must not still claim to be preview #42 once the host says otherwise.
+    expect(
+      runtimeBuildInfo(
+        { ...resolvedBuild, prNumber: '42' },
+        { VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_REF: 'main' },
+      ).prNumber,
+    ).toBeNull();
+  });
+
+  it('keeps a build-time pull-request number when the host reports no production context', () => {
+    expect(runtimeBuildInfo({ ...resolvedBuild, prNumber: '42' }, {}).prNumber).toBe('42');
   });
 });

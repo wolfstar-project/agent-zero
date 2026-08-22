@@ -5,7 +5,6 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { packageVersion, resolveBuildInfo } from './resolve.js';
-import { unknownRevision } from './types.js';
 
 /** A directory that is not a checkout, so nothing here can read the repository it runs in. */
 let rootDirectory: string;

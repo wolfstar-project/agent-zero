@@ -66,6 +66,24 @@ describe('deploymentMetadataFromEnvironment', () => {
     });
   });
 
+  it('classifies a Cloudflare Pages deploy on the caller-configured default branch as production', () => {
+    expect(
+      deploymentMetadataFromEnvironment(
+        { CF_PAGES: '1', CF_PAGES_BRANCH: 'trunk', CF_PAGES_COMMIT_SHA: 'fedcba0987654321' },
+        'trunk',
+      ),
+    ).toMatchObject({ context: 'production' });
+
+    // The module default (`main`) must not leak in once a caller configures a different one: the
+    // real production branch would otherwise still read as a preview.
+    expect(
+      deploymentMetadataFromEnvironment(
+        { CF_PAGES: '1', CF_PAGES_BRANCH: 'main', CF_PAGES_COMMIT_SHA: 'fedcba0987654321' },
+        'trunk',
+      ),
+    ).toMatchObject({ context: 'preview' });
+  });
+
   it('recovers the pull-request number a GitHub Actions run only carries in its ref', () => {
     expect(
       deploymentMetadataFromEnvironment({
@@ -77,6 +95,29 @@ describe('deploymentMetadataFromEnvironment', () => {
     ).toMatchObject({ provider: 'github-actions', prNumber: '17', commit: '0f0f0f0f0f0f0f0f' });
   });
 
+  it('prefers GITHUB_HEAD_REF over GITHUB_REF_NAME, since the latter is "<pr>/merge" on a pull_request event', () => {
+    expect(
+      deploymentMetadataFromEnvironment({
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REF: 'refs/pull/17/merge',
+        GITHUB_REF_NAME: '17/merge',
+        GITHUB_HEAD_REF: 'feat/env',
+        GITHUB_SHA: '0f0f0f0f0f0f0f0f',
+      }),
+    ).toMatchObject({ branch: 'feat/env' });
+  });
+
+  it('falls back to GITHUB_REF_NAME on a push, where GITHUB_HEAD_REF is unset', () => {
+    expect(
+      deploymentMetadataFromEnvironment({
+        GITHUB_ACTIONS: 'true',
+        GITHUB_REF: 'refs/heads/main',
+        GITHUB_REF_NAME: 'main',
+        GITHUB_SHA: '0f0f0f0f0f0f0f0f',
+      }),
+    ).toMatchObject({ branch: 'main' });
+  });
+
   it('lets an explicit self-hosted deployment override a provider that would be auto-detected', () => {
     expect(
       deploymentMetadataFromEnvironment({
@@ -85,6 +126,14 @@ describe('deploymentMetadataFromEnvironment', () => {
         AGENT_ZERO_BUILD_COMMIT: 'from-operator',
       }),
     ).toMatchObject({ provider: 'self-hosted', commit: 'from-operator' });
+  });
+
+  it('detects the self-hosted provider from the production URL alone, so it is not silently discarded', () => {
+    expect(
+      deploymentMetadataFromEnvironment({
+        AGENT_ZERO_BUILD_PRODUCTION_URL: 'agent-zero.example.com',
+      }),
+    ).toMatchObject({ provider: 'self-hosted', productionUrl: 'https://agent-zero.example.com' });
   });
 
   it('treats a variable that is set but blank as absent, so it never wins precedence', () => {

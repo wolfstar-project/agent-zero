@@ -16,31 +16,33 @@
       v-if="buildInfo.env === 'release'"
       class="text-ink transition hover:text-accent"
       :to="`${repositoryUrl}/releases/tag/v${buildInfo.version}`"
+      external
       target="_blank"
-      rel="noopener noreferrer"
+      rel="noreferrer"
       :aria-label="t('common.build.releaseAria', { version: buildInfo.version })"
     >
       v{{ buildInfo.version }}
     </NuxtLink>
     <span v-else class="text-ink tracking-wider">{{ buildInfo.env }}</span>
 
-    <template v-if="hasCommit">
+    <template v-if="shortCommit">
       <span aria-hidden="true">&middot;</span>
       <NuxtLink
         class="text-ink transition hover:text-accent"
         :to="`${repositoryUrl}/commit/${buildInfo.commit}`"
+        external
         target="_blank"
-        rel="noopener noreferrer"
-        :aria-label="t('common.build.commitAria', { commit: buildInfo.shortCommit })"
+        rel="noreferrer"
+        :aria-label="t('common.build.commitAria', { commit: shortCommit })"
       >
-        {{ buildInfo.shortCommit }}
+        {{ shortCommit }}
       </NuxtLink>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { type BuildInfo, unknownRevision } from '@agent-zero/build-env';
+import { type BuildInfo, shortenCommit } from '@agent-zero/build-env';
 
 /**
  * The build to render. Defaults to the one this bundle is, and is only ever passed to render a
@@ -63,8 +65,8 @@ const buildInfo = computed(() => override ?? resolved);
 const buildTime = computed(() => new Date(buildInfo.value.time));
 
 // A build that resolved no commit — a source tarball, a container image whose host was told
-// nothing — would otherwise render a link to `/commit/unknown`.
-const hasCommit = computed(() => buildInfo.value.commit !== unknownRevision);
+// nothing — hides the link rather than pointing it at `/commit/null`.
+const shortCommit = computed(() => shortenCommit(buildInfo.value.commit));
 
 const repositoryUrl = 'https://github.com/wolfstar-project/agent-zero';
 </script>

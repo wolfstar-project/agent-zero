@@ -29,8 +29,8 @@ export interface DeploymentMetadata {
  */
 const pullRequestRefPattern = /^refs\/pull\/(\d+)\//;
 
-/** The branch a deploy has to be on to count as `canary` rather than `preview`. */
-export const defaultBranchName = 'main';
+/** The branch a deploy has to be on to count as `canary` rather than `preview`, absent an override. */
+const defaultBranchName = 'main';
 
 /** Reads a variable, treating one that is set but blank as absent. */
 function read(environment: EnvironmentRecord, name: string): string | null {
@@ -53,15 +53,14 @@ function readFirst(environment: EnvironmentRecord, ...names: readonly string[]):
  * `URL`, so every reader normalises through here rather than each one remembering which is which.
  *
  * `ufo`'s `withHttps` rather than a scheme regex of our own: it is already in the tree (Nuxt, h3,
- * vue-router all depend on it) and it leaves a protocol-relative `//host` alone, which a
+ * and vue-router all depend on it), and it leaves a protocol-relative `//host` alone, which a bare
  * `/^https?:\/\//` test would not — that value would get a second scheme prefixed onto it.
  */
 function toUrl(value: string | null): string | null {
-  if (!value) return null;
-  return withHttps(value);
+  return value ? withHttps(value) : null;
 }
 
-/** What a provider needs to know from the caller to classify its own deploy. */
+/** What a provider needs from the caller to classify its own deploy. */
 interface ProviderOptions {
   /** The branch this project treats as production; `main` unless the caller says otherwise. */
   readonly defaultBranch: string;
@@ -99,6 +98,7 @@ const deploymentProviders: readonly DeploymentProvider[] = [
           'AGENT_ZERO_BUILD_BRANCH',
           'AGENT_ZERO_BUILD_URL',
           'AGENT_ZERO_BUILD_PR_NUMBER',
+          'AGENT_ZERO_BUILD_PRODUCTION_URL',
         ),
       ),
     read: (environment) => ({
@@ -148,16 +148,19 @@ const deploymentProviders: readonly DeploymentProvider[] = [
     // @see https://developers.cloudflare.com/pages/configuration/build-configuration/
     name: 'cloudflare-pages',
     detects: (environment) => Boolean(read(environment, 'CF_PAGES')),
-    read: (environment) => ({
+    read: (environment, options) => ({
       branch: read(environment, 'CF_PAGES_BRANCH'),
       commit: read(environment, 'CF_PAGES_COMMIT_SHA'),
       // Cloudflare Pages exposes no pull-request number; a PR deploy is recognised by its branch
-      // not being the default one, which the context below already covers.
+      // not being the production one, which the context below already covers.
       prNumber: null,
       deployUrl: toUrl(read(environment, 'CF_PAGES_URL')),
       productionUrl: null,
+      // The caller's configured production branch, not the module default: a project whose
+      // production branch is not `main` must still be classified `production` here, or every
+      // deploy of it — including the real production one — reads as a preview.
       context:
-        read(environment, 'CF_PAGES_BRANCH') === defaultBranchName ? 'production' : 'preview',
+        read(environment, 'CF_PAGES_BRANCH') === options.defaultBranch ? 'production' : 'preview',
     }),
   },
   {
@@ -167,7 +170,10 @@ const deploymentProviders: readonly DeploymentProvider[] = [
     name: 'github-actions',
     detects: (environment) => read(environment, 'GITHUB_ACTIONS') === 'true',
     read: (environment) => ({
-      branch: read(environment, 'GITHUB_REF_NAME'),
+      // `GITHUB_REF_NAME` is `<pr-number>/merge` on a `pull_request` event, not a branch name;
+      // `GITHUB_HEAD_REF` names the actual source branch and is only set for that event, so it is
+      // preferred when present and the ref-name form is used for every other trigger.
+      branch: readFirst(environment, 'GITHUB_HEAD_REF', 'GITHUB_REF_NAME'),
       commit: read(environment, 'GITHUB_SHA'),
       // `refs/pull/<number>/merge` is the only place a workflow triggered by `pull_request` carries
       // the number without reading the event payload off disk.
@@ -199,10 +205,11 @@ const noMetadata: DeploymentMetadata = {
  */
 export function deploymentMetadataFromEnvironment(
   environment: EnvironmentRecord,
+  defaultBranch: string = defaultBranchName,
 ): DeploymentMetadata {
   const provider = deploymentProviders.find((candidate) => candidate.detects(environment));
   if (!provider) return noMetadata;
-  return { provider: provider.name, ...provider.read(environment) };
+  return { provider: provider.name, ...provider.read(environment, { defaultBranch }) };
 }
 
 /**

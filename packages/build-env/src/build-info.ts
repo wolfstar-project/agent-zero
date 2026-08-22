@@ -6,26 +6,21 @@ import {
   previewUrlFromMetadata,
   productionUrlFromMetadata,
 } from './environment.js';
-import { type BuildInfo, type EnvironmentRecord, unknownRevision } from './types.js';
+import type { BuildInfo, EnvironmentRecord, EnvType } from './types.js';
 
 /** Seven characters is what `git rev-parse --short` and every provider's UI abbreviate to. */
 const shortCommitLength = 7;
 
-/** Abbreviates a commit SHA, passing the unresolved sentinel through unchanged. */
-export function shortenCommit(commit: string): string {
-  return commit === unknownRevision ? unknownRevision : commit.slice(0, shortCommitLength);
-}
-
-/** Whether a revision field is still carrying the sentinel rather than a resolved value. */
-function isUnresolved(value: string): boolean {
-  return value === unknownRevision;
+/** Abbreviates a commit SHA, passing `null` through unchanged. */
+export function shortenCommit(commit: string | null): string | null {
+  return commit === null ? null : commit.slice(0, shortCommitLength);
 }
 
 /**
  * Completes build metadata from the environment the bundle is *running* in.
  *
  * This is the fallback for every deployment that is not Vercel. On Vercel the build itself runs
- * with `VERCEL_GIT_COMMIT_SHA` and the rest in scope, so the values are already baked in and this
+ * with `VERCEL_GIT_COMMIT_SHA` and the rest in scope, so the values are already resolved and this
  * pass is a no-op that resolves to the same answers. A container image built in CI and started
  * somewhere else has none of them at build time: the fields arrive at boot instead, from whatever
  * the host exposes, or from the `AGENT_ZERO_BUILD_*` variables an operator sets on the process.
@@ -40,31 +35,26 @@ export function runtimeBuildInfo(
   environment: EnvironmentRecord,
   options: { readonly defaultBranch?: string } = {},
 ): BuildInfo {
-  const metadata = deploymentMetadataFromEnvironment(environment);
+  const metadata = deploymentMetadataFromEnvironment(environment, options.defaultBranch);
 
-  const commit = isUnresolved(buildInfo.commit)
-    ? (metadata.commit ?? unknownRevision)
-    : buildInfo.commit;
-  const branch = isUnresolved(buildInfo.branch)
-    ? (metadata.branch ?? unknownRevision)
-    : buildInfo.branch;
-  const prNumber = buildInfo.prNumber ?? metadata.prNumber;
+  const commit = buildInfo.commit ?? metadata.commit;
+  const branch = buildInfo.branch ?? metadata.branch;
+  // A host that explicitly reports production for the process running right now overrides
+  // whatever pull-request number was baked in at build time: an image built for review app #42
+  // and later promoted to production is not still preview #42.
+  const prNumber =
+    metadata.context === 'production' ? null : (buildInfo.prNumber ?? metadata.prNumber);
 
   const env = runtimeEnvType(
     buildInfo,
     environment,
-    { ...metadata, branch: isUnresolved(branch) ? null : branch, prNumber },
+    { ...metadata, branch, prNumber },
     options.defaultBranch,
   );
 
   return {
     ...buildInfo,
     commit,
-    // Re-derived rather than carried over: a build that resolved neither field publishes both
-    // sentinels, and the run-time commit is what the short form has to abbreviate.
-    shortCommit: isUnresolved(buildInfo.shortCommit)
-      ? shortenCommit(commit)
-      : buildInfo.shortCommit,
     branch,
     env,
     prNumber,
@@ -87,7 +77,7 @@ function runtimeEnvType(
   environment: EnvironmentRecord,
   metadata: DeploymentMetadata,
   defaultBranch: string | undefined,
-): BuildInfo['env'] {
+): EnvType {
   const override = envTypeOverrideFromEnvironment(environment);
   if (override) return override;
   if (buildInfo.env === 'dev') return 'dev';
