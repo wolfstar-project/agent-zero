@@ -12,6 +12,11 @@
     "@commitlint/cli",
     "nano-staged",
   ],
+  // Upstream exports two dictionary helpers for its tests, which are not part of the vendored
+  // runtime copy.
+  "ignoreIssues": {
+    "tools/oxlint/anti-slop/shared/dictionary-types.ts": ["exports", "types"],
+  },
   // The Oxlint plugin's default config glob (`.oxlintrc.json` at each workspace root) no longer
   // matches: every workspace's `lint`/`lint:fix` script points at tooling/oxc/{packages,apps}.oxlintrc.json
   // instead, which themselves extend tooling/oxc/base.oxlintrc.json.
@@ -19,6 +24,10 @@
     "config": ["tooling/oxc/*.oxlintrc.json"],
   },
   "workspaces": {
+    ".": {
+      // Loaded by Oxlint from base.oxlintrc.json as a local JavaScript plugin.
+      "entry": ["tools/oxlint/anti-slop/index.ts"],
+    },
     "packages/i18n": {
       // Every i18n:* script is invoked directly (`node scripts/x.ts`) from package.json rather
       // than imported, so each is its own entry point. lunaria.config.ts is discovered by

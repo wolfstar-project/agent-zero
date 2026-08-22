@@ -37,6 +37,7 @@
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
     "@e18e/eslint-plugin": "^0.8.0",
+    "@oxlint/plugins": "^1.74.0",
     "@redstardev/unplugin-version-injector": "0.0.2",
     "@types/node": "^26.2.0",
     "husky": "^9.1.7",
