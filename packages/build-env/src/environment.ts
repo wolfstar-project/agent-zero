@@ -22,9 +22,6 @@ export interface DeploymentMetadata {
   readonly context: 'production' | 'preview' | null;
 }
 
-/** Matches a URL that already carries a scheme, so only bare host names get one added. */
-const absoluteUrlPattern = /^https?:\/\//;
-
 /**
  * Matches the ref a workflow triggered by `pull_request` runs on, capturing the number.
  *
