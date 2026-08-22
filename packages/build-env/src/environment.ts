@@ -51,17 +51,30 @@ function readFirst(environment: EnvironmentRecord, ...names: readonly string[]):
  *
  * Vercel's `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` omit the scheme, unlike Netlify's
  * `URL`, so every reader normalises through here rather than each one remembering which is which.
+ *
+ * `ufo`'s `withHttps` rather than a scheme regex of our own: it is already in the tree (Nuxt, h3,
+ * vue-router all depend on it) and it leaves a protocol-relative `//host` alone, which a
+ * `/^https?:\/\//` test would not — that value would get a second scheme prefixed onto it.
  */
 function toUrl(value: string | null): string | null {
   if (!value) return null;
-  return absoluteUrlPattern.test(value) ? value : `https://${value}`;
+  return withHttps(value);
+}
+
+/** What a provider needs to know from the caller to classify its own deploy. */
+interface ProviderOptions {
+  /** The branch this project treats as production; `main` unless the caller says otherwise. */
+  readonly defaultBranch: string;
 }
 
 interface DeploymentProvider {
   readonly name: string;
   /** Whether this provider is the one that built or is running the bundle. */
   detects(environment: EnvironmentRecord): boolean;
-  read(environment: EnvironmentRecord): Omit<DeploymentMetadata, 'provider'>;
+  read(
+    environment: EnvironmentRecord,
+    options: ProviderOptions,
+  ): Omit<DeploymentMetadata, 'provider'>;
 }
 
 /**
