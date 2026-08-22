@@ -9,6 +9,7 @@ import { assertExecutableCommand } from './checks.js';
 export {
   assertExecutableCommand,
   checkKinds,
+  detectPackageManager,
   discoverChecks,
   knownLockfiles,
   packageManagerFromLockfiles,

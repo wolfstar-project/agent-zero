@@ -19,29 +19,32 @@
     </div>
 
     <nav :aria-label="$t('dashboard.nav.aria')" class="flex-1 overflow-y-auto px-3 py-4">
-      <button
+      <component
+        :is="item.to ? NuxtLink : 'button'"
         v-for="item in navItems"
         :key="item.key"
+        :to="item.to"
         class="focus-ring mb-1 h-9 w-full flex items-center border-is-2 text-start text-xs font-600 transition"
         :class="[
           collapsed ? 'justify-center px-0' : 'px-3',
-          item.active
+          isActive(item)
             ? 'border-accent bg-accent/8 text-ink'
-            : 'cursor-default border-transparent text-muted hover:bg-raised hover:text-ink',
+            : 'border-transparent text-muted hover:bg-raised hover:text-ink',
+          item.to ? '' : 'cursor-default',
         ]"
-        :aria-current="item.active ? 'page' : undefined"
+        :aria-current="isActive(item) ? 'page' : undefined"
         :title="collapsed ? $t(item.labelKey) : undefined"
         :aria-label="collapsed ? $t(item.labelKey) : undefined"
-        type="button"
+        :type="item.to ? undefined : 'button'"
       >
         <Icon
           :name="item.icon"
           aria-hidden="true"
           class="h-4 w-4 shrink-0"
-          :class="[collapsed ? '' : 'me-2.5', item.active ? 'text-accent' : '']"
+          :class="[collapsed ? '' : 'me-2.5', isActive(item) ? 'text-accent' : '']"
         />
         <span v-if="!collapsed" class="truncate">{{ $t(item.labelKey) }}</span>
-      </button>
+      </component>
     </nav>
 
     <ClientOnly>
@@ -98,46 +101,38 @@
 
 <script setup lang="ts">
 const collapsed = useSidebarCollapsed();
+const route = useRoute();
 
 const appConfig = useAppConfig();
 const enableOrganizations = appConfig.auth.enableOrganizations;
 
-const navItems = [
-  {
-    key: 'control',
-    labelKey: 'dashboard.nav.control',
-    icon: 'lucide:layout-dashboard',
-    active: true,
-  },
-  { key: 'tasks', labelKey: 'dashboard.nav.tasks', icon: 'lucide:list-checks', active: false },
-  { key: 'runners', labelKey: 'dashboard.nav.runners', icon: 'lucide:server', active: false },
-  { key: 'models', labelKey: 'dashboard.nav.models', icon: 'lucide:cpu', active: false },
-  {
-    key: 'approvals',
-    labelKey: 'dashboard.nav.approvals',
-    icon: 'lucide:badge-check',
-    active: false,
-  },
-  {
-    key: 'findings',
-    labelKey: 'dashboard.nav.findings',
-    icon: 'lucide:shield-alert',
-    active: false,
-  },
-  {
-    key: 'repositories',
-    labelKey: 'dashboard.nav.repositories',
-    icon: 'lucide:folder-git-2',
-    active: false,
-  },
-  { key: 'policies', labelKey: 'dashboard.nav.policies', icon: 'lucide:scale', active: false },
-  {
-    key: 'integrations',
-    labelKey: 'dashboard.nav.integrations',
-    icon: 'lucide:plug',
-    active: false,
-  },
-  { key: 'audit', labelKey: 'dashboard.nav.audit', icon: 'lucide:scroll-text', active: false },
-  { key: 'settings', labelKey: 'dashboard.nav.settings', icon: 'lucide:settings', active: false },
-] as const;
+interface NavItem {
+  key: string;
+  labelKey: string;
+  icon: string;
+  /** Absent for the sections that have no page yet; those stay inert buttons. */
+  to?: string;
+}
+
+/**
+ * Active state is derived from the current route rather than declared per entry, so a placeholder
+ * cannot claim to be the current page and a real entry cannot disagree with the address bar.
+ */
+const navItems: readonly NavItem[] = [
+  { key: 'control', labelKey: 'dashboard.nav.control', icon: 'lucide:layout-dashboard', to: '/' },
+  { key: 'tasks', labelKey: 'dashboard.nav.tasks', icon: 'lucide:list-checks' },
+  { key: 'runners', labelKey: 'dashboard.nav.runners', icon: 'lucide:server' },
+  { key: 'models', labelKey: 'dashboard.nav.models', icon: 'lucide:cpu' },
+  { key: 'approvals', labelKey: 'dashboard.nav.approvals', icon: 'lucide:badge-check' },
+  { key: 'findings', labelKey: 'dashboard.nav.findings', icon: 'lucide:shield-alert' },
+  { key: 'repositories', labelKey: 'dashboard.nav.repositories', icon: 'lucide:folder-git-2' },
+  { key: 'policies', labelKey: 'dashboard.nav.policies', icon: 'lucide:scale' },
+  { key: 'integrations', labelKey: 'dashboard.nav.integrations', icon: 'lucide:plug' },
+  { key: 'audit', labelKey: 'dashboard.nav.audit', icon: 'lucide:scroll-text', to: '/audit' },
+  { key: 'settings', labelKey: 'dashboard.nav.settings', icon: 'lucide:settings' },
+];
+
+function isActive(item: NavItem): boolean {
+  return item.to !== undefined && route.path === item.to;
+}
 </script>

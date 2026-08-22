@@ -32,7 +32,7 @@
     },
     "queue": {
       "title": "Coda task",
-      "order": "Più recenti prima",
+      "caption": "Task noti al piano di controllo.",
       "columns": {
         "id": "ID",
         "repository": "Repository",
@@ -65,6 +65,61 @@
       "summary": "Riepilogo esecuzione",
       "emptyTitle": "Nessun task selezionato",
       "emptyBody": "Seleziona un record della coda per ispezionare evidenze e utilizzo."
+    },
+    "audit": {
+      "header": {
+        "eyebrow": "Agent Zero / Governance",
+        "title": "Registro di audit"
+      },
+      "table": {
+        "title": "Azioni registrate",
+        "caption": "Azioni registrate dal piano di controllo e dall’autenticazione.",
+        "columns": {
+          "time": "Data e ora",
+          "source": "Sorgente",
+          "actor": "Autore",
+          "action": "Azione",
+          "subject": "Oggetto",
+          "outcome": "Esito"
+        },
+        "loading": "Caricamento del registro di audit…",
+        "loadMore": "Carica voci meno recenti",
+        "emptyTitle": "Nessuna azione registrata",
+        "emptyBody": "Invii di task, decisioni di approvazione e accessi compariranno qui man mano che avvengono."
+      },
+      "source": {
+        "controlPlane": "Piano di controllo",
+        "authentication": "Autenticazione"
+      },
+      "outcome": {
+        "success": "riuscita",
+        "denied": "negata",
+        "failure": "fallita"
+      },
+      "error": {
+        "title": "Impossibile leggere il registro di audit",
+        "forbidden": "La lettura del registro di audit richiede il ruolo admin. Richiedi l'accesso a un amministratore.",
+        "unauthorized": "La sessione è scaduta. Accedi di nuovo per leggere il registro di audit.",
+        "generic": "Il registro di audit non è momentaneamente disponibile. Riprova tra poco.",
+        "retry": "Riprova"
+      },
+      "authNotice": {
+        "forbidden": "Gli eventi di autenticazione non sono elencati: per leggerli occorre essere proprietario o amministratore delle organizzazioni a cui appartiene questo account.",
+        "generic": "Gli eventi di autenticazione non sono momentaneamente disponibili; il registro del piano di controllo è completo."
+      }
+    },
+    "shortcuts": {
+      "title": "Scorciatoie da tastiera",
+      "hint": "Le scorciatoie sono ignorate mentre scrivi in un campo.",
+      "control": "Vai al piano di controllo",
+      "audit": "Vai al registro di audit",
+      "sidebar": "Comprimi o espandi la barra laterale",
+      "help": "Mostra questo elenco",
+      "refresh": "Aggiorna la vista corrente",
+      "filter": "Attiva il filtro della tabella",
+      "next": "Seleziona il task successivo",
+      "previous": "Seleziona il task precedente",
+      "more": "Carica voci di audit meno recenti"
     }
   }
 }

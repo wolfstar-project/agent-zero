@@ -8,7 +8,14 @@
       "subtitle": "Dashboard"
     },
     "actions": {
-      "refresh": "Aggiorna"
+      "refresh": "Aggiorna",
+      "close": "Chiudi"
+    },
+    "table": {
+      "filterLabel": "Filtra le righe",
+      "filterPlaceholder": "Filtra…",
+      "noMatches": "Nessuna riga corrisponde al filtro.",
+      "sortBy": "Ordina per {column}"
     },
     "theme": {
       "switchToLight": "Passa al tema chiaro",

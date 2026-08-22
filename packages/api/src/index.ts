@@ -54,6 +54,21 @@ export {
   type TaskApproval,
   type TaskStore,
 } from './control-plane.js';
+export {
+  createAuditRecorder,
+  MemoryAuditLogStore,
+  PersistentAuditLogStore,
+  type AuditActor,
+  type AuditActorKind,
+  type AuditEntryInput,
+  type AuditEvent,
+  type AuditLogPage,
+  type AuditLogQuery,
+  type AuditLogStore,
+  type AuditOutcome,
+  type AuditRecorder,
+  type AuditRecorderOptions,
+} from './audit.js';
 export { dashboardOverview, type DashboardOverview } from './dashboard.js';
 export {
   authMiddleware,
